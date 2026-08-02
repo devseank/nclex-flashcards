@@ -16,6 +16,8 @@ import { ReviewRange } from "@/components/ReviewMode";
 
 export type View = "menu" | "categoryPick" | "reviewPick" | "session" | "finished" | "analytics";
 
+export type Notice = { text: string; tone: "info" | "error" };
+
 const MODE_LABELS: Record<SessionMode, string> = {
   quick5: "QUICK 5",
   quick10: "QUICK 10",
@@ -42,7 +44,7 @@ export function useQuizSession(questions: Question[] | null) {
   const [current, setCurrent] = useState<Question | null>(null);
   const [answers, setAnswers] = useState<number[][]>([]);
   const [questionStats, setQuestionStats] = useState<Map<number, QuestionStats> | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<Notice | null>(null);
 
   function beginSession(pool: Question[], m: SessionMode, label: string, category: string | null) {
     setMode(m);
@@ -83,13 +85,13 @@ export function useQuizSession(questions: Question[] | null) {
       const attempts = await fetchAttempts();
       const mostWrong = selectMostWrong(questions, attempts, since);
       if (mostWrong.length === 0) {
-        setNotice("No incorrect answers in this period — nice work!");
+        setNotice({ text: "No incorrect answers in this period — nice work!", tone: "info" });
         return;
       }
       setQuestionStats(computeQuestionStats(attempts));
       beginSession(mostWrong, "review", `REVIEW — ${REVIEW_RANGE_LABELS[range]}`, null);
     } catch (err) {
-      setNotice(getErrorMessage(err));
+      setNotice({ text: getErrorMessage(err), tone: "error" });
     }
   }
 
@@ -101,13 +103,13 @@ export function useQuizSession(questions: Question[] | null) {
       const attempts = await fetchAttempts();
       const mostWrong = selectMostWrong(pool, attempts, null);
       if (mostWrong.length === 0) {
-        setNotice("No incorrect answers in this category — nice work!");
+        setNotice({ text: `No incorrect answers in ${category} — nice work!`, tone: "info" });
         return;
       }
       setQuestionStats(computeQuestionStats(attempts));
       beginSession(mostWrong, "review", `${category} — MOST WRONG`, category);
     } catch (err) {
-      setNotice(getErrorMessage(err));
+      setNotice({ text: getErrorMessage(err), tone: "error" });
     }
   }
 

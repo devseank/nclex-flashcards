@@ -12,6 +12,7 @@ import PixelWindow from "@/components/PixelWindow";
 import SessionScreen from "@/components/SessionScreen";
 import FinishedScreen from "@/components/FinishedScreen";
 import SignOutButton from "@/components/SignOutButton";
+import NoticeBanner from "@/components/NoticeBanner";
 
 export default function FlashcardApp() {
   const [questions, setQuestions] = useState<Question[] | null>(null);
@@ -75,7 +76,7 @@ export default function FlashcardApp() {
               onBack={backToMenu}
             />
           </PixelWindow>
-          {notice && <p className="text-sm text-gray-500 text-center">{notice}</p>}
+          {notice && <NoticeBanner notice={notice} />}
         </div>
       )}
 
@@ -84,7 +85,7 @@ export default function FlashcardApp() {
           <PixelWindow title="REVIEW.EXE">
             <ReviewMode onSelect={startReviewByRange} onBack={backToMenu} />
           </PixelWindow>
-          {notice && <p className="text-sm text-gray-500 text-center">{notice}</p>}
+          {notice && <NoticeBanner notice={notice} />}
         </div>
       )}
 
