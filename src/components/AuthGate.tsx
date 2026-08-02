@@ -6,10 +6,20 @@ import { supabase } from "@/lib/supabase";
 import AnimatedHeart from "@/components/AnimatedHeart";
 import PixelWindow from "@/components/PixelWindow";
 
+const LAST_EMAIL_KEY = "nclex-last-email";
+
 function signInWithGoogle() {
+  const lastEmail = localStorage.getItem(LAST_EMAIL_KEY);
   supabase.auth.signInWithOAuth({
     provider: "google",
-    options: { redirectTo: window.location.origin + window.location.pathname },
+    options: {
+      redirectTo: window.location.origin + window.location.pathname,
+      // Google shows its account chooser whenever multiple Google accounts
+      // are signed into the browser, regardless of any `prompt` setting.
+      // Passing login_hint tells it exactly which account to use, so it
+      // signs back in silently instead of asking every time.
+      ...(lastEmail ? { queryParams: { login_hint: lastEmail } } : {}),
+    },
   });
 }
 
@@ -21,6 +31,9 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      if (session?.user.email) {
+        localStorage.setItem(LAST_EMAIL_KEY, session.user.email);
+      }
     });
 
     return () => listener.subscription.unsubscribe();
