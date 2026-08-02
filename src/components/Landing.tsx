@@ -13,10 +13,12 @@ const MODE_OPTIONS: { key: Mode; label: string }[] = [
 export default function Landing({
   onSelectMode,
   onSelectCategory,
+  onSelectReview,
   onSelectAnalytics,
 }: {
   onSelectMode: (mode: Mode) => void;
   onSelectCategory: () => void;
+  onSelectReview: () => void;
   onSelectAnalytics: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -68,6 +70,16 @@ export default function Landing({
             className="nes-btn is-warning w-full font-pixel text-xs py-2"
           >
             CATEGORY
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              onSelectReview();
+              setOpen(false);
+            }}
+            className="nes-btn is-error w-full font-pixel text-xs py-2"
+          >
+            REVIEW
           </button>
           <button
             type="button"

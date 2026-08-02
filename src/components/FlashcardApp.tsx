@@ -2,21 +2,37 @@
 
 import { useEffect, useState } from "react";
 import { fetchAllQuestions, Question } from "@/services/questions";
-import { recordAttempt } from "@/services/attempts";
+import {
+  recordAttempt,
+  fetchAttempts,
+  computeQuestionStats,
+  Attempt,
+  QuestionStats,
+} from "@/services/attempts";
 import { supabase } from "@/lib/supabase";
 import { getErrorMessage } from "@/lib/errorMessage";
+import { startOfToday, startOfWeek } from "@/lib/dateRanges";
 import Flashcard from "@/components/Flashcard";
 import Landing, { Mode } from "@/components/Landing";
 import CategoryMode from "@/components/CategoryMode";
+import ReviewMode, { ReviewRange } from "@/components/ReviewMode";
 import Analytics from "@/components/Analytics";
 import PixelWindow from "@/components/PixelWindow";
 
-type View = "menu" | "categoryPick" | "session" | "finished" | "analytics";
+type SessionMode = Mode | "review";
+type View = "menu" | "categoryPick" | "reviewPick" | "session" | "finished" | "analytics";
 
-const MODE_LABELS: Record<Mode, string> = {
+const MODE_LABELS: Record<SessionMode, string> = {
   quick5: "QUICK 5",
   quick10: "QUICK 10",
   infinite: "INFINITE",
+  review: "REVIEW",
+};
+
+const REVIEW_RANGE_LABELS: Record<ReviewRange, string> = {
+  today: "TODAY",
+  week: "THIS WEEK",
+  all: "ALL TIME",
 };
 
 function shuffle<T>(items: T[]): T[] {
@@ -40,17 +56,33 @@ function isCorrect(question: Question, selected: number[]): boolean {
   );
 }
 
+function selectMostWrong(pool: Question[], attempts: Attempt[], since: Date | null): Question[] {
+  const relevant = since ? attempts.filter((a) => new Date(a.attemptedAt) >= since) : attempts;
+  const incorrectCounts = new Map<number, number>();
+  for (const a of relevant) {
+    if (!a.isCorrect) {
+      incorrectCounts.set(a.questionId, (incorrectCounts.get(a.questionId) ?? 0) + 1);
+    }
+  }
+  return pool
+    .filter((q) => (incorrectCounts.get(q.id) ?? 0) > 0)
+    .sort((a, b) => (incorrectCounts.get(b.id) ?? 0) - (incorrectCounts.get(a.id) ?? 0));
+}
+
 export default function FlashcardApp() {
   const [questions, setQuestions] = useState<Question[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [view, setView] = useState<View>("menu");
-  const [mode, setMode] = useState<Mode | null>(null);
+  const [mode, setMode] = useState<SessionMode | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [sessionLabel, setSessionLabel] = useState("");
   const [queue, setQueue] = useState<Question[]>([]);
   const [index, setIndex] = useState(0);
   const [current, setCurrent] = useState<Question | null>(null);
   const [answers, setAnswers] = useState<number[][]>([]);
+  const [questionStats, setQuestionStats] = useState<Map<number, QuestionStats> | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAllQuestions()
@@ -60,25 +92,70 @@ export default function FlashcardApp() {
 
   const categories = questions ? [...new Set(questions.map((q) => q.category))].sort() : [];
 
-  function startMode(m: Mode, category: string | null = null) {
-    if (!questions) return;
-    const pool = category ? questions.filter((q) => q.category === category) : questions;
-    if (pool.length === 0) return;
-
+  function beginSession(pool: Question[], m: SessionMode, label: string, category: string | null) {
     setMode(m);
     setCategoryFilter(category);
+    setSessionLabel(label);
     setAnswers([]);
+    setNotice(null);
     setView("session");
 
     if (m === "infinite") {
       setQueue(pool);
       setCurrent(pickRandom(pool));
     } else {
-      const count = m === "quick5" ? 5 : 10;
-      const nextQueue = shuffle(pool).slice(0, Math.min(count, pool.length));
-      setQueue(nextQueue);
+      setQueue(pool);
       setIndex(0);
-      setCurrent(nextQueue[0]);
+      setCurrent(pool[0]);
+    }
+  }
+
+  function startMode(m: Mode, category: string | null = null) {
+    if (!questions) return;
+    const pool = category ? questions.filter((q) => q.category === category) : questions;
+    if (pool.length === 0) return;
+
+    if (m === "infinite") {
+      beginSession(pool, m, "", category);
+    } else {
+      const count = m === "quick5" ? 5 : 10;
+      beginSession(shuffle(pool).slice(0, Math.min(count, pool.length)), m, "", category);
+    }
+  }
+
+  async function startReviewByRange(range: ReviewRange) {
+    if (!questions) return;
+    const since = range === "today" ? startOfToday() : range === "week" ? startOfWeek() : null;
+
+    try {
+      const attempts = await fetchAttempts();
+      const mostWrong = selectMostWrong(questions, attempts, since);
+      if (mostWrong.length === 0) {
+        setNotice("No incorrect answers in this period — nice work!");
+        return;
+      }
+      setQuestionStats(computeQuestionStats(attempts));
+      beginSession(mostWrong, "review", `REVIEW — ${REVIEW_RANGE_LABELS[range]}`, null);
+    } catch (err) {
+      setNotice(getErrorMessage(err));
+    }
+  }
+
+  async function startReviewByCategory(category: string) {
+    if (!questions) return;
+    const pool = questions.filter((q) => q.category === category);
+
+    try {
+      const attempts = await fetchAttempts();
+      const mostWrong = selectMostWrong(pool, attempts, null);
+      if (mostWrong.length === 0) {
+        setNotice("No incorrect answers in this category — nice work!");
+        return;
+      }
+      setQuestionStats(computeQuestionStats(attempts));
+      beginSession(mostWrong, "review", `${category} — MOST WRONG`, category);
+    } catch (err) {
+      setNotice(getErrorMessage(err));
     }
   }
 
@@ -86,7 +163,10 @@ export default function FlashcardApp() {
     setView("menu");
     setMode(null);
     setCategoryFilter(null);
+    setSessionLabel("");
     setCurrent(null);
+    setQuestionStats(null);
+    setNotice(null);
   }
 
   function handleNext(selected: number[]) {
@@ -116,7 +196,9 @@ export default function FlashcardApp() {
 
   const score = queue.reduce((acc, q, i) => acc + (isCorrect(q, answers[i] ?? []) ? 1 : 0), 0);
   const modeTitle =
-    mode && (categoryFilter ? `${categoryFilter} — ${MODE_LABELS[mode]}` : MODE_LABELS[mode]);
+    mode === "review"
+      ? sessionLabel
+      : mode && (categoryFilter ? `${categoryFilter} — ${MODE_LABELS[mode]}` : MODE_LABELS[mode]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-8 px-4 py-16">
@@ -136,20 +218,40 @@ export default function FlashcardApp() {
         <PixelWindow title="MENU.EXE">
           <Landing
             onSelectMode={(m) => startMode(m)}
-            onSelectCategory={() => setView("categoryPick")}
+            onSelectCategory={() => {
+              setNotice(null);
+              setView("categoryPick");
+            }}
+            onSelectReview={() => {
+              setNotice(null);
+              setView("reviewPick");
+            }}
             onSelectAnalytics={() => setView("analytics")}
           />
         </PixelWindow>
       )}
 
       {!error && view === "categoryPick" && (
-        <PixelWindow title="CATEGORY.EXE">
-          <CategoryMode
-            categories={categories}
-            onStart={(category, m) => startMode(m, category)}
-            onBack={backToMenu}
-          />
-        </PixelWindow>
+        <div className="w-full max-w-sm flex flex-col items-center gap-3">
+          <PixelWindow title="CATEGORY.EXE">
+            <CategoryMode
+              categories={categories}
+              onStart={(category, m) => startMode(m, category)}
+              onStartWrong={startReviewByCategory}
+              onBack={backToMenu}
+            />
+          </PixelWindow>
+          {notice && <p className="text-sm text-gray-500 text-center">{notice}</p>}
+        </div>
+      )}
+
+      {!error && view === "reviewPick" && (
+        <div className="w-full max-w-sm flex flex-col items-center gap-3">
+          <PixelWindow title="REVIEW.EXE">
+            <ReviewMode onSelect={startReviewByRange} onBack={backToMenu} />
+          </PixelWindow>
+          {notice && <p className="text-sm text-gray-500 text-center">{notice}</p>}
+        </div>
       )}
 
       {!error && view === "analytics" && questions && (
@@ -173,7 +275,13 @@ export default function FlashcardApp() {
 
           <div className="w-full flex flex-col gap-4">
             {queue.map((q, i) => (
-              <Flashcard key={q.id} question={q} mode="review" initialSelected={answers[i] ?? []} />
+              <Flashcard
+                key={q.id}
+                question={q}
+                mode="review"
+                initialSelected={answers[i] ?? []}
+                stats={questionStats?.get(q.id)}
+              />
             ))}
           </div>
         </div>
@@ -195,7 +303,12 @@ export default function FlashcardApp() {
               </span>
             )}
           </div>
-          <Flashcard key={current.id} question={current} onNext={handleNext} />
+          <Flashcard
+            key={current.id}
+            question={current}
+            onNext={handleNext}
+            stats={mode === "review" ? questionStats?.get(current.id) : undefined}
+          />
         </div>
       )}
     </div>

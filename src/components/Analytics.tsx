@@ -15,6 +15,7 @@ import { fetchAttempts, Attempt } from "@/services/attempts";
 import { Question } from "@/services/questions";
 import PixelWindow from "@/components/PixelWindow";
 import { getErrorMessage } from "@/lib/errorMessage";
+import { startOfToday, startOfWeek, startOfMonth } from "@/lib/dateRanges";
 
 const NAVY = "#12314a";
 const BLUE = "#209cee";
@@ -81,19 +82,17 @@ export default function Analytics({
 
   const categoryById = new Map(questions.map((q) => [q.id, q.category]));
 
-  const now = new Date();
-  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const startOfWeek = new Date(startOfDay);
-  startOfWeek.setDate(startOfDay.getDate() - startOfDay.getDay());
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const todayStart = startOfToday();
+  const weekStart = startOfWeek();
+  const monthStart = startOfMonth();
 
-  const todayCount = attempts.filter((a) => new Date(a.attemptedAt) >= startOfDay).length;
-  const weekCount = attempts.filter((a) => new Date(a.attemptedAt) >= startOfWeek).length;
-  const monthCount = attempts.filter((a) => new Date(a.attemptedAt) >= startOfMonth).length;
+  const todayCount = attempts.filter((a) => new Date(a.attemptedAt) >= todayStart).length;
+  const weekCount = attempts.filter((a) => new Date(a.attemptedAt) >= weekStart).length;
+  const monthCount = attempts.filter((a) => new Date(a.attemptedAt) >= monthStart).length;
 
   const dayKeys = Array.from({ length: 14 }, (_, i) => {
-    const d = new Date(startOfDay);
-    d.setDate(startOfDay.getDate() - (13 - i));
+    const d = new Date(todayStart);
+    d.setDate(todayStart.getDate() - (13 - i));
     return d.toISOString().slice(0, 10);
   });
   const countsByDay = new Map(dayKeys.map((d) => [d, 0]));

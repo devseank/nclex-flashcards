@@ -13,10 +13,12 @@ const MODE_OPTIONS: { key: Mode; label: string }[] = [
 export default function CategoryMode({
   categories,
   onStart,
+  onStartWrong,
   onBack,
 }: {
   categories: string[];
   onStart: (category: string, mode: Mode) => void;
+  onStartWrong: (category: string) => void;
   onBack: () => void;
 }) {
   const [category, setCategory] = useState<string | null>(null);
@@ -58,6 +60,13 @@ export default function CategoryMode({
           {opt.label}
         </button>
       ))}
+      <button
+        type="button"
+        onClick={() => onStartWrong(category)}
+        className="nes-btn is-error w-full font-pixel text-xs py-2"
+      >
+        MOST WRONG
+      </button>
       <button
         type="button"
         onClick={() => setCategory(null)}

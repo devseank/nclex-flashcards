@@ -48,3 +48,28 @@ export async function fetchAttempts(): Promise<Attempt[]> {
   if (error) throw error;
   return (data ?? []).map(toAttempt);
 }
+
+export type QuestionStats = {
+  totalAttempts: number;
+  correctCount: number;
+  incorrectCount: number;
+  lastAttemptedAt: string;
+};
+
+export function computeQuestionStats(attempts: Attempt[]): Map<number, QuestionStats> {
+  const map = new Map<number, QuestionStats>();
+  for (const a of attempts) {
+    const s: QuestionStats = map.get(a.questionId) ?? {
+      totalAttempts: 0,
+      correctCount: 0,
+      incorrectCount: 0,
+      lastAttemptedAt: a.attemptedAt,
+    };
+    s.totalAttempts += 1;
+    if (a.isCorrect) s.correctCount += 1;
+    else s.incorrectCount += 1;
+    if (a.attemptedAt > s.lastAttemptedAt) s.lastAttemptedAt = a.attemptedAt;
+    map.set(a.questionId, s);
+  }
+  return map;
+}

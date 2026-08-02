@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Question } from "@/services/questions";
+import { QuestionStats } from "@/services/attempts";
 import { categoryVariant } from "@/lib/categoryVariant";
 
 export type FlashcardMode = "immediate" | "review";
@@ -11,11 +12,13 @@ export default function Flashcard({
   onNext,
   mode = "immediate",
   initialSelected = [],
+  stats,
 }: {
   question: Question;
   onNext?: (selected: number[]) => void;
   mode?: FlashcardMode;
   initialSelected?: number[];
+  stats?: QuestionStats;
 }) {
   const isMultiSelect = question.correctIndices.length > 1;
   const [selected, setSelected] = useState<number[]>(initialSelected);
@@ -48,6 +51,13 @@ export default function Flashcard({
       >
         {question.category}
       </button>
+
+      {stats && (
+        <p className="text-xs text-gray-500 -mt-2">
+          Attempted {stats.totalAttempts}× · {stats.correctCount} correct / {stats.incorrectCount}{" "}
+          incorrect · Last: {new Date(stats.lastAttemptedAt).toLocaleDateString()}
+        </p>
+      )}
 
       <p className="text-xl leading-snug">
         {question.question}
