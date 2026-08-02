@@ -37,6 +37,11 @@ yarn-error.log*
 # vercel
 .vercel
 
+# real question bank content stays private, never pushed to the public repo
+/data/*.csv
+/data/*.sql
+!/data/questions.template.csv
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

@@ -3,7 +3,9 @@
 create table if not exists public.questions (
   id bigint generated always as identity primary key,
   category text not null,
-  question text not null,
+  -- unique so importing an overlapping/compounded CSV can safely use
+  -- `on conflict (question) do nothing` instead of re-inserting duplicates
+  question text not null unique,
   choices jsonb not null,
   correct_index integer not null,
   rationale text not null,
