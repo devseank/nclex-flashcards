@@ -21,8 +21,8 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-8 bg-(--pixel-navy-deep) px-4 py-16">
-      <h1 className="font-pixel-head text-lg sm:text-xl text-(--pixel-cream) text-center leading-relaxed">
+    <div className="min-h-screen flex flex-col items-center justify-center gap-8 px-4 py-16">
+      <h1 className="font-pixel text-lg sm:text-xl text-white text-center leading-relaxed">
         NCLEX-RN Flashcards
       </h1>
       <Flashcard

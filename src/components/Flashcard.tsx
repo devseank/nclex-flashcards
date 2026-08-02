@@ -14,31 +14,32 @@ export default function Flashcard({
   const revealed = selected !== null;
 
   return (
-    <div className="pixel-panel pixel-corners-lg w-full max-w-xl p-6 space-y-5">
-      <span className="pixel-tag pixel-corners-sm inline-block font-pixel-head text-[10px] tracking-wide px-3 py-2">
+    <div className="nes-container is-rounded w-full max-w-xl bg-white space-y-5">
+      <span className="font-pixel text-[10px] nes-text is-primary tracking-wide">
         {question.category}
       </span>
 
-      <p className="text-xl leading-snug text-(--pixel-navy)">{question.question}</p>
+      <p className="text-xl leading-snug">{question.question}</p>
 
       <div className="space-y-3">
         {question.choices.map((choice, i) => {
           const isCorrect = i === question.correctIndex;
           const isSelected = i === selected;
 
-          let state = "";
+          let variant = "";
           if (revealed) {
-            if (isCorrect) state = "pixel-btn-correct";
-            else if (isSelected) state = "pixel-btn-incorrect";
-            else state = "pixel-btn-muted";
+            if (isCorrect) variant = "is-success";
+            else if (isSelected) variant = "is-error";
+            else variant = "is-disabled";
           }
 
           return (
             <button
               key={i}
+              type="button"
               disabled={revealed}
               onClick={() => setSelected(i)}
-              className={`pixel-btn pixel-corners-sm w-full text-left px-4 py-3 text-lg ${state}`}
+              className={`nes-btn w-full text-left text-base ${variant}`}
             >
               {choice}
             </button>
@@ -47,19 +48,20 @@ export default function Flashcard({
       </div>
 
       {revealed && (
-        <div className="pixel-corners-sm border-4 border-(--pixel-navy) bg-(--pixel-cream-soft) p-4 space-y-2">
-          <p className="font-pixel-head text-xs text-(--pixel-navy)">
+        <div className="nes-container is-rounded">
+          <p className="font-pixel text-xs mb-2">
             {selected === question.correctIndex ? "CORRECT!" : "NOT QUITE"}
           </p>
-          <p className="text-lg leading-snug text-(--pixel-navy)">{question.rationale}</p>
+          <p className="text-lg leading-snug">{question.rationale}</p>
         </div>
       )}
 
       <button
+        type="button"
         onClick={onNext}
-        className="pixel-cta pixel-corners-sm w-full font-pixel-head text-xs py-4"
+        className="nes-btn is-primary w-full font-pixel text-xs py-2"
       >
-        NEXT QUESTION
+        NEXT
       </button>
     </div>
   );

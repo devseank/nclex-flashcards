@@ -1,15 +1,15 @@
 import type { Metadata } from "next";
-import { Press_Start_2P, Pixelify_Sans } from "next/font/google";
+import { Press_Start_2P, Inter } from "next/font/google";
 import "./globals.css";
 
-const pixelHead = Press_Start_2P({
+const pixelFont = Press_Start_2P({
   weight: "400",
-  variable: "--font-pixel-head",
+  variable: "--font-pixel",
   subsets: ["latin"],
 });
 
-const pixelBody = Pixelify_Sans({
-  variable: "--font-pixel-body",
+const bodyFont = Inter({
+  variable: "--font-body",
   subsets: ["latin"],
 });
 
@@ -26,7 +26,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${pixelHead.variable} ${pixelBody.variable} h-full antialiased`}
+      className={`${pixelFont.variable} ${bodyFont.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>

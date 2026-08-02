@@ -1,137 +1,30 @@
 @import "tailwindcss";
+@import "nes.css/css/nes.min.css" layer(components);
 
 :root {
-  --pixel-navy: #12314a;
-  --pixel-navy-deep: #0a2338;
-  --pixel-cream: #faf1de;
-  --pixel-cream-soft: #fffaf0;
-  --pixel-teal: #3fc6df;
-  --pixel-orange: #ef7d3f;
-  --pixel-green: #2f9e5f;
-  --pixel-green-fill: #e3f5e9;
-  --pixel-red: #d1495b;
-  --pixel-red-fill: #fbe6e8;
-  --pixel-gold: #f0c419;
-
-  --background: var(--pixel-navy-deep);
-  --foreground: var(--pixel-cream);
+  --background: #1a2b3c;
 }
 
 @theme inline {
   --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-pixel-head: var(--font-pixel-head);
-  --font-pixel-body: var(--font-pixel-body);
+  --font-pixel: var(--font-pixel);
+  --font-body: var(--font-body);
+}
+
+/* NES.css defaults body to "Press Start 2P" everywhere; override for readability. */
+html,
+body,
+pre,
+code,
+kbd,
+samp {
+  font-family: var(--font-body), sans-serif;
 }
 
 body {
   background: var(--background);
-  color: var(--pixel-navy);
-  font-family: var(--font-pixel-body), sans-serif;
 }
 
-.font-pixel-head {
-  font-family: var(--font-pixel-head), monospace;
-}
-
-/* Stair-step "pixel" corner notches, sized for large panels vs small buttons/tags */
-.pixel-corners-lg {
-  clip-path: polygon(
-    0 12px,
-    12px 12px,
-    12px 0,
-    calc(100% - 12px) 0,
-    calc(100% - 12px) 12px,
-    100% 12px,
-    100% calc(100% - 12px),
-    calc(100% - 12px) calc(100% - 12px),
-    calc(100% - 12px) 100%,
-    12px 100%,
-    12px calc(100% - 12px),
-    0 calc(100% - 12px)
-  );
-}
-
-.pixel-corners-sm {
-  clip-path: polygon(
-    0 6px,
-    6px 6px,
-    6px 0,
-    calc(100% - 6px) 0,
-    calc(100% - 6px) 6px,
-    100% 6px,
-    100% calc(100% - 6px),
-    calc(100% - 6px) calc(100% - 6px),
-    calc(100% - 6px) 100%,
-    6px 100%,
-    6px calc(100% - 6px),
-    0 calc(100% - 6px)
-  );
-}
-
-.pixel-panel {
-  background: var(--pixel-cream);
-  border: 6px solid var(--pixel-navy);
-  filter: drop-shadow(8px 8px 0 var(--pixel-navy-deep));
-}
-
-.pixel-tag {
-  background: var(--pixel-navy);
-  color: var(--pixel-cream);
-  border: 3px solid var(--pixel-navy);
-}
-
-.pixel-btn {
-  background: var(--pixel-cream-soft);
-  color: var(--pixel-navy);
-  border: 4px solid var(--pixel-navy);
-  filter: drop-shadow(4px 4px 0 var(--pixel-navy));
-  transition: transform 0.05s ease, filter 0.05s ease;
-}
-
-.pixel-btn:hover:not(:disabled) {
-  background: #fff;
-}
-
-.pixel-btn:active:not(:disabled) {
-  transform: translate(4px, 4px);
-  filter: none;
-}
-
-.pixel-btn:disabled {
-  cursor: default;
-}
-
-.pixel-btn-correct {
-  background: var(--pixel-green-fill);
-  border-color: var(--pixel-green);
-  filter: drop-shadow(4px 4px 0 var(--pixel-green));
-}
-
-.pixel-btn-incorrect {
-  background: var(--pixel-red-fill);
-  border-color: var(--pixel-red);
-  filter: drop-shadow(4px 4px 0 var(--pixel-red));
-}
-
-.pixel-btn-muted {
-  opacity: 0.5;
-  filter: none;
-}
-
-.pixel-cta {
-  background: var(--pixel-navy);
-  color: var(--pixel-cream-soft);
-  border: 4px solid var(--pixel-navy-deep);
-  filter: drop-shadow(4px 4px 0 var(--pixel-navy-deep));
-  transition: transform 0.05s ease, filter 0.05s ease;
-}
-
-.pixel-cta:hover {
-  background: var(--pixel-navy-deep);
-}
-
-.pixel-cta:active {
-  transform: translate(4px, 4px);
-  filter: none;
+.font-pixel {
+  font-family: var(--font-pixel), monospace;
 }
