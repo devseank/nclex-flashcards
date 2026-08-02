@@ -21,8 +21,10 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-zinc-50 px-4 py-16">
-      <h1 className="text-xl font-semibold text-zinc-800">NCLEX-RN Flashcards</h1>
+    <div className="min-h-screen flex flex-col items-center justify-center gap-8 bg-(--pixel-navy-deep) px-4 py-16">
+      <h1 className="font-pixel-head text-lg sm:text-xl text-(--pixel-cream) text-center leading-relaxed">
+        NCLEX-RN Flashcards
+      </h1>
       <Flashcard
         key={current.id}
         question={current}

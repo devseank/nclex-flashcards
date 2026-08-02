@@ -14,22 +14,23 @@ export default function Flashcard({
   const revealed = selected !== null;
 
   return (
-    <div className="w-full max-w-xl bg-white rounded-2xl shadow-lg p-6 space-y-4">
-      <span className="inline-block text-xs font-semibold uppercase tracking-wide text-indigo-600 bg-indigo-50 px-2 py-1 rounded">
+    <div className="pixel-panel pixel-corners-lg w-full max-w-xl p-6 space-y-5">
+      <span className="pixel-tag pixel-corners-sm inline-block font-pixel-head text-[10px] tracking-wide px-3 py-2">
         {question.category}
       </span>
-      <p className="text-lg font-medium text-gray-900">{question.question}</p>
 
-      <div className="space-y-2">
+      <p className="text-xl leading-snug text-(--pixel-navy)">{question.question}</p>
+
+      <div className="space-y-3">
         {question.choices.map((choice, i) => {
           const isCorrect = i === question.correctIndex;
           const isSelected = i === selected;
 
-          let style = "border-gray-200 text-gray-800 hover:border-indigo-300";
+          let state = "";
           if (revealed) {
-            if (isCorrect) style = "border-green-500 bg-green-50 text-green-900";
-            else if (isSelected) style = "border-red-500 bg-red-50 text-red-900";
-            else style = "border-gray-200 text-gray-400";
+            if (isCorrect) state = "pixel-btn-correct";
+            else if (isSelected) state = "pixel-btn-incorrect";
+            else state = "pixel-btn-muted";
           }
 
           return (
@@ -37,7 +38,7 @@ export default function Flashcard({
               key={i}
               disabled={revealed}
               onClick={() => setSelected(i)}
-              className={`w-full text-left border rounded-lg px-4 py-3 transition disabled:cursor-default ${style}`}
+              className={`pixel-btn pixel-corners-sm w-full text-left px-4 py-3 text-lg ${state}`}
             >
               {choice}
             </button>
@@ -46,19 +47,19 @@ export default function Flashcard({
       </div>
 
       {revealed && (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-1">
-          <p className="text-sm font-semibold text-gray-700">
-            {selected === question.correctIndex ? "Correct!" : "Not quite."}
+        <div className="pixel-corners-sm border-4 border-(--pixel-navy) bg-(--pixel-cream-soft) p-4 space-y-2">
+          <p className="font-pixel-head text-xs text-(--pixel-navy)">
+            {selected === question.correctIndex ? "CORRECT!" : "NOT QUITE"}
           </p>
-          <p className="text-sm text-gray-600">{question.rationale}</p>
+          <p className="text-lg leading-snug text-(--pixel-navy)">{question.rationale}</p>
         </div>
       )}
 
       <button
         onClick={onNext}
-        className="w-full bg-indigo-600 text-white font-medium rounded-lg py-2 hover:bg-indigo-700 transition"
+        className="pixel-cta pixel-corners-sm w-full font-pixel-head text-xs py-4"
       >
-        Next question
+        NEXT QUESTION
       </button>
     </div>
   );
