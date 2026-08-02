@@ -4,24 +4,38 @@ import { useState } from "react";
 import { Question } from "@/services/questions";
 import { categoryVariant } from "@/lib/categoryVariant";
 
+export type FlashcardMode = "immediate" | "deferred" | "review";
+
 export default function Flashcard({
   question,
   onNext,
+  mode = "immediate",
+  initialSelected = [],
 }: {
   question: Question;
-  onNext: () => void;
+  onNext?: (selected: number[]) => void;
+  mode?: FlashcardMode;
+  initialSelected?: number[];
 }) {
   const isMultiSelect = question.correctIndices.length > 1;
-  const [selected, setSelected] = useState<number[]>([]);
-  const [revealed, setRevealed] = useState(false);
+  const [selected, setSelected] = useState<number[]>(initialSelected);
+  const [revealed, setRevealed] = useState(mode === "review");
+
+  const showAnswer = mode === "review" || revealed;
 
   const isFullyCorrect =
-    revealed &&
+    showAnswer &&
     selected.length === question.correctIndices.length &&
     selected.every((i) => question.correctIndices.includes(i));
 
   function toggleChoice(i: number) {
-    if (revealed) return;
+    if (mode === "review" || revealed) return;
+
+    if (mode === "deferred") {
+      setSelected((prev) => (prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i]));
+      return;
+    }
+
     if (isMultiSelect) {
       setSelected((prev) => (prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i]));
     } else {
@@ -42,7 +56,12 @@ export default function Flashcard({
 
       <p className="text-xl leading-snug">
         {question.question}
-        {isMultiSelect && !revealed && (
+        {mode === "deferred" && (
+          <span className="block text-sm text-gray-500 mt-1">
+            {isMultiSelect ? "Select all that apply." : "Select an answer."}
+          </span>
+        )}
+        {mode === "immediate" && isMultiSelect && !revealed && (
           <span className="block text-sm text-gray-500 mt-1">Select all that apply.</span>
         )}
       </p>
@@ -53,7 +72,7 @@ export default function Flashcard({
           const isSelected = selected.includes(i);
 
           let variant = "";
-          if (revealed) {
+          if (showAnswer) {
             if (isCorrectChoice) variant = "is-success";
             else if (isSelected) variant = "is-error";
             else variant = "is-disabled";
@@ -65,7 +84,7 @@ export default function Flashcard({
             <button
               key={i}
               type="button"
-              disabled={revealed}
+              disabled={mode === "review" || revealed}
               onClick={() => toggleChoice(i)}
               className={`nes-btn w-full text-left text-base ${variant}`}
             >
@@ -75,7 +94,7 @@ export default function Flashcard({
         })}
       </div>
 
-      {isMultiSelect && !revealed && (
+      {mode === "immediate" && isMultiSelect && !revealed && (
         <button
           type="button"
           disabled={selected.length === 0}
@@ -86,20 +105,23 @@ export default function Flashcard({
         </button>
       )}
 
-      {revealed && (
+      {showAnswer && (
         <div className="nes-container is-rounded">
           <p className="font-pixel text-xs mb-2">{isFullyCorrect ? "CORRECT!" : "NOT QUITE"}</p>
           <p className="text-lg leading-snug">{question.rationale}</p>
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={onNext}
-        className="nes-btn is-primary w-full font-pixel text-xs py-2"
-      >
-        NEXT
-      </button>
+      {mode !== "review" && (
+        <button
+          type="button"
+          disabled={mode === "deferred" && selected.length === 0}
+          onClick={() => onNext?.(selected)}
+          className="nes-btn is-primary w-full font-pixel text-xs py-2 disabled:opacity-50"
+        >
+          NEXT
+        </button>
+      )}
     </div>
   );
 }

@@ -18,7 +18,7 @@ export default function PixelWindow({
 
   return (
     <div
-      className={`nes-container is-rounded bg-white max-w-sm w-full p-0 overflow-hidden ${shake ? "shake" : ""}`}
+      className={`nes-container is-rounded bg-white max-w-sm w-full p-0 ${shake ? "shake" : ""}`}
     >
       <div className="bg-[#12314a] flex items-center justify-between px-3 py-2">
         <span className="font-pixel text-[10px] text-white">{title}</span>
