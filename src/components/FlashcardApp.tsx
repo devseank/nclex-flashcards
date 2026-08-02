@@ -195,12 +195,7 @@ export default function FlashcardApp() {
               </span>
             )}
           </div>
-          <Flashcard
-            key={current.id}
-            question={current}
-            mode={mode === "infinite" ? "immediate" : "deferred"}
-            onNext={handleNext}
-          />
+          <Flashcard key={current.id} question={current} onNext={handleNext} />
         </div>
       )}
     </div>

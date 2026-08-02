@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Question } from "@/services/questions";
 import { categoryVariant } from "@/lib/categoryVariant";
 
-export type FlashcardMode = "immediate" | "deferred" | "review";
+export type FlashcardMode = "immediate" | "review";
 
 export default function Flashcard({
   question,
@@ -31,11 +31,6 @@ export default function Flashcard({
   function toggleChoice(i: number) {
     if (mode === "review" || revealed) return;
 
-    if (mode === "deferred") {
-      setSelected((prev) => (prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i]));
-      return;
-    }
-
     if (isMultiSelect) {
       setSelected((prev) => (prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i]));
     } else {
@@ -56,12 +51,7 @@ export default function Flashcard({
 
       <p className="text-xl leading-snug">
         {question.question}
-        {mode === "deferred" && (
-          <span className="block text-sm text-gray-500 mt-1">
-            {isMultiSelect ? "Select all that apply." : "Select an answer."}
-          </span>
-        )}
-        {mode === "immediate" && isMultiSelect && !revealed && (
+        {isMultiSelect && !showAnswer && (
           <span className="block text-sm text-gray-500 mt-1">Select all that apply.</span>
         )}
       </p>
@@ -94,7 +84,7 @@ export default function Flashcard({
         })}
       </div>
 
-      {mode === "immediate" && isMultiSelect && !revealed && (
+      {isMultiSelect && !showAnswer && (
         <button
           type="button"
           disabled={selected.length === 0}
@@ -115,9 +105,8 @@ export default function Flashcard({
       {mode !== "review" && (
         <button
           type="button"
-          disabled={mode === "deferred" && selected.length === 0}
           onClick={() => onNext?.(selected)}
-          className="nes-btn is-primary w-full font-pixel text-xs py-2 disabled:opacity-50"
+          className="nes-btn is-primary w-full font-pixel text-xs py-2"
         >
           NEXT
         </button>
