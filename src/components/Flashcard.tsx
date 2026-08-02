@@ -7,6 +7,38 @@ import { categoryVariant } from "@/lib/categoryVariant";
 
 export type FlashcardMode = "immediate" | "review";
 
+// Rationale text has per-choice notes ("Option A: ...", "Option B: ...")
+// joined inline with the main explanation. Map each one back to its choice
+// index so it can render directly under that choice instead of as one
+// dense wall of text below all the options.
+function mapRationaleByChoice(
+  rationale: string,
+  correctIndices: number[],
+): Record<number, string> {
+  const parts = rationale
+    .split(/\s*(?=Option [A-Z]:)/)
+    .filter((part) => part.trim().length > 0)
+    .map((part) => {
+      const match = part.match(/^Option ([A-Z]):\s*([\s\S]*)$/);
+      return match ? { letter: match[1], text: match[2] } : { letter: null, text: part };
+    });
+
+  const map: Record<number, string> = {};
+
+  const mainText = parts.find((p) => p.letter === null)?.text;
+  if (mainText) {
+    for (const i of correctIndices) map[i] = mainText;
+  }
+
+  for (const part of parts) {
+    if (!part.letter) continue;
+    const index = part.letter.charCodeAt(0) - "A".charCodeAt(0);
+    map[index] = part.text;
+  }
+
+  return map;
+}
+
 export default function Flashcard({
   question,
   onNext,
@@ -30,6 +62,8 @@ export default function Flashcard({
     showAnswer &&
     selected.length === question.correctIndices.length &&
     selected.every((i) => question.correctIndices.includes(i));
+
+  const rationaleByChoice = mapRationaleByChoice(question.rationale, question.correctIndices);
 
   function toggleChoice(i: number) {
     if (mode === "review" || revealed) return;
@@ -66,10 +100,15 @@ export default function Flashcard({
         )}
       </p>
 
+      {showAnswer && (
+        <p className="font-pixel text-xs">{isFullyCorrect ? "CORRECT!" : "NOT QUITE"}</p>
+      )}
+
       <div className="space-y-3">
         {question.choices.map((choice, i) => {
           const isCorrectChoice = question.correctIndices.includes(i);
           const isSelected = selected.includes(i);
+          const explanation = showAnswer ? rationaleByChoice[i] : undefined;
 
           let variant = "";
           if (showAnswer) {
@@ -81,15 +120,21 @@ export default function Flashcard({
           }
 
           return (
-            <button
-              key={i}
-              type="button"
-              disabled={mode === "review" || revealed}
-              onClick={() => toggleChoice(i)}
-              className={`nes-btn w-full text-left text-base ${variant}`}
-            >
-              {choice}
-            </button>
+            <div key={i}>
+              <button
+                type="button"
+                disabled={mode === "review" || revealed}
+                onClick={() => toggleChoice(i)}
+                className={`nes-btn w-full text-left text-base ${variant}`}
+              >
+                {choice}
+              </button>
+              {explanation && (
+                <div className="mt-1 px-3 py-2 border-l-4 border-gray-300 bg-gray-50 text-sm text-gray-700 leading-snug">
+                  {explanation}
+                </div>
+              )}
+            </div>
           );
         })}
       </div>
@@ -103,13 +148,6 @@ export default function Flashcard({
         >
           CHECK ANSWER
         </button>
-      )}
-
-      {showAnswer && (
-        <div className="nes-container is-rounded">
-          <p className="font-pixel text-xs mb-2">{isFullyCorrect ? "CORRECT!" : "NOT QUITE"}</p>
-          <p className="text-lg leading-snug">{question.rationale}</p>
-        </div>
       )}
 
       {mode !== "review" && (
