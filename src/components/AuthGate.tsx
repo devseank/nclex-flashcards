@@ -40,12 +40,12 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   }, []);
 
   if (session === undefined) {
-    return <div className="min-h-screen" />;
+    return <div className="min-h-dvh" />;
   }
 
   if (!session) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-4 py-16">
+      <div className="min-h-dvh flex flex-col items-center justify-center px-4 pt-16 pb-[calc(4rem+env(safe-area-inset-bottom))]">
         <PixelWindow title="LOGIN.EXE">
           <AnimatedHeart />
           <button

@@ -48,7 +48,7 @@ export default function FlashcardApp() {
   } = useQuizSession(questions);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-8 px-4 py-16">
+    <div className="min-h-dvh flex flex-col items-center justify-center gap-8 px-4 pt-16 pb-[calc(4rem+env(safe-area-inset-bottom))]">
       <SignOutButton />
 
       {error && (
