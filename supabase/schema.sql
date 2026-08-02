@@ -7,7 +7,9 @@ create table if not exists public.questions (
   -- `on conflict (question) do nothing` instead of re-inserting duplicates
   question text not null unique,
   choices jsonb not null,
-  correct_index integer not null,
+  -- indices into `choices` that are correct; length 1 for a normal
+  -- single-answer question, length 2+ for a "select all that apply" question
+  correct_indices integer[] not null,
   rationale text not null,
   created_at timestamptz not null default now()
 );

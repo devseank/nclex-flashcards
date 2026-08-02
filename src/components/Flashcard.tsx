@@ -11,8 +11,24 @@ export default function Flashcard({
   question: Question;
   onNext: () => void;
 }) {
-  const [selected, setSelected] = useState<number | null>(null);
-  const revealed = selected !== null;
+  const isMultiSelect = question.correctIndices.length > 1;
+  const [selected, setSelected] = useState<number[]>([]);
+  const [revealed, setRevealed] = useState(false);
+
+  const isFullyCorrect =
+    revealed &&
+    selected.length === question.correctIndices.length &&
+    selected.every((i) => question.correctIndices.includes(i));
+
+  function toggleChoice(i: number) {
+    if (revealed) return;
+    if (isMultiSelect) {
+      setSelected((prev) => (prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i]));
+    } else {
+      setSelected([i]);
+      setRevealed(true);
+    }
+  }
 
   return (
     <div className="nes-container is-rounded w-full max-w-xl bg-white space-y-5">
@@ -24,18 +40,25 @@ export default function Flashcard({
         {question.category}
       </button>
 
-      <p className="text-xl leading-snug">{question.question}</p>
+      <p className="text-xl leading-snug">
+        {question.question}
+        {isMultiSelect && !revealed && (
+          <span className="block text-sm text-gray-500 mt-1">Select all that apply.</span>
+        )}
+      </p>
 
       <div className="space-y-3">
         {question.choices.map((choice, i) => {
-          const isCorrect = i === question.correctIndex;
-          const isSelected = i === selected;
+          const isCorrectChoice = question.correctIndices.includes(i);
+          const isSelected = selected.includes(i);
 
           let variant = "";
           if (revealed) {
-            if (isCorrect) variant = "is-success";
+            if (isCorrectChoice) variant = "is-success";
             else if (isSelected) variant = "is-error";
             else variant = "is-disabled";
+          } else if (isSelected) {
+            variant = "is-primary";
           }
 
           return (
@@ -43,7 +66,7 @@ export default function Flashcard({
               key={i}
               type="button"
               disabled={revealed}
-              onClick={() => setSelected(i)}
+              onClick={() => toggleChoice(i)}
               className={`nes-btn w-full text-left text-base ${variant}`}
             >
               {choice}
@@ -52,11 +75,20 @@ export default function Flashcard({
         })}
       </div>
 
+      {isMultiSelect && !revealed && (
+        <button
+          type="button"
+          disabled={selected.length === 0}
+          onClick={() => setRevealed(true)}
+          className="nes-btn is-primary w-full font-pixel text-xs py-2 disabled:opacity-50"
+        >
+          CHECK ANSWER
+        </button>
+      )}
+
       {revealed && (
         <div className="nes-container is-rounded">
-          <p className="font-pixel text-xs mb-2">
-            {selected === question.correctIndex ? "CORRECT!" : "NOT QUITE"}
-          </p>
+          <p className="font-pixel text-xs mb-2">{isFullyCorrect ? "CORRECT!" : "NOT QUITE"}</p>
           <p className="text-lg leading-snug">{question.rationale}</p>
         </div>
       )}

@@ -5,7 +5,7 @@ export type Question = {
   category: string;
   question: string;
   choices: string[];
-  correctIndex: number;
+  correctIndices: number[];
   rationale: string;
 };
 
@@ -14,7 +14,7 @@ type QuestionRow = {
   category: string;
   question: string;
   choices: string[];
-  correct_index: number;
+  correct_indices: number[];
   rationale: string;
 };
 
@@ -24,7 +24,7 @@ function toQuestion(row: QuestionRow): Question {
     category: row.category,
     question: row.question,
     choices: row.choices,
-    correctIndex: row.correct_index,
+    correctIndices: row.correct_indices,
     rationale: row.rationale,
   };
 }
@@ -32,7 +32,7 @@ function toQuestion(row: QuestionRow): Question {
 export async function fetchAllQuestions(): Promise<Question[]> {
   const { data, error } = await supabase
     .from("questions")
-    .select("id, category, question, choices, correct_index, rationale");
+    .select("id, category, question, choices, correct_indices, rationale");
 
   if (error) throw error;
   return (data ?? []).map(toQuestion);
