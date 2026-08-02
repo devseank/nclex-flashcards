@@ -14,8 +14,11 @@ import {
 import { fetchAttempts, Attempt } from "@/services/attempts";
 import { Question } from "@/services/questions";
 import PixelWindow from "@/components/PixelWindow";
+import InfoTooltip from "@/components/InfoTooltip";
+import RangeSelect, { RANGE_LABELS } from "@/components/RangeSelect";
 import { getErrorMessage } from "@/lib/errorMessage";
 import { startOfToday, startOfWeek, startOfMonth } from "@/lib/dateRanges";
+import { AnalyticsRange, buildTrendData } from "@/lib/analyticsTrend";
 
 const NAVY = "#12314a";
 const BLUE = "#209cee";
@@ -33,9 +36,10 @@ const pixelTooltipStyle = {
   labelStyle: { color: NAVY, fontWeight: 700 },
 };
 
-function dateKey(iso: string): string {
-  return iso.slice(0, 10);
-}
+const TREND_TOOLTIP =
+  "How many questions you've answered, grouped by hour (Today), day (This week), or week (All time).";
+const CATEGORIES_TOOLTIP =
+  "Accuracy per category for the selected range, sorted worst to best so you know what to review first. Green = 80%+, yellow = 50-79%, red = under 50%.";
 
 export default function Analytics({
   questions,
@@ -46,6 +50,8 @@ export default function Analytics({
 }) {
   const [attempts, setAttempts] = useState<Attempt[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [trendRange, setTrendRange] = useState<AnalyticsRange>("week");
+  const [categoriesRange, setCategoriesRange] = useState<AnalyticsRange>("week");
 
   useEffect(() => {
     fetchAttempts()
@@ -90,23 +96,16 @@ export default function Analytics({
   const weekCount = attempts.filter((a) => new Date(a.attemptedAt) >= weekStart).length;
   const monthCount = attempts.filter((a) => new Date(a.attemptedAt) >= monthStart).length;
 
-  const dayKeys = Array.from({ length: 14 }, (_, i) => {
-    const d = new Date(todayStart);
-    d.setDate(todayStart.getDate() - (13 - i));
-    return d.toISOString().slice(0, 10);
-  });
-  const countsByDay = new Map(dayKeys.map((d) => [d, 0]));
-  for (const a of attempts) {
-    const key = dateKey(a.attemptedAt);
-    if (countsByDay.has(key)) countsByDay.set(key, (countsByDay.get(key) ?? 0) + 1);
-  }
-  const dailyData = dayKeys.map((d) => ({
-    day: d.slice(5).replace("-", "/"),
-    count: countsByDay.get(d) ?? 0,
-  }));
+  const trendData = buildTrendData(attempts, trendRange);
+
+  const categoriesRangeStart =
+    categoriesRange === "today" ? todayStart : categoriesRange === "week" ? weekStart : null;
+  const categoriesRangeAttempts = categoriesRangeStart
+    ? attempts.filter((a) => new Date(a.attemptedAt) >= categoriesRangeStart)
+    : attempts;
 
   const categoryStats = new Map<string, { correct: number; total: number }>();
-  for (const a of attempts) {
+  for (const a of categoriesRangeAttempts) {
     const cat = categoryById.get(a.questionId) ?? "Unknown";
     const s = categoryStats.get(cat) ?? { correct: 0, total: 0 };
     s.total += 1;
@@ -142,52 +141,60 @@ export default function Analytics({
         </div>
       </PixelWindow>
 
-      <PixelWindow title="TREND.EXE">
-        <div className="h-48 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={dailyData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#ddd" />
-              <XAxis dataKey="day" fontSize={10} stroke={NAVY} />
-              <YAxis allowDecimals={false} fontSize={10} stroke={NAVY} width={24} />
-              <Tooltip {...pixelTooltipStyle} />
-              <Bar dataKey="count" fill={BLUE} radius={0} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </PixelWindow>
-
-      {categoryData.length > 0 ? (
-        <PixelWindow title="CATEGORIES.EXE">
-          <div style={{ height: Math.max(160, categoryData.length * 40) }} className="w-full">
+      <PixelWindow title="TREND.EXE" titleExtra={<InfoTooltip text={TREND_TOOLTIP} />}>
+        <div className="flex flex-col gap-3">
+          <RangeSelect value={trendRange} onChange={setTrendRange} />
+          <div className="h-48 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={categoryData} layout="vertical" margin={{ left: 8 }}>
+              <BarChart data={trendData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#ddd" />
-                <XAxis type="number" domain={[0, 100]} fontSize={10} stroke={NAVY} />
-                <YAxis
-                  type="category"
-                  dataKey="category"
-                  fontSize={10}
-                  stroke={NAVY}
-                  width={110}
-                />
-                <Tooltip {...pixelTooltipStyle} formatter={(v) => `${v}%`} />
-                <Bar dataKey="accuracy" radius={0}>
-                  {categoryData.map((entry, i) => (
-                    <Cell
-                      key={i}
-                      fill={entry.accuracy >= 80 ? GREEN : entry.accuracy >= 50 ? YELLOW : RED}
-                    />
-                  ))}
-                </Bar>
+                <XAxis dataKey="label" fontSize={10} stroke={NAVY} />
+                <YAxis allowDecimals={false} fontSize={10} stroke={NAVY} width={24} />
+                <Tooltip {...pixelTooltipStyle} />
+                <Bar dataKey="count" fill={BLUE} radius={0} />
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </PixelWindow>
-      ) : (
-        <p className="text-sm text-gray-500 text-center">
-          No attempts yet — answer some questions to see stats here.
-        </p>
-      )}
+        </div>
+      </PixelWindow>
+
+      <PixelWindow title="CATEGORIES.EXE" titleExtra={<InfoTooltip text={CATEGORIES_TOOLTIP} />}>
+        <div className="flex flex-col gap-3">
+          <RangeSelect value={categoriesRange} onChange={setCategoriesRange} />
+          {categoryData.length > 0 ? (
+            <div style={{ height: Math.max(160, categoryData.length * 40) }} className="w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={categoryData} layout="vertical" margin={{ left: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#ddd" />
+                  <XAxis type="number" domain={[0, 100]} fontSize={10} stroke={NAVY} />
+                  <YAxis
+                    type="category"
+                    dataKey="category"
+                    fontSize={10}
+                    stroke={NAVY}
+                    width={110}
+                  />
+                  <Tooltip {...pixelTooltipStyle} formatter={(v) => `${v}%`} />
+                  <Bar dataKey="accuracy" radius={0}>
+                    {categoryData.map((entry, i) => (
+                      <Cell
+                        key={i}
+                        fill={entry.accuracy >= 80 ? GREEN : entry.accuracy >= 50 ? YELLOW : RED}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500 text-center">
+              {attempts.length === 0
+                ? "No attempts yet — answer some questions to see stats here."
+                : `No attempts in "${RANGE_LABELS[categoriesRange]}" — try a wider range.`}
+            </p>
+          )}
+        </div>
+      </PixelWindow>
     </div>
   );
 }

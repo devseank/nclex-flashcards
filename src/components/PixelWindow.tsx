@@ -4,9 +4,11 @@ import { useState } from "react";
 
 export default function PixelWindow({
   title,
+  titleExtra,
   children,
 }: {
   title: string;
+  titleExtra?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const [shake, setShake] = useState(false);
@@ -21,7 +23,10 @@ export default function PixelWindow({
       className={`nes-container is-rounded bg-white max-w-sm w-full p-0 ${shake ? "shake" : ""}`}
     >
       <div className="bg-[#12314a] flex items-center justify-between px-3 py-2">
-        <span className="font-pixel text-[10px] text-white">{title}</span>
+        <span className="flex items-center">
+          <span className="font-pixel text-[10px] text-white">{title}</span>
+          {titleExtra}
+        </span>
         <button
           type="button"
           onClick={handleCloseClick}
