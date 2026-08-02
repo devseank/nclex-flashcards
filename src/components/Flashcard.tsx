@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Question } from "@/services/questions";
+import { ChoiceQuestion } from "@/services/questions";
 import { QuestionStats } from "@/services/attempts";
 import { categoryVariant } from "@/lib/categoryVariant";
 
@@ -46,7 +46,7 @@ export default function Flashcard({
   initialSelected = [],
   stats,
 }: {
-  question: Question;
+  question: ChoiceQuestion;
   onNext?: (selected: number[]) => void;
   mode?: FlashcardMode;
   initialSelected?: number[];

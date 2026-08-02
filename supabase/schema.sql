@@ -7,9 +7,14 @@ create table if not exists public.questions (
   -- `on conflict (question) do nothing` instead of re-inserting duplicates
   question text not null unique,
   choices jsonb not null,
-  -- indices into `choices` that are correct; length 1 for a normal
-  -- single-answer question, length 2+ for a "select all that apply" question
-  correct_indices integer[] not null,
+  -- 'choice' (default): pick one or more of `choices` -- correct_indices is
+  -- set, correct_order is null.
+  -- 'sequence': arrange all of `choices` in the right order (e.g. steps of
+  -- a procedure) -- correct_order is set (a permutation of choices'
+  -- indices), correct_indices is null.
+  question_type text not null default 'choice',
+  correct_indices integer[],
+  correct_order integer[],
   rationale text not null,
   created_at timestamptz not null default now()
 );

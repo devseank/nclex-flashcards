@@ -1,6 +1,6 @@
 "use client";
 
-import Flashcard from "@/components/Flashcard";
+import QuestionCard from "@/components/QuestionCard";
 import PixelWindow from "@/components/PixelWindow";
 import { Question } from "@/services/questions";
 import { QuestionStats } from "@/services/attempts";
@@ -39,11 +39,11 @@ export default function FinishedScreen({
 
       <div className="w-full flex flex-col gap-4">
         {queue.map((q, i) => (
-          <Flashcard
+          <QuestionCard
             key={q.id}
             question={q}
             mode="review"
-            initialSelected={answers[i] ?? []}
+            initialResponse={answers[i] ?? []}
             stats={questionStats?.get(q.id)}
           />
         ))}

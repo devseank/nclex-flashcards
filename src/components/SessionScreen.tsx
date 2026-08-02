@@ -1,6 +1,6 @@
 "use client";
 
-import Flashcard from "@/components/Flashcard";
+import QuestionCard from "@/components/QuestionCard";
 import { Question } from "@/services/questions";
 import { QuestionStats } from "@/services/attempts";
 import { SessionMode } from "@/lib/quizLogic";
@@ -38,7 +38,7 @@ export default function SessionScreen({
           </span>
         )}
       </div>
-      <Flashcard key={current.id} question={current} onNext={onNext} stats={stats} />
+      <QuestionCard key={current.id} question={current} onNext={onNext} stats={stats} />
     </div>
   );
 }

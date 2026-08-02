@@ -18,10 +18,16 @@ export function pickRandom(pool: Question[], excludeId?: number): Question {
   return filtered[Math.floor(Math.random() * filtered.length)];
 }
 
-export function isCorrect(question: Question, selected: number[]): boolean {
+export function isCorrect(question: Question, response: number[]): boolean {
+  if (question.type === "sequence") {
+    return (
+      response.length === question.correctOrder.length &&
+      response.every((choiceIndex, position) => choiceIndex === question.correctOrder[position])
+    );
+  }
   return (
-    selected.length === question.correctIndices.length &&
-    selected.every((i) => question.correctIndices.includes(i))
+    response.length === question.correctIndices.length &&
+    response.every((i) => question.correctIndices.includes(i))
   );
 }
 
