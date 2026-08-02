@@ -12,12 +12,14 @@ create table if not exists public.questions (
 
 alter table public.questions enable row level security;
 
--- Question bank is shared/public: anyone (including unauthenticated users)
--- can read it. There is no insert/update/delete policy, so writes are only
--- possible from the Supabase Studio table editor or SQL editor (which use
--- the service role and bypass RLS).
-create policy "Anyone can read questions"
+-- Question bank is shared across all signed-in users, but the app itself
+-- requires login, so only "authenticated" (not "anon") can read here too --
+-- otherwise the data would be fetchable directly via the public API key,
+-- bypassing the login screen entirely. There is no insert/update/delete
+-- policy, so writes are only possible from the Supabase Studio table/SQL
+-- editor (which use the service role and bypass RLS).
+create policy "Authenticated users can read questions"
   on public.questions
   for select
-  to anon, authenticated
+  to authenticated
   using (true);
