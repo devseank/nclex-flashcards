@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Question } from "@/data/questions";
+import { Question } from "@/services/questions";
 
 export default function Flashcard({
   question,
