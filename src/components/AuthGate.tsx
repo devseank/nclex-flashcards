@@ -34,15 +34,18 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
         <h1 className="font-pixel text-lg sm:text-xl text-[#33415c] text-center leading-relaxed">
           NCLEX-RN Flashcards
         </h1>
-        <div className="nes-container is-rounded bg-white max-w-sm w-full text-center space-y-4">
+        <div className="nes-container is-rounded bg-white max-w-sm w-full text-center space-y-5">
+          <i className="nes-icon heart is-large bob inline-block" />
           <p className="text-base">Sign in to start studying.</p>
           <button
             type="button"
             onClick={signInWithGoogle}
-            className="nes-btn is-primary w-full font-pixel text-xs py-2"
+            className="nes-btn is-primary w-full font-pixel text-xs py-3 flex items-center justify-center gap-3"
           >
+            <i className="nes-icon google is-small" />
             SIGN IN WITH GOOGLE
           </button>
+          <p className="font-pixel text-[10px] text-gray-400 blink">PRESS START</p>
         </div>
       </div>
     );
