@@ -10,7 +10,15 @@ const MODE_OPTIONS: { key: Mode; label: string }[] = [
   { key: "infinite", label: "INFINITE" },
 ];
 
-export default function Landing({ onSelect }: { onSelect: (mode: Mode) => void }) {
+export default function Landing({
+  onSelectMode,
+  onSelectCategory,
+  onSelectAnalytics,
+}: {
+  onSelectMode: (mode: Mode) => void;
+  onSelectCategory: () => void;
+  onSelectAnalytics: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -43,7 +51,7 @@ export default function Landing({ onSelect }: { onSelect: (mode: Mode) => void }
               key={opt.key}
               type="button"
               onClick={() => {
-                onSelect(opt.key);
+                onSelectMode(opt.key);
                 setOpen(false);
               }}
               className="nes-btn w-full font-pixel text-xs py-2"
@@ -51,6 +59,26 @@ export default function Landing({ onSelect }: { onSelect: (mode: Mode) => void }
               {opt.label}
             </button>
           ))}
+          <button
+            type="button"
+            onClick={() => {
+              onSelectCategory();
+              setOpen(false);
+            }}
+            className="nes-btn is-warning w-full font-pixel text-xs py-2"
+          >
+            CATEGORY
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              onSelectAnalytics();
+              setOpen(false);
+            }}
+            className="nes-btn is-success w-full font-pixel text-xs py-2"
+          >
+            ANALYTICS
+          </button>
         </div>
       )}
     </div>

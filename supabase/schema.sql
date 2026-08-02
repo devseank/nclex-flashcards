@@ -27,3 +27,34 @@ create policy "Authenticated users can read questions"
   for select
   to authenticated
   using (true);
+
+-- One row per answered question, used for the "questions got wrong" review
+-- mode and the analytics dashboard. `user_id` defaults to the caller's own
+-- id, so the client never needs to pass it explicitly.
+create table if not exists public.attempts (
+  id bigint generated always as identity primary key,
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  question_id bigint not null references public.questions (id) on delete cascade,
+  selected_indices integer[] not null,
+  is_correct boolean not null,
+  attempted_at timestamptz not null default now()
+);
+
+create index if not exists attempts_user_id_attempted_at_idx on public.attempts (user_id, attempted_at);
+create index if not exists attempts_user_id_question_id_idx on public.attempts (user_id, question_id);
+
+alter table public.attempts enable row level security;
+
+-- Each user can only see and record their own attempts -- never another
+-- user's, and never anyone else's aggregate stats.
+create policy "Users can insert their own attempts"
+  on public.attempts
+  for insert
+  to authenticated
+  with check (user_id = auth.uid());
+
+create policy "Users can read their own attempts"
+  on public.attempts
+  for select
+  to authenticated
+  using (user_id = auth.uid());
