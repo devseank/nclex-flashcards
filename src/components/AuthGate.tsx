@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import AnimatedHeart from "@/components/AnimatedHeart";
+import PixelWindow from "@/components/PixelWindow";
 
 function signInWithGoogle() {
   supabase.auth.signInWithOAuth({
@@ -30,23 +32,18 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (!session) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-8 px-4 py-16">
-        <h1 className="font-pixel text-lg sm:text-xl text-[#33415c] text-center leading-relaxed">
-          NCLEX-RN Flashcards
-        </h1>
-        <div className="nes-container is-rounded bg-white max-w-sm w-full text-center space-y-5">
-          <i className="nes-icon heart is-large bob inline-block" />
-          <p className="text-base">Sign in to start studying.</p>
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 py-16">
+        <PixelWindow title="LOGIN.EXE">
+          <AnimatedHeart />
           <button
             type="button"
             onClick={signInWithGoogle}
-            className="nes-btn is-primary w-full font-pixel text-xs py-3 flex items-center justify-center gap-3"
+            className="font-pixel text-sm text-[#33415c] blink flex items-center justify-center gap-2 mx-auto cursor-pointer bg-transparent border-none outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#12314a]"
           >
-            <i className="nes-icon google is-small" />
-            SIGN IN WITH GOOGLE
+            <i className="nes-icon google is-small m-0" />
+            PRESS START
           </button>
-          <p className="font-pixel text-[10px] text-gray-400 blink">PRESS START</p>
-        </div>
+        </PixelWindow>
       </div>
     );
   }

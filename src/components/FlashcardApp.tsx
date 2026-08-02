@@ -27,9 +27,6 @@ export default function FlashcardApp() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-8 px-4 py-16">
       <div className="flex flex-col items-center gap-2">
-        <h1 className="font-pixel text-lg sm:text-xl text-[#33415c] text-center leading-relaxed">
-          NCLEX-RN Flashcards
-        </h1>
         <button
           type="button"
           onClick={() => supabase.auth.signOut()}

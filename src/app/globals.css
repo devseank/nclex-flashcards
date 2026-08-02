@@ -38,11 +38,35 @@ body {
   animation: blink 1s steps(1, end) infinite;
 }
 
-@keyframes bob {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
+@keyframes heartbeat {
+  0%, 100% { transform: scale(1); }
+  15% { transform: scale(1.3); }
+  30% { transform: scale(1); }
+  45% { transform: scale(1.18); }
+  60% { transform: scale(1); }
 }
 
-.bob {
-  animation: bob 1.6s ease-in-out infinite;
+.heartbeat {
+  animation: heartbeat 1.8s ease-in-out infinite;
+}
+
+@keyframes burst-float {
+  0% { transform: translateY(0) scale(0.7); opacity: 1; }
+  100% { transform: translateY(-48px) scale(1.1); opacity: 0; }
+}
+
+.burst-heart {
+  animation: burst-float 0.8s ease-out forwards;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+.shake {
+  animation: shake 0.4s ease-in-out;
 }
