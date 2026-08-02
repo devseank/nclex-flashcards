@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Question } from "@/services/questions";
+import { categoryVariant } from "@/lib/categoryVariant";
 
 export default function Flashcard({
   question,
@@ -15,9 +16,13 @@ export default function Flashcard({
 
   return (
     <div className="nes-container is-rounded w-full max-w-xl bg-white space-y-5">
-      <span className="font-pixel text-[10px] nes-text is-primary tracking-wide">
+      <button
+        type="button"
+        tabIndex={-1}
+        className={`nes-btn ${categoryVariant(question.category)} font-pixel text-[10px] tracking-wide !cursor-default`}
+      >
         {question.category}
-      </span>
+      </button>
 
       <p className="text-xl leading-snug">{question.question}</p>
 

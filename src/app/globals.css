@@ -2,7 +2,7 @@
 @import "nes.css/css/nes.min.css" layer(components);
 
 :root {
-  --background: #1a2b3c;
+  --background: #eaf2fb;
 }
 
 @theme inline {
