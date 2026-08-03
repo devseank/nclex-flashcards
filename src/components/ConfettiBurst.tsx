@@ -36,7 +36,9 @@ export function buildConfettiConfig(): ConfettiConfig {
     content: useEmoji ? randomOf(CONFETTI_EMOJIS) : null,
     color: useEmoji ? undefined : randomOf(CONFETTI_COLORS),
     angle: variant === "radial" ? (360 / PIECE_COUNT) * i + (Math.random() * 20 - 10) : null,
-    drift: Math.random() * 20 - 10,
+    // Also fans "sidesweep" pieces apart vertically -- without this they'd
+    // all travel the exact same path and visually collapse into one piece.
+    drift: Math.random() * 60 - 30,
     delay: i * 25 + Math.random() * 40,
   }));
 
@@ -50,11 +52,25 @@ export default function ConfettiBurst({ config }: { config: ConfettiConfig }) {
   const { variant, direction, pieces } = config;
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-10 flex justify-center overflow-visible" aria-hidden="true">
+    // h-32 gives this box an explicit, well-defined height (a box with only
+    // absolutely-positioned children and no bottom/height anchor collapses
+    // to zero height, which silently breaks `top: 50%` centering on the
+    // pieces below). Anchored at the card's own top -- not centered on the
+    // full card -- because the card grows tall once revealed (rationale
+    // text etc.); centering on that full height could push the burst below
+    // the fold on a short mobile viewport. This keeps it right where
+    // "CORRECT!" appears, visible immediately without scrolling.
+    // z-50: NES.css buttons all set position:relative, making them positioned
+    // siblings too -- with z-index:auto on both sides, ties go to DOM order,
+    // and the buttons come later, so without an explicit z-index here they'd
+    // paint on top of (hiding) the confetti entirely.
+    <div className="pointer-events-none absolute inset-x-0 top-0 h-32 z-50 overflow-visible" aria-hidden="true">
       {pieces.map((piece, i) => (
         <span
           key={i}
-          className={`confetti-piece confetti-${variant} absolute ${piece.content ? "text-lg" : "w-2 h-2"}`}
+          className={`confetti-piece confetti-${variant} absolute ${
+            piece.content ? "text-3xl" : "w-4 h-4 border-2 border-black"
+          }`}
           style={
             {
               backgroundColor: piece.color,

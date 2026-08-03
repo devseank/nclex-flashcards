@@ -126,23 +126,23 @@ body {
   }
 }
 
-/* Brief, CSS-only answer feedback. All under ~600ms and compositor-only
-   (opacity/transform/background-color), so nothing here ever delays
-   revealing the actual answer -- it's a decorative overlay on top of it. */
+/* Brief, CSS-only answer feedback. All under ~750ms and compositor-only
+   (opacity/transform), so nothing here ever delays revealing the actual
+   answer -- it's a decorative overlay on top of it. */
 @keyframes confetti-radial {
   0% { transform: translate(-50%, -50%) rotate(var(--confetti-angle)) translateY(0) scale(1); opacity: 1; }
-  100% { transform: translate(-50%, -50%) rotate(var(--confetti-angle)) translateY(-56px) scale(0.4); opacity: 0; }
+  100% { transform: translate(-50%, -50%) rotate(var(--confetti-angle)) translateY(-90px) scale(0.5); opacity: 0; }
 }
 
 @keyframes confetti-shower {
   0% { transform: translate(calc(-50% + var(--confetti-drift)), -50%) translateY(0); opacity: 1; }
-  100% { transform: translate(calc(-50% + var(--confetti-drift) * 2), -50%) translateY(-64px); opacity: 0; }
+  100% { transform: translate(calc(-50% + var(--confetti-drift) * 3), -50%) translateY(-100px); opacity: 0; }
 }
 
 @keyframes confetti-sidesweep {
-  0% { transform: translate(-50%, -50%) translateX(0) rotate(0deg); opacity: 1; }
+  0% { transform: translate(-50%, -50%) translate(0, var(--confetti-drift)) rotate(0deg); opacity: 1; }
   100% {
-    transform: translate(-50%, -50%) translateX(calc(var(--confetti-direction) * 70px))
+    transform: translate(-50%, -50%) translate(calc(var(--confetti-direction) * 110px), var(--confetti-drift))
       rotate(calc(var(--confetti-direction) * 180deg));
     opacity: 0;
   }
@@ -151,7 +151,7 @@ body {
 .confetti-piece {
   left: 50%;
   top: 50%;
-  animation-duration: 550ms;
+  animation-duration: 700ms;
   animation-timing-function: ease-out;
   animation-fill-mode: both;
 }
@@ -160,18 +160,33 @@ body {
 .confetti-shower { animation-name: confetti-shower; }
 .confetti-sidesweep { animation-name: confetti-sidesweep; }
 
+/* A translucent dark veil that pulses in and back out, rather than swapping
+   the card's actual background to solid near-black (which read as jarring
+   and "too black" against the pixel-art white card). */
 @keyframes flash-wrong {
-  0%, 100% { background-color: #ffffff; }
-  25%, 75% { background-color: #2a1414; }
+  0%, 100% { opacity: 0; }
+  30%, 70% { opacity: 1; }
 }
 
-.flash-wrong {
+.flash-wrong::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  /* NES.css buttons all set position:relative (z-index:auto); without an
+     explicit z-index here, ties go to DOM order and the buttons (rendered
+     after this pseudo-element) would paint over it, hiding the flash. */
+  z-index: 50;
+  background: rgba(50, 15, 15, 0.35);
+  opacity: 0;
+  pointer-events: none;
   animation: flash-wrong 380ms ease-in-out;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .shake,
-  .flash-wrong {
+  .shake {
+    animation: none;
+  }
+  .flash-wrong::before {
     animation: none;
   }
   .confetti-piece {
