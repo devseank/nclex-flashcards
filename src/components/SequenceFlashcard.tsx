@@ -22,6 +22,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { SequenceQuestion } from "@/services/questions";
 import { QuestionStats } from "@/services/attempts";
 import { categoryVariant } from "@/lib/categoryVariant";
+import { cheerMessage } from "@/lib/cheerMessage";
 import { FlashcardMode } from "@/components/Flashcard";
 
 // Rationale for sequence questions is a numbered walkthrough ("1. ... 2. ...")
@@ -98,6 +99,7 @@ export default function SequenceFlashcard({
     showAnswer &&
     order.length === question.correctOrder.length &&
     order.every((choiceIndex, position) => choiceIndex === question.correctOrder[position]);
+  const cheer = !showAnswer ? cheerMessage(stats) : null;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -135,6 +137,8 @@ export default function SequenceFlashcard({
           incorrect · Last: {new Date(stats.lastAttemptedAt).toLocaleDateString()}
         </p>
       )}
+
+      {cheer && <p className="font-pixel text-[11px] leading-relaxed text-emerald-600 -mt-2">{cheer}</p>}
 
       <p className="text-xl leading-snug">
         {question.question}

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ChoiceQuestion } from "@/services/questions";
 import { QuestionStats } from "@/services/attempts";
 import { categoryVariant } from "@/lib/categoryVariant";
+import { cheerMessage } from "@/lib/cheerMessage";
 
 export type FlashcardMode = "immediate" | "review";
 
@@ -64,6 +65,7 @@ export default function Flashcard({
     selected.every((i) => question.correctIndices.includes(i));
 
   const rationaleByChoice = mapRationaleByChoice(question.rationale, question.correctIndices);
+  const cheer = !showAnswer ? cheerMessage(stats) : null;
 
   function toggleChoice(i: number) {
     if (mode === "review" || revealed) return;
@@ -92,6 +94,8 @@ export default function Flashcard({
           incorrect · Last: {new Date(stats.lastAttemptedAt).toLocaleDateString()}
         </p>
       )}
+
+      {cheer && <p className="font-pixel text-[11px] leading-relaxed text-emerald-600 -mt-2">{cheer}</p>}
 
       <p className="text-xl leading-snug">
         {question.question}
