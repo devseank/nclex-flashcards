@@ -1,19 +1,18 @@
 "use client";
 
-export type ReviewRange = "today" | "week" | "all" | "stale";
+export type NewRange = "today" | "week" | "all";
 
-const RANGE_OPTIONS: { key: ReviewRange; label: string }[] = [
-  { key: "today", label: "TODAY" },
-  { key: "week", label: "THIS WEEK" },
-  { key: "all", label: "ALL TIME" },
-  { key: "stale", label: "LEAST RECENT" },
+const RANGE_OPTIONS: { key: NewRange; label: string }[] = [
+  { key: "today", label: "NEW" },
+  { key: "week", label: "NEWER" },
+  { key: "all", label: "NEWEST" },
 ];
 
-export default function ReviewMode({
+export default function NewMode({
   onSelect,
   onBack,
 }: {
-  onSelect: (range: ReviewRange) => void;
+  onSelect: (range: NewRange) => void;
   onBack: () => void;
 }) {
   return (
@@ -23,7 +22,7 @@ export default function ReviewMode({
           key={opt.key}
           type="button"
           onClick={() => onSelect(opt.key)}
-          className="nes-btn is-error w-full font-pixel text-xs py-2"
+          className="nes-btn is-success w-full font-pixel text-xs py-2"
         >
           {opt.label}
         </button>

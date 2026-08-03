@@ -7,6 +7,7 @@ import { useQuizSession, Notice } from "@/hooks/useQuizSession";
 import Landing from "@/components/Landing";
 import CategoryMode from "@/components/CategoryMode";
 import ReviewMode from "@/components/ReviewMode";
+import NewMode from "@/components/NewMode";
 import Analytics from "@/components/Analytics";
 import PixelWindow from "@/components/PixelWindow";
 import SessionScreen from "@/components/SessionScreen";
@@ -59,9 +60,11 @@ export default function FlashcardApp() {
     startMode,
     startReviewByRange,
     startReviewByCategory,
+    startNewByRange,
     backToMenu,
     goToCategoryPick,
     goToReviewPick,
+    goToNewPick,
     goToAnalytics,
     handleNext,
   } = useQuizSession(questions);
@@ -88,6 +91,7 @@ export default function FlashcardApp() {
             onSelectMode={(m) => startMode(m)}
             onSelectCategory={goToCategoryPick}
             onSelectReview={goToReviewPick}
+            onSelectNew={goToNewPick}
             onSelectAnalytics={goToAnalytics}
           />
         </PixelWindow>
@@ -107,6 +111,12 @@ export default function FlashcardApp() {
       {view === "reviewPick" && (
         <PickerScreen title="REVIEW.EXE" notice={notice}>
           <ReviewMode onSelect={startReviewByRange} onBack={backToMenu} />
+        </PickerScreen>
+      )}
+
+      {view === "newPick" && (
+        <PickerScreen title="NEW.EXE" notice={notice}>
+          <NewMode onSelect={startNewByRange} onBack={backToMenu} />
         </PickerScreen>
       )}
 

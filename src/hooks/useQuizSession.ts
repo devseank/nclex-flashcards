@@ -10,11 +10,12 @@ import {
 } from "@/services/attempts";
 import { getErrorMessage } from "@/lib/errorMessage";
 import { startOfToday, startOfWeek } from "@/lib/dateRanges";
-import { SessionMode, shuffle, pickRandom, isCorrect, selectMostWrong } from "@/lib/quizLogic";
+import { SessionMode, shuffle, pickRandom, isCorrect, selectMostWrong, selectUnattempted, selectLeastRecentlyTried } from "@/lib/quizLogic";
 import { Mode } from "@/components/Landing";
 import { ReviewRange } from "@/components/ReviewMode";
+import { NewRange } from "@/components/NewMode";
 
-export type View = "menu" | "categoryPick" | "reviewPick" | "session" | "finished" | "analytics";
+export type View = "menu" | "categoryPick" | "reviewPick" | "newPick" | "session" | "finished" | "analytics";
 
 export type Notice = { text: string; tone: "info" | "error" };
 
@@ -23,12 +24,20 @@ const MODE_LABELS: Record<SessionMode, string> = {
   quick10: "QUICK 10",
   infinite: "INFINITE",
   review: "REVIEW",
+  new: "NEW",
 };
 
 const REVIEW_RANGE_LABELS: Record<ReviewRange, string> = {
   today: "TODAY",
   week: "THIS WEEK",
   all: "ALL TIME",
+  stale: "LEAST RECENT",
+};
+
+const NEW_RANGE_LABELS: Record<NewRange, string> = {
+  today: "NEW",
+  week: "NEWER",
+  all: "NEWEST",
 };
 
 // Owns all quiz-session state and the actions that transition between
@@ -79,10 +88,22 @@ export function useQuizSession(questions: Question[] | null) {
 
   async function startReviewByRange(range: ReviewRange) {
     if (!questions) return;
-    const since = range === "today" ? startOfToday() : range === "week" ? startOfWeek() : null;
 
     try {
       const attempts = await fetchAttempts();
+
+      if (range === "stale") {
+        const leastRecentlyTried = selectLeastRecentlyTried(questions, attempts);
+        if (leastRecentlyTried.length === 0) {
+          setNotice({ text: "No attempted questions yet — answer a few first!", tone: "info" });
+          return;
+        }
+        setQuestionStats(computeQuestionStats(attempts));
+        beginSession(leastRecentlyTried, "review", `REVIEW — ${REVIEW_RANGE_LABELS[range]}`, null);
+        return;
+      }
+
+      const since = range === "today" ? startOfToday() : range === "week" ? startOfWeek() : null;
       const mostWrong = selectMostWrong(questions, attempts, since);
       if (mostWrong.length === 0) {
         setNotice({ text: "No incorrect answers in this period — nice work!", tone: "info" });
@@ -90,6 +111,23 @@ export function useQuizSession(questions: Question[] | null) {
       }
       setQuestionStats(computeQuestionStats(attempts));
       beginSession(mostWrong, "review", `REVIEW — ${REVIEW_RANGE_LABELS[range]}`, null);
+    } catch (err) {
+      setNotice({ text: getErrorMessage(err), tone: "error" });
+    }
+  }
+
+  async function startNewByRange(range: NewRange) {
+    if (!questions) return;
+    const since = range === "today" ? startOfToday() : range === "week" ? startOfWeek() : null;
+
+    try {
+      const attempts = await fetchAttempts();
+      const unattempted = selectUnattempted(questions, attempts, since);
+      if (unattempted.length === 0) {
+        setNotice({ text: "No unattempted questions in this period — you've seen them all!", tone: "info" });
+        return;
+      }
+      beginSession(unattempted, "new", `${NEW_RANGE_LABELS[range]} QUESTIONS`, null);
     } catch (err) {
       setNotice({ text: getErrorMessage(err), tone: "error" });
     }
@@ -133,6 +171,11 @@ export function useQuizSession(questions: Question[] | null) {
     setView("reviewPick");
   }
 
+  function goToNewPick() {
+    setNotice(null);
+    setView("newPick");
+  }
+
   function goToAnalytics() {
     setView("analytics");
   }
@@ -164,7 +207,7 @@ export function useQuizSession(questions: Question[] | null) {
 
   const score = queue.reduce((acc, q, i) => acc + (isCorrect(q, answers[i] ?? []) ? 1 : 0), 0);
   const modeTitle =
-    mode === "review"
+    mode === "review" || mode === "new"
       ? sessionLabel
       : mode && (categoryFilter ? `${categoryFilter} — ${MODE_LABELS[mode]}` : MODE_LABELS[mode]);
 
@@ -182,9 +225,11 @@ export function useQuizSession(questions: Question[] | null) {
     startMode,
     startReviewByRange,
     startReviewByCategory,
+    startNewByRange,
     backToMenu,
     goToCategoryPick,
     goToReviewPick,
+    goToNewPick,
     goToAnalytics,
     handleNext,
   };

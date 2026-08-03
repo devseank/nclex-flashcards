@@ -1,8 +1,8 @@
 import { Question } from "@/services/questions";
-import { Attempt } from "@/services/attempts";
+import { Attempt, computeQuestionStats } from "@/services/attempts";
 import { Mode } from "@/components/Landing";
 
-export type SessionMode = Mode | "review";
+export type SessionMode = Mode | "review" | "new";
 
 export function shuffle<T>(items: T[]): T[] {
   const copy = [...items];
@@ -46,4 +46,24 @@ export function selectMostWrong(
   return pool
     .filter((q) => (incorrectCounts.get(q.id) ?? 0) > 0)
     .sort((a, b) => (incorrectCounts.get(b.id) ?? 0) - (incorrectCounts.get(a.id) ?? 0));
+}
+
+// Questions with zero attempts, optionally restricted to ones added since a
+// given date, newest addition first. Backs the NEW/NEWER/NEWEST picker for
+// practicing freshly-imported questions before anything else touches them.
+export function selectUnattempted(pool: Question[], attempts: Attempt[], since: Date | null): Question[] {
+  const attemptedIds = new Set(attempts.map((a) => a.questionId));
+  return pool
+    .filter((q) => !attemptedIds.has(q.id))
+    .filter((q) => !since || new Date(q.createdAt) >= since)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
+// Questions with at least one attempt, sorted so the one it's been longest
+// since attempting comes first -- a simple staleness/spaced-repetition queue.
+export function selectLeastRecentlyTried(pool: Question[], attempts: Attempt[]): Question[] {
+  const stats = computeQuestionStats(attempts);
+  return pool
+    .filter((q) => stats.has(q.id))
+    .sort((a, b) => new Date(stats.get(a.id)!.lastAttemptedAt).getTime() - new Date(stats.get(b.id)!.lastAttemptedAt).getTime());
 }
