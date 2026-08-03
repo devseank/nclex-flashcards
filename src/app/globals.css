@@ -160,15 +160,16 @@ body {
 .confetti-shower { animation-name: confetti-shower; }
 .confetti-sidesweep { animation-name: confetti-sidesweep; }
 
-/* A translucent dark veil that pulses in and back out, rather than swapping
-   the card's actual background to solid near-black (which read as jarring
-   and "too black" against the pixel-art white card). */
-@keyframes flash-wrong {
+/* A translucent veil that pulses in and back out, rather than swapping the
+   card's actual background to a solid color (which read as jarring and "too
+   black" against the pixel-art white card when it was solid near-black). */
+@keyframes flash-pulse {
   0%, 100% { opacity: 0; }
   30%, 70% { opacity: 1; }
 }
 
-.flash-wrong::before {
+.flash-wrong::before,
+.flash-correct::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -176,17 +177,25 @@ body {
      explicit z-index here, ties go to DOM order and the buttons (rendered
      after this pseudo-element) would paint over it, hiding the flash. */
   z-index: 50;
-  background: rgba(50, 15, 15, 0.35);
   opacity: 0;
   pointer-events: none;
-  animation: flash-wrong 380ms ease-in-out;
+  animation: flash-pulse 380ms ease-in-out;
+}
+
+.flash-wrong::before {
+  background: rgba(50, 15, 15, 0.35);
+}
+
+.flash-correct::before {
+  background: rgba(255, 210, 0, 0.45);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .shake {
     animation: none;
   }
-  .flash-wrong::before {
+  .flash-wrong::before,
+  .flash-correct::before {
     animation: none;
   }
   .confetti-piece {

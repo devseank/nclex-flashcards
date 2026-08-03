@@ -97,7 +97,7 @@ export default function Flashcard({
   return (
     <div
       className={`nes-container is-rounded w-full max-w-xl bg-white space-y-5 relative ${
-        justAnswered && !isFullyCorrect ? "shake flash-wrong" : ""
+        justAnswered ? (isFullyCorrect ? "flash-correct" : "shake flash-wrong") : ""
       }`}
     >
       {!stats && <NewBadge />}
