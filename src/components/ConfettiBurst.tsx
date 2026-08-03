@@ -1,5 +1,7 @@
 "use client";
 
+import { createPortal } from "react-dom";
+
 // Game-themed emoji, shared visual language with the cheer message.
 const CONFETTI_EMOJIS = ["🍄", "⭐", "🪙", "⚡", "🔥", "👾", "🎮"];
 const CONFETTI_COLORS = ["#f16722", "#35c6c3", "#f7d51d", "#92cc41", "#209cee", "#e76e55", "#a86ee0"];
@@ -48,23 +50,21 @@ export function buildConfettiConfig(): ConfettiConfig {
 // Brief celebratory burst on a correct answer -- purely presentational, pure
 // CSS keyframes drive the actual motion (no JS animation loop or timers), so
 // it never delays or blocks anything on screen.
+//
+// Portaled straight to document.body and centered with position:fixed so it
+// always appears in the middle of the actual visible screen, regardless of
+// how far you've scrolled into a long revealed answer. Rendering it in place
+// (position:absolute inside the card) doesn't work: on mobile you're rarely
+// scrolled to the very top when you answer, and `position:fixed` fails to
+// mean "relative to the viewport" if any ancestor has a `transform` --
+// SessionScreen's entrance-animation wrapper always has one (its fill-mode
+// keeps `transform: translateY(0)` applied after the animation completes),
+// which would otherwise hijack "fixed" into behaving like "absolute" again.
 export default function ConfettiBurst({ config }: { config: ConfettiConfig }) {
   const { variant, direction, pieces } = config;
 
-  return (
-    // h-32 gives this box an explicit, well-defined height (a box with only
-    // absolutely-positioned children and no bottom/height anchor collapses
-    // to zero height, which silently breaks `top: 50%` centering on the
-    // pieces below). Anchored at the card's own top -- not centered on the
-    // full card -- because the card grows tall once revealed (rationale
-    // text etc.); centering on that full height could push the burst below
-    // the fold on a short mobile viewport. This keeps it right where
-    // "CORRECT!" appears, visible immediately without scrolling.
-    // z-50: NES.css buttons all set position:relative, making them positioned
-    // siblings too -- with z-index:auto on both sides, ties go to DOM order,
-    // and the buttons come later, so without an explicit z-index here they'd
-    // paint on top of (hiding) the confetti entirely.
-    <div className="pointer-events-none absolute inset-x-0 top-0 h-32 z-50 overflow-visible" aria-hidden="true">
+  return createPortal(
+    <div className="pointer-events-none fixed inset-0 z-50 overflow-visible" aria-hidden="true">
       {pieces.map((piece, i) => (
         <span
           key={i}
@@ -84,6 +84,7 @@ export default function ConfettiBurst({ config }: { config: ConfettiConfig }) {
           {piece.content}
         </span>
       ))}
-    </div>
+    </div>,
+    document.body,
   );
 }
