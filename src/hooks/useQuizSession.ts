@@ -11,11 +11,12 @@ import {
 import { getErrorMessage } from "@/lib/errorMessage";
 import { startOfToday, startOfWeek } from "@/lib/dateRanges";
 import { SessionMode, shuffle, pickRandom, isCorrect, selectMostWrong, selectUnattempted, selectLeastRecentlyTried } from "@/lib/quizLogic";
+import { QuestionKind, KIND_LABELS, matchesKind } from "@/lib/questionKind";
 import { Mode } from "@/components/Landing";
 import { ReviewRange } from "@/components/ReviewMode";
 import { NewRange } from "@/components/NewMode";
 
-export type View = "menu" | "categoryPick" | "reviewPick" | "newPick" | "session" | "finished" | "analytics";
+export type View = "menu" | "categoryPick" | "typePick" | "reviewPick" | "newPick" | "session" | "finished" | "analytics";
 
 export type Notice = { text: string; tone: "info" | "error" };
 
@@ -91,6 +92,41 @@ export function useQuizSession(questions: Question[] | null) {
     fetchAttempts()
       .then((attempts) => setQuestionStats(computeQuestionStats(attempts)))
       .catch(() => {});
+  }
+
+  function startTypeMode(kind: QuestionKind, m: Mode) {
+    if (!questions) return;
+    const pool = questions.filter((q) => matchesKind(q, kind));
+    if (pool.length === 0) return;
+
+    if (m === "infinite") {
+      beginSession(pool, m, "", KIND_LABELS[kind]);
+    } else {
+      const count = m === "quick5" ? 5 : 10;
+      beginSession(shuffle(pool).slice(0, Math.min(count, pool.length)), m, "", KIND_LABELS[kind]);
+    }
+
+    fetchAttempts()
+      .then((attempts) => setQuestionStats(computeQuestionStats(attempts)))
+      .catch(() => {});
+  }
+
+  async function startReviewByType(kind: QuestionKind) {
+    if (!questions) return;
+    const pool = questions.filter((q) => matchesKind(q, kind));
+
+    try {
+      const attempts = await fetchAttempts();
+      const mostWrong = selectMostWrong(pool, attempts, null);
+      if (mostWrong.length === 0) {
+        setNotice({ text: `No incorrect answers in ${KIND_LABELS[kind]} — nice work!`, tone: "info" });
+        return;
+      }
+      setQuestionStats(computeQuestionStats(attempts));
+      beginSession(mostWrong, "review", `${KIND_LABELS[kind]} — MOST WRONG`, null);
+    } catch (err) {
+      setNotice({ text: getErrorMessage(err), tone: "error" });
+    }
   }
 
   async function startReviewByRange(range: ReviewRange) {
@@ -173,6 +209,11 @@ export function useQuizSession(questions: Question[] | null) {
     setView("categoryPick");
   }
 
+  function goToTypePick() {
+    setNotice(null);
+    setView("typePick");
+  }
+
   function goToReviewPick() {
     setNotice(null);
     setView("reviewPick");
@@ -230,11 +271,14 @@ export function useQuizSession(questions: Question[] | null) {
     score,
     modeTitle,
     startMode,
+    startTypeMode,
     startReviewByRange,
     startReviewByCategory,
+    startReviewByType,
     startNewByRange,
     backToMenu,
     goToCategoryPick,
+    goToTypePick,
     goToReviewPick,
     goToNewPick,
     goToAnalytics,

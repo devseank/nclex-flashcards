@@ -6,6 +6,7 @@ import { getErrorMessage } from "@/lib/errorMessage";
 import { useQuizSession, Notice } from "@/hooks/useQuizSession";
 import Landing from "@/components/Landing";
 import CategoryMode from "@/components/CategoryMode";
+import TypeMode from "@/components/TypeMode";
 import ReviewMode from "@/components/ReviewMode";
 import NewMode from "@/components/NewMode";
 import Analytics from "@/components/Analytics";
@@ -58,11 +59,14 @@ export default function FlashcardApp() {
     score,
     modeTitle,
     startMode,
+    startTypeMode,
     startReviewByRange,
     startReviewByCategory,
+    startReviewByType,
     startNewByRange,
     backToMenu,
     goToCategoryPick,
+    goToTypePick,
     goToReviewPick,
     goToNewPick,
     goToAnalytics,
@@ -91,6 +95,7 @@ export default function FlashcardApp() {
             <Landing
               onSelectMode={(m) => startMode(m)}
               onSelectCategory={goToCategoryPick}
+              onSelectType={goToTypePick}
               onSelectReview={goToReviewPick}
               onSelectNew={goToNewPick}
               onSelectAnalytics={goToAnalytics}
@@ -107,6 +112,12 @@ export default function FlashcardApp() {
             onStartWrong={startReviewByCategory}
             onBack={backToMenu}
           />
+        </PickerScreen>
+      )}
+
+      {view === "typePick" && (
+        <PickerScreen title="TYPE.EXE" notice={notice}>
+          <TypeMode onStart={startTypeMode} onStartWrong={startReviewByType} onBack={backToMenu} />
         </PickerScreen>
       )}
 
