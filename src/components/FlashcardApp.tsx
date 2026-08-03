@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { fetchAllQuestions, Question } from "@/services/questions";
 import { getErrorMessage } from "@/lib/errorMessage";
-import { useQuizSession } from "@/hooks/useQuizSession";
+import { useQuizSession, Notice } from "@/hooks/useQuizSession";
 import Landing from "@/components/Landing";
 import CategoryMode from "@/components/CategoryMode";
 import ReviewMode from "@/components/ReviewMode";
@@ -13,6 +13,25 @@ import SessionScreen from "@/components/SessionScreen";
 import FinishedScreen from "@/components/FinishedScreen";
 import SignOutButton from "@/components/SignOutButton";
 import NoticeBanner from "@/components/NoticeBanner";
+
+// A PixelWindow plus its below-the-fold notice banner, for the two picker
+// screens (category/review) that share this exact layout.
+function PickerScreen({
+  title,
+  notice,
+  children,
+}: {
+  title: string;
+  notice: Notice | null;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="w-full max-w-sm flex flex-col items-center gap-3">
+      <PixelWindow title={title}>{children}</PixelWindow>
+      {notice && <NoticeBanner notice={notice} />}
+    </div>
+  );
+}
 
 export default function FlashcardApp() {
   const [questions, setQuestions] = useState<Question[] | null>(null);
@@ -47,15 +66,23 @@ export default function FlashcardApp() {
     handleNext,
   } = useQuizSession(questions);
 
+  const pageClassName =
+    "min-h-dvh flex flex-col items-center justify-start sm:justify-center gap-8 px-4 pt-16 pb-[calc(4rem+env(safe-area-inset-bottom))]";
+
+  if (error) {
+    return (
+      <div className={pageClassName}>
+        <SignOutButton />
+        <p className="font-pixel text-sm text-[#33415c] text-center leading-relaxed">{error}</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-dvh flex flex-col items-center justify-start sm:justify-center gap-8 px-4 pt-16 pb-[calc(4rem+env(safe-area-inset-bottom))]">
+    <div className={pageClassName}>
       <SignOutButton />
 
-      {error && (
-        <p className="font-pixel text-sm text-[#33415c] text-center leading-relaxed">{error}</p>
-      )}
-
-      {!error && questions && view === "menu" && (
+      {questions && view === "menu" && (
         <PixelWindow title="MENU.EXE">
           <Landing
             onSelectMode={(m) => startMode(m)}
@@ -66,34 +93,26 @@ export default function FlashcardApp() {
         </PixelWindow>
       )}
 
-      {!error && view === "categoryPick" && (
-        <div className="w-full max-w-sm flex flex-col items-center gap-3">
-          <PixelWindow title="CATEGORY.EXE">
-            <CategoryMode
-              categories={categories}
-              onStart={(category, m) => startMode(m, category)}
-              onStartWrong={startReviewByCategory}
-              onBack={backToMenu}
-            />
-          </PixelWindow>
-          {notice && <NoticeBanner notice={notice} />}
-        </div>
+      {view === "categoryPick" && (
+        <PickerScreen title="CATEGORY.EXE" notice={notice}>
+          <CategoryMode
+            categories={categories}
+            onStart={(category, m) => startMode(m, category)}
+            onStartWrong={startReviewByCategory}
+            onBack={backToMenu}
+          />
+        </PickerScreen>
       )}
 
-      {!error && view === "reviewPick" && (
-        <div className="w-full max-w-sm flex flex-col items-center gap-3">
-          <PixelWindow title="REVIEW.EXE">
-            <ReviewMode onSelect={startReviewByRange} onBack={backToMenu} />
-          </PixelWindow>
-          {notice && <NoticeBanner notice={notice} />}
-        </div>
+      {view === "reviewPick" && (
+        <PickerScreen title="REVIEW.EXE" notice={notice}>
+          <ReviewMode onSelect={startReviewByRange} onBack={backToMenu} />
+        </PickerScreen>
       )}
 
-      {!error && view === "analytics" && questions && (
-        <Analytics questions={questions} onBack={backToMenu} />
-      )}
+      {view === "analytics" && questions && <Analytics questions={questions} onBack={backToMenu} />}
 
-      {!error && view === "finished" && mode && modeTitle && (
+      {view === "finished" && mode && modeTitle && (
         <FinishedScreen
           title={modeTitle}
           score={score}
@@ -105,7 +124,7 @@ export default function FlashcardApp() {
         />
       )}
 
-      {!error && view === "session" && mode && current && (
+      {view === "session" && mode && current && (
         <SessionScreen
           mode={mode}
           current={current}
