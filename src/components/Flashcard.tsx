@@ -5,6 +5,7 @@ import { ChoiceQuestion } from "@/services/questions";
 import { QuestionStats } from "@/services/attempts";
 import { categoryVariant } from "@/lib/categoryVariant";
 import { cheerMessage } from "@/lib/cheerMessage";
+import NewBadge from "@/components/NewBadge";
 
 export type FlashcardMode = "immediate" | "review";
 
@@ -65,7 +66,7 @@ export default function Flashcard({
     selected.every((i) => question.correctIndices.includes(i));
 
   const rationaleByChoice = mapRationaleByChoice(question.rationale, question.correctIndices);
-  const cheer = !showAnswer ? cheerMessage(stats) : null;
+  const cheer = !showAnswer ? cheerMessage(stats, question.id) : null;
 
   function toggleChoice(i: number) {
     if (mode === "review" || revealed) return;
@@ -79,7 +80,8 @@ export default function Flashcard({
   }
 
   return (
-    <div className="nes-container is-rounded w-full max-w-xl bg-white space-y-5">
+    <div className="nes-container is-rounded w-full max-w-xl bg-white space-y-5 relative">
+      {!stats && <NewBadge />}
       <button
         type="button"
         tabIndex={-1}

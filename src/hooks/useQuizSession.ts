@@ -84,6 +84,13 @@ export function useQuizSession(questions: Question[] | null) {
       const count = m === "quick5" ? 5 : 10;
       beginSession(shuffle(pool).slice(0, Math.min(count, pool.length)), m, "", category);
     }
+
+    // Fire-and-forget: powers the cheer message's attempt history. Not
+    // awaited so quiz start stays instant; the cheer just appears a beat
+    // after the first question renders once this resolves.
+    fetchAttempts()
+      .then((attempts) => setQuestionStats(computeQuestionStats(attempts)))
+      .catch(() => {});
   }
 
   async function startReviewByRange(range: ReviewRange) {

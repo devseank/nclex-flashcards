@@ -149,7 +149,7 @@ export default function FlashcardApp() {
             current={current}
             index={index}
             queueLength={queue.length}
-            stats={mode === "review" ? questionStats?.get(current.id) : undefined}
+            stats={questionStats?.get(current.id)}
             onNext={handleNext}
             onBack={backToMenu}
           />

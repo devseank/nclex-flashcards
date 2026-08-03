@@ -25,10 +25,14 @@ function pickCheerEmoji(seed: number): string {
   return CHEER_EMOJIS[seed % CHEER_EMOJIS.length];
 }
 
-// Only meaningful once a question has history (`stats` is only ever passed
-// for review-mode sessions), so a brand-new question never gets one.
-export function cheerMessage(stats: QuestionStats | undefined): string | null {
-  if (!stats) return null;
+// Always returns a message while a question is being attempted: a brand-new
+// one (no `stats` yet) gets a "first try" cheer, seeded off its id so the
+// same question always shows the same emoji; one with history reflects its
+// attempt count/staleness instead.
+export function cheerMessage(stats: QuestionStats | undefined, questionId: number): string {
+  if (!stats) {
+    return `First time seeing this one — let's go! ${pickCheerEmoji(questionId)}`;
+  }
 
   const days = daysSince(stats.lastAttemptedAt);
   const attemptNumber = stats.totalAttempts + 1;

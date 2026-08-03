@@ -23,6 +23,7 @@ import { SequenceQuestion } from "@/services/questions";
 import { QuestionStats } from "@/services/attempts";
 import { categoryVariant } from "@/lib/categoryVariant";
 import { cheerMessage } from "@/lib/cheerMessage";
+import NewBadge from "@/components/NewBadge";
 import { FlashcardMode } from "@/components/Flashcard";
 
 // Rationale for sequence questions is a numbered walkthrough ("1. ... 2. ...")
@@ -99,7 +100,7 @@ export default function SequenceFlashcard({
     showAnswer &&
     order.length === question.correctOrder.length &&
     order.every((choiceIndex, position) => choiceIndex === question.correctOrder[position]);
-  const cheer = !showAnswer ? cheerMessage(stats) : null;
+  const cheer = !showAnswer ? cheerMessage(stats, question.id) : null;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -122,7 +123,8 @@ export default function SequenceFlashcard({
   }
 
   return (
-    <div className="nes-container is-rounded w-full max-w-xl bg-white space-y-5">
+    <div className="nes-container is-rounded w-full max-w-xl bg-white space-y-5 relative">
+      {!stats && <NewBadge />}
       <button
         type="button"
         tabIndex={-1}
