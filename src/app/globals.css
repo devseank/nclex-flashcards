@@ -130,19 +130,19 @@ body {
    (opacity/transform), so nothing here ever delays revealing the actual
    answer -- it's a decorative overlay on top of it. */
 @keyframes confetti-radial {
-  0% { transform: translate(-50%, -50%) rotate(var(--confetti-angle)) translateY(0) scale(1); opacity: 1; }
-  100% { transform: translate(-50%, -50%) rotate(var(--confetti-angle)) translateY(-90px) scale(0.5); opacity: 0; }
+  0% { transform: translate(calc(-50% + var(--confetti-start-x)), -50%) rotate(var(--confetti-angle)) translateY(0) scale(1); opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--confetti-start-x)), -50%) rotate(var(--confetti-angle)) translateY(-90px) scale(0.5); opacity: 0; }
 }
 
 @keyframes confetti-shower {
-  0% { transform: translate(calc(-50% + var(--confetti-drift)), -50%) translateY(0); opacity: 1; }
-  100% { transform: translate(calc(-50% + var(--confetti-drift) * 3), -50%) translateY(-100px); opacity: 0; }
+  0% { transform: translate(calc(-50% + var(--confetti-start-x) + var(--confetti-drift)), -50%) translateY(0); opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--confetti-start-x) + var(--confetti-drift) * 3), -50%) translateY(-100px); opacity: 0; }
 }
 
 @keyframes confetti-sidesweep {
-  0% { transform: translate(-50%, -50%) translate(0, var(--confetti-drift)) rotate(0deg); opacity: 1; }
+  0% { transform: translate(calc(-50% + var(--confetti-start-x)), -50%) translate(0, var(--confetti-drift)) rotate(0deg); opacity: 1; }
   100% {
-    transform: translate(-50%, -50%) translate(calc(var(--confetti-direction) * 110px), var(--confetti-drift))
+    transform: translate(calc(-50% + var(--confetti-start-x)), -50%) translate(calc(var(--confetti-direction) * 110px), var(--confetti-drift))
       rotate(calc(var(--confetti-direction) * 180deg));
     opacity: 0;
   }
