@@ -1,6 +1,24 @@
 "use client";
 
 import { useState } from "react";
+import {
+  DndContext,
+  DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { restrictToParentElement, restrictToVerticalAxis } from "@dnd-kit/modifiers";
+import { CSS } from "@dnd-kit/utilities";
 import { SequenceQuestion } from "@/services/questions";
 import { QuestionStats } from "@/services/attempts";
 import { categoryVariant } from "@/lib/categoryVariant";
@@ -16,6 +34,48 @@ function splitNumberedRationale(rationale: string): string[] {
     .filter(Boolean);
 }
 
+function SortableStep({
+  id,
+  label,
+  position,
+  variant,
+  disabled,
+}: {
+  id: string;
+  label: string;
+  position: number;
+  variant: string;
+  disabled: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    touchAction: "none",
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`nes-btn w-full text-left text-base flex items-center gap-3 ${variant} ${
+        isDragging ? "opacity-50" : ""
+      } ${disabled ? "" : "cursor-grab active:cursor-grabbing"}`}
+      {...(disabled ? {} : { ...attributes, ...listeners })}
+    >
+      {!disabled && (
+        <span className="text-gray-400 select-none shrink-0" aria-hidden="true">
+          ⠿
+        </span>
+      )}
+      <span>
+        {position + 1}. {label}
+      </span>
+    </div>
+  );
+}
+
 export default function SequenceFlashcard({
   question,
   onNext,
@@ -29,28 +89,34 @@ export default function SequenceFlashcard({
   initialOrder?: number[];
   stats?: QuestionStats;
 }) {
-  const [placed, setPlaced] = useState<number[]>(initialOrder);
+  const defaultOrder = question.choices.map((_, i) => i);
+  const [order, setOrder] = useState<number[]>(initialOrder.length ? initialOrder : defaultOrder);
   const [revealed, setRevealed] = useState(mode === "review");
 
   const showAnswer = mode === "review" || revealed;
-  const isComplete = placed.length === question.choices.length;
   const isFullyCorrect =
     showAnswer &&
-    placed.length === question.correctOrder.length &&
-    placed.every((choiceIndex, position) => choiceIndex === question.correctOrder[position]);
+    order.length === question.correctOrder.length &&
+    order.every((choiceIndex, position) => choiceIndex === question.correctOrder[position]);
 
-  const available = question.choices
-    .map((choice, i) => ({ choice, i }))
-    .filter(({ i }) => !placed.includes(i));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
-  function place(i: number) {
-    if (showAnswer || isComplete) return;
-    setPlaced((prev) => [...prev, i]);
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setOrder((prev) => {
+      const oldIndex = prev.findIndex((i) => String(i) === active.id);
+      const newIndex = prev.findIndex((i) => String(i) === over.id);
+      return arrayMove(prev, oldIndex, newIndex);
+    });
   }
 
   function reset() {
     if (showAnswer) return;
-    setPlaced([]);
+    setOrder(defaultOrder);
   }
 
   return (
@@ -73,55 +139,46 @@ export default function SequenceFlashcard({
       <p className="text-xl leading-snug">
         {question.question}
         {!showAnswer && (
-          <span className="block text-sm text-gray-500 mt-1">
-            Tap the steps below in the correct order.
-          </span>
+          <span className="block text-sm text-gray-500 mt-1">Drag the steps below into the correct order.</span>
         )}
       </p>
 
       <div className="space-y-2">
-        <p className="font-pixel text-[10px] text-gray-500">YOUR ORDER</p>
-        {placed.length === 0 && !showAnswer && (
-          <p className="text-sm text-gray-400 italic">Tap a step below to begin.</p>
-        )}
-        {placed.map((choiceIndex, position) => {
-          const isRightSpot = showAnswer && question.correctOrder[position] === choiceIndex;
-          const variant = showAnswer ? (isRightSpot ? "is-success" : "is-error") : "";
-          return (
-            <div key={position} className={`nes-btn w-full text-left text-base ${variant}`}>
-              {position + 1}. {question.choices[choiceIndex]}
+        <p className="font-pixel text-[10px] text-gray-500">STEPS</p>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext items={order.map(String)} strategy={verticalListSortingStrategy}>
+            <div className="space-y-2">
+              {order.map((choiceIndex, position) => {
+                const isRightSpot = showAnswer && question.correctOrder[position] === choiceIndex;
+                const variant = showAnswer ? (isRightSpot ? "is-success" : "is-error") : "";
+                return (
+                  <SortableStep
+                    key={choiceIndex}
+                    id={String(choiceIndex)}
+                    label={question.choices[choiceIndex]}
+                    position={position}
+                    variant={variant}
+                    disabled={showAnswer}
+                  />
+                );
+              })}
             </div>
-          );
-        })}
+          </SortableContext>
+        </DndContext>
       </div>
 
-      {!showAnswer && available.length > 0 && (
-        <div className="space-y-3">
-          <p className="font-pixel text-[10px] text-gray-500">STEPS</p>
-          {available.map(({ choice, i }) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => place(i)}
-              className="nes-btn w-full text-left text-base"
-            >
-              {choice}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {!showAnswer && placed.length > 0 && (
-        <button
-          type="button"
-          onClick={reset}
-          className="font-pixel text-[10px] text-[#33415c] underline"
-        >
+      {!showAnswer && (
+        <button type="button" onClick={reset} className="font-pixel text-[10px] text-[#33415c] underline">
           Reset order
         </button>
       )}
 
-      {!showAnswer && isComplete && (
+      {!showAnswer && (
         <button
           type="button"
           onClick={() => setRevealed(true)}
@@ -145,7 +202,7 @@ export default function SequenceFlashcard({
       {mode !== "review" && (
         <button
           type="button"
-          onClick={() => onNext?.(placed)}
+          onClick={() => onNext?.(order)}
           className="nes-btn is-primary w-full font-pixel text-xs py-2"
         >
           NEXT
