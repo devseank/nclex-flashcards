@@ -125,3 +125,57 @@ body {
     animation: none;
   }
 }
+
+/* Brief, CSS-only answer feedback. All under ~600ms and compositor-only
+   (opacity/transform/background-color), so nothing here ever delays
+   revealing the actual answer -- it's a decorative overlay on top of it. */
+@keyframes confetti-radial {
+  0% { transform: translate(-50%, -50%) rotate(var(--confetti-angle)) translateY(0) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, -50%) rotate(var(--confetti-angle)) translateY(-56px) scale(0.4); opacity: 0; }
+}
+
+@keyframes confetti-shower {
+  0% { transform: translate(calc(-50% + var(--confetti-drift)), -50%) translateY(0); opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--confetti-drift) * 2), -50%) translateY(-64px); opacity: 0; }
+}
+
+@keyframes confetti-sidesweep {
+  0% { transform: translate(-50%, -50%) translateX(0) rotate(0deg); opacity: 1; }
+  100% {
+    transform: translate(-50%, -50%) translateX(calc(var(--confetti-direction) * 70px))
+      rotate(calc(var(--confetti-direction) * 180deg));
+    opacity: 0;
+  }
+}
+
+.confetti-piece {
+  left: 50%;
+  top: 50%;
+  animation-duration: 550ms;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+}
+
+.confetti-radial { animation-name: confetti-radial; }
+.confetti-shower { animation-name: confetti-shower; }
+.confetti-sidesweep { animation-name: confetti-sidesweep; }
+
+@keyframes flash-wrong {
+  0%, 100% { background-color: #ffffff; }
+  25%, 75% { background-color: #2a1414; }
+}
+
+.flash-wrong {
+  animation: flash-wrong 380ms ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shake,
+  .flash-wrong {
+    animation: none;
+  }
+  .confetti-piece {
+    animation: none;
+    opacity: 0;
+  }
+}

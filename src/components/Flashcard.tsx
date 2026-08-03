@@ -6,6 +6,7 @@ import { QuestionStats } from "@/services/attempts";
 import { categoryVariant } from "@/lib/categoryVariant";
 import { cheerMessage } from "@/lib/cheerMessage";
 import NewBadge from "@/components/NewBadge";
+import ConfettiBurst, { ConfettiConfig, buildConfettiConfig } from "@/components/ConfettiBurst";
 
 export type FlashcardMode = "immediate" | "review";
 
@@ -57,16 +58,30 @@ export default function Flashcard({
   const isMultiSelect = question.correctIndices.length > 1;
   const [selected, setSelected] = useState<number[]>(initialSelected);
   const [revealed, setRevealed] = useState(mode === "review");
+  const [confettiConfig, setConfettiConfig] = useState<ConfettiConfig | null>(null);
 
   const showAnswer = mode === "review" || revealed;
 
-  const isFullyCorrect =
-    showAnswer &&
-    selected.length === question.correctIndices.length &&
-    selected.every((i) => question.correctIndices.includes(i));
+  function isCorrectSelection(sel: number[]): boolean {
+    return sel.length === question.correctIndices.length && sel.every((i) => question.correctIndices.includes(i));
+  }
+
+  const isFullyCorrect = showAnswer && isCorrectSelection(selected);
 
   const rationaleByChoice = mapRationaleByChoice(question.rationale, question.correctIndices);
   const cheer = !showAnswer ? cheerMessage(stats, question.id) : null;
+
+  // Only the live moment of answering gets feedback -- not FinishedScreen's
+  // read-only replay, which renders this same component with mode="review"
+  // already revealed from the start (no actual reveal transition happens).
+  const justAnswered = mode !== "review" && showAnswer;
+
+  function reveal(sel: number[]) {
+    // Math.random() (inside buildConfettiConfig) must not run during render,
+    // so it's built here in the event handler, not derived from state later.
+    if (isCorrectSelection(sel)) setConfettiConfig(buildConfettiConfig());
+    setRevealed(true);
+  }
 
   function toggleChoice(i: number) {
     if (mode === "review" || revealed) return;
@@ -75,13 +90,18 @@ export default function Flashcard({
       setSelected((prev) => (prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i]));
     } else {
       setSelected([i]);
-      setRevealed(true);
+      reveal([i]);
     }
   }
 
   return (
-    <div className="nes-container is-rounded w-full max-w-xl bg-white space-y-5 relative">
+    <div
+      className={`nes-container is-rounded w-full max-w-xl bg-white space-y-5 relative ${
+        justAnswered && !isFullyCorrect ? "shake flash-wrong" : ""
+      }`}
+    >
       {!stats && <NewBadge />}
+      {confettiConfig && <ConfettiBurst config={confettiConfig} />}
       <button
         type="button"
         tabIndex={-1}
@@ -149,7 +169,7 @@ export default function Flashcard({
         <button
           type="button"
           disabled={selected.length === 0}
-          onClick={() => setRevealed(true)}
+          onClick={() => reveal(selected)}
           className="nes-btn is-primary w-full font-pixel text-xs py-2 disabled:opacity-50"
         >
           CHECK ANSWER

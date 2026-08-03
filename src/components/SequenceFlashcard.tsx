@@ -24,6 +24,7 @@ import { QuestionStats } from "@/services/attempts";
 import { categoryVariant } from "@/lib/categoryVariant";
 import { cheerMessage } from "@/lib/cheerMessage";
 import NewBadge from "@/components/NewBadge";
+import ConfettiBurst, { ConfettiConfig, buildConfettiConfig } from "@/components/ConfettiBurst";
 import { FlashcardMode } from "@/components/Flashcard";
 
 // Rationale for sequence questions is a numbered walkthrough ("1. ... 2. ...")
@@ -112,13 +113,28 @@ export default function SequenceFlashcard({
   const defaultOrder = question.choices.map((_, i) => i);
   const [order, setOrder] = useState<number[]>(initialOrder.length ? initialOrder : defaultOrder);
   const [revealed, setRevealed] = useState(mode === "review");
+  const [confettiConfig, setConfettiConfig] = useState<ConfettiConfig | null>(null);
 
   const showAnswer = mode === "review" || revealed;
-  const isFullyCorrect =
-    showAnswer &&
-    order.length === question.correctOrder.length &&
-    order.every((choiceIndex, position) => choiceIndex === question.correctOrder[position]);
+
+  function isCorrectOrder(o: number[]): boolean {
+    return o.length === question.correctOrder.length && o.every((choiceIndex, position) => choiceIndex === question.correctOrder[position]);
+  }
+
+  const isFullyCorrect = showAnswer && isCorrectOrder(order);
   const cheer = !showAnswer ? cheerMessage(stats, question.id) : null;
+
+  // Only the live moment of answering gets feedback -- not FinishedScreen's
+  // read-only replay, which renders this same component with mode="review"
+  // already revealed from the start (no actual reveal transition happens).
+  const justAnswered = mode !== "review" && showAnswer;
+
+  function reveal() {
+    // Math.random() (inside buildConfettiConfig) must not run during render,
+    // so it's built here in the event handler, not derived from state later.
+    if (isCorrectOrder(order)) setConfettiConfig(buildConfettiConfig());
+    setRevealed(true);
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -141,8 +157,13 @@ export default function SequenceFlashcard({
   }
 
   return (
-    <div className="nes-container is-rounded w-full max-w-xl bg-white space-y-5 relative">
+    <div
+      className={`nes-container is-rounded w-full max-w-xl bg-white space-y-5 relative ${
+        justAnswered && !isFullyCorrect ? "shake flash-wrong" : ""
+      }`}
+    >
       {!stats && <NewBadge />}
+      {confettiConfig && <ConfettiBurst config={confettiConfig} />}
       <button
         type="button"
         tabIndex={-1}
@@ -205,7 +226,7 @@ export default function SequenceFlashcard({
       {!showAnswer && (
         <button
           type="button"
-          onClick={() => setRevealed(true)}
+          onClick={reveal}
           className="nes-btn is-primary w-full font-pixel text-xs py-2"
         >
           CHECK ORDER
