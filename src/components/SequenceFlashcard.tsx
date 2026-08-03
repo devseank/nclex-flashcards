@@ -36,16 +36,21 @@ function splitNumberedRationale(rationale: string): string[] {
     .filter(Boolean);
 }
 
+// A choice's letter is fixed to its original (scrambled-storage) index, not
+// its current position in the dragged order -- so a step's label never
+// changes as you drag it, unlike a position-based "1. 2. 3." would.
+const LETTERS = "ABCDEFGHI";
+
 function SortableStep({
   id,
+  letter,
   label,
-  position,
   variant,
   disabled,
 }: {
   id: string;
+  letter: string;
   label: string;
-  position: number;
   variant: string;
   disabled: boolean;
 }) {
@@ -72,7 +77,20 @@ function SortableStep({
         </span>
       )}
       <span>
-        {position + 1}. {label}
+        {letter}. {label}
+      </span>
+    </div>
+  );
+}
+
+// Same row markup as SortableStep (disabled), minus the drag wiring --
+// so the correct-order list below looks identical to the STEPS list above,
+// just recolored, instead of introducing a different visual notation.
+function StaticStepRow({ letter, label, variant }: { letter: string; label: string; variant: string }) {
+  return (
+    <div className={`nes-btn w-full text-left text-base flex items-center gap-3 ${variant}`}>
+      <span>
+        {letter}. {label}
       </span>
     </div>
   );
@@ -166,8 +184,8 @@ export default function SequenceFlashcard({
                   <SortableStep
                     key={choiceIndex}
                     id={String(choiceIndex)}
+                    letter={LETTERS[choiceIndex]}
                     label={question.choices[choiceIndex]}
-                    position={position}
                     variant={variant}
                     disabled={showAnswer}
                   />
@@ -192,6 +210,22 @@ export default function SequenceFlashcard({
         >
           CHECK ORDER
         </button>
+      )}
+
+      {showAnswer && (
+        <div className="space-y-2">
+          <p className="font-pixel text-[10px] text-gray-500">CORRECT ORDER</p>
+          <div className="space-y-2">
+            {question.correctOrder.map((choiceIndex) => (
+              <StaticStepRow
+                key={choiceIndex}
+                letter={LETTERS[choiceIndex]}
+                label={question.choices[choiceIndex]}
+                variant="is-success"
+              />
+            ))}
+          </div>
+        </div>
       )}
 
       {showAnswer && (
