@@ -38,7 +38,9 @@ export default function SessionScreen({
           </span>
         )}
       </div>
-      <QuestionCard key={current.id} question={current} onNext={onNext} stats={stats} />
+      <div key={current.id} className="view-fade-in w-full">
+        <QuestionCard question={current} onNext={onNext} stats={stats} />
+      </div>
     </div>
   );
 }

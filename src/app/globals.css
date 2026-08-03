@@ -70,3 +70,30 @@ body {
 .shake {
   animation: shake 0.4s ease-in-out;
 }
+
+/* Entrance-only transitions -- opacity/transform are compositor-only, so
+   these never delay layout or first paint of the content underneath them. */
+@keyframes view-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.view-fade-in {
+  animation: view-fade-in 160ms ease-out both;
+}
+
+@keyframes dropdown-fade-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.dropdown-fade-in {
+  animation: dropdown-fade-in 150ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .view-fade-in,
+  .dropdown-fade-in {
+    animation: none;
+  }
+}

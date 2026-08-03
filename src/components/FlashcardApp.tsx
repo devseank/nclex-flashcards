@@ -27,7 +27,7 @@ function PickerScreen({
   children: React.ReactNode;
 }) {
   return (
-    <div className="w-full max-w-sm flex flex-col items-center gap-3">
+    <div className="view-fade-in w-full max-w-sm flex flex-col items-center gap-3">
       <PixelWindow title={title}>{children}</PixelWindow>
       {notice && <NoticeBanner notice={notice} />}
     </div>
@@ -86,15 +86,17 @@ export default function FlashcardApp() {
       <SignOutButton />
 
       {questions && view === "menu" && (
-        <PixelWindow title="MENU.EXE">
-          <Landing
-            onSelectMode={(m) => startMode(m)}
-            onSelectCategory={goToCategoryPick}
-            onSelectReview={goToReviewPick}
-            onSelectNew={goToNewPick}
-            onSelectAnalytics={goToAnalytics}
-          />
-        </PixelWindow>
+        <div className="view-fade-in w-full max-w-sm">
+          <PixelWindow title="MENU.EXE">
+            <Landing
+              onSelectMode={(m) => startMode(m)}
+              onSelectCategory={goToCategoryPick}
+              onSelectReview={goToReviewPick}
+              onSelectNew={goToNewPick}
+              onSelectAnalytics={goToAnalytics}
+            />
+          </PixelWindow>
+        </div>
       )}
 
       {view === "categoryPick" && (
@@ -120,30 +122,38 @@ export default function FlashcardApp() {
         </PickerScreen>
       )}
 
-      {view === "analytics" && questions && <Analytics questions={questions} onBack={backToMenu} />}
+      {view === "analytics" && questions && (
+        <div className="view-fade-in w-full">
+          <Analytics questions={questions} onBack={backToMenu} />
+        </div>
+      )}
 
       {view === "finished" && mode && modeTitle && (
-        <FinishedScreen
-          title={modeTitle}
-          score={score}
-          total={queue.length}
-          queue={queue}
-          answers={answers}
-          questionStats={questionStats}
-          onBackToMenu={backToMenu}
-        />
+        <div className="view-fade-in w-full max-w-xl">
+          <FinishedScreen
+            title={modeTitle}
+            score={score}
+            total={queue.length}
+            queue={queue}
+            answers={answers}
+            questionStats={questionStats}
+            onBackToMenu={backToMenu}
+          />
+        </div>
       )}
 
       {view === "session" && mode && current && (
-        <SessionScreen
-          mode={mode}
-          current={current}
-          index={index}
-          queueLength={queue.length}
-          stats={mode === "review" ? questionStats?.get(current.id) : undefined}
-          onNext={handleNext}
-          onBack={backToMenu}
-        />
+        <div className="view-fade-in w-full max-w-xl">
+          <SessionScreen
+            mode={mode}
+            current={current}
+            index={index}
+            queueLength={queue.length}
+            stats={mode === "review" ? questionStats?.get(current.id) : undefined}
+            onNext={handleNext}
+            onBack={backToMenu}
+          />
+        </div>
       )}
     </div>
   );

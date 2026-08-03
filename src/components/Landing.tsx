@@ -49,7 +49,7 @@ export default function Landing({
       </button>
 
       {open && (
-        <div className="nes-container is-rounded bg-white p-3 pb-[calc(2rem+env(safe-area-inset-bottom))] space-y-3 absolute left-0 right-0 mt-3 z-10">
+        <div className="dropdown-fade-in nes-container is-rounded bg-white p-3 pb-[calc(2rem+env(safe-area-inset-bottom))] space-y-3 absolute left-0 right-0 mt-3 z-10">
           {MODE_OPTIONS.map((opt) => (
             <button
               key={opt.key}
