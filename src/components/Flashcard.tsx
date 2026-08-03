@@ -7,6 +7,7 @@ import { categoryVariant } from "@/lib/categoryVariant";
 import { cheerMessage } from "@/lib/cheerMessage";
 import NewBadge from "@/components/NewBadge";
 import ConfettiBurst, { ConfettiConfig, buildConfettiConfig } from "@/components/ConfettiBurst";
+import StickyNextBar from "@/components/StickyNextBar";
 
 export type FlashcardMode = "immediate" | "review";
 
@@ -96,7 +97,7 @@ export default function Flashcard({
 
   return (
     <div
-      className={`nes-container is-rounded w-full max-w-xl bg-white space-y-5 relative ${
+      className={`nes-container is-rounded w-full max-w-xl bg-white space-y-5 relative pb-24 ${
         justAnswered ? (isFullyCorrect ? "flash-correct" : "shake flash-wrong") : ""
       }`}
     >
@@ -176,15 +177,7 @@ export default function Flashcard({
         </button>
       )}
 
-      {mode !== "review" && (
-        <button
-          type="button"
-          onClick={() => onNext?.(selected)}
-          className="nes-btn is-primary w-full font-pixel text-xs py-2"
-        >
-          NEXT
-        </button>
-      )}
+      {mode !== "review" && <StickyNextBar onClick={() => onNext?.(selected)} />}
     </div>
   );
 }

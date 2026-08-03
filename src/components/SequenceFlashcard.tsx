@@ -25,6 +25,7 @@ import { categoryVariant } from "@/lib/categoryVariant";
 import { cheerMessage } from "@/lib/cheerMessage";
 import NewBadge from "@/components/NewBadge";
 import ConfettiBurst, { ConfettiConfig, buildConfettiConfig } from "@/components/ConfettiBurst";
+import StickyNextBar from "@/components/StickyNextBar";
 import { FlashcardMode } from "@/components/Flashcard";
 
 // Rationale for sequence questions is a numbered walkthrough ("1. ... 2. ...")
@@ -158,7 +159,7 @@ export default function SequenceFlashcard({
 
   return (
     <div
-      className={`nes-container is-rounded w-full max-w-xl bg-white space-y-5 relative ${
+      className={`nes-container is-rounded w-full max-w-xl bg-white space-y-5 relative pb-24 ${
         justAnswered ? (isFullyCorrect ? "flash-correct" : "shake flash-wrong") : ""
       }`}
     >
@@ -260,15 +261,7 @@ export default function SequenceFlashcard({
         </div>
       )}
 
-      {mode !== "review" && (
-        <button
-          type="button"
-          onClick={() => onNext?.(order)}
-          className="nes-btn is-primary w-full font-pixel text-xs py-2"
-        >
-          NEXT
-        </button>
-      )}
+      {mode !== "review" && <StickyNextBar onClick={() => onNext?.(order)} />}
     </div>
   );
 }
