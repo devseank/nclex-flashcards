@@ -9,6 +9,9 @@ if (!supabaseUrl || !supabasePublishableKey) {
   );
 }
 
+// detectSessionInUrl parses the #access_token=... fragment Supabase appends
+// to the redirect URL after Google OAuth completes; without it the app
+// would load signed-out even right after a successful sign-in.
 export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
   auth: {
     persistSession: true,

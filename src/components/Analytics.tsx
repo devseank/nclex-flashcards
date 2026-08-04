@@ -20,6 +20,11 @@ import { getErrorMessage } from "@/lib/errorMessage";
 import { startOfToday, startOfWeek, startOfMonth } from "@/lib/dateRanges";
 import { AnalyticsRange, buildTrendData } from "@/lib/analyticsTrend";
 
+// Fixed hex values, not CSS vars -- these are passed as SVG stroke/fill
+// props straight to recharts, which needs literal color strings rather than
+// `var(--...)` (recharts doesn't re-render on a CSS custom property change,
+// e.g. a dark-mode toggle, so these intentionally stay constant in both
+// themes rather than trying to track it).
 const NAVY = "#12314a";
 const BLUE = "#209cee";
 const GREEN = "#92cc41";

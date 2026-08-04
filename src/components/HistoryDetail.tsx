@@ -15,6 +15,11 @@ export default function HistoryDetail({
   stats?: QuestionStats;
   onBack: () => void;
 }) {
+  // `stats` must come from the caller (computed once for the whole history
+  // list) rather than being looked up here -- this question has clearly
+  // been attempted (that's why it's in history), but without `stats`
+  // QuestionCard/Flashcard has no way to know that and renders the
+  // never-attempted "NEW" badge instead.
   return (
     <div className="w-full max-w-xl flex flex-col items-center gap-3">
       <div className="w-full flex items-center px-1">

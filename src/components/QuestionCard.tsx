@@ -5,6 +5,11 @@ import { QuestionStats } from "@/services/attempts";
 import Flashcard, { FlashcardMode } from "@/components/Flashcard";
 import SequenceFlashcard from "@/components/SequenceFlashcard";
 
+// Thin dispatcher by question.type, not a shared visual component -- each
+// question type keeps its own answer-comparison rendering (colored
+// choice/step rows, not two separate "your answer" vs "correct answer"
+// blocks) since showing the same rows twice with different colors was
+// found to be higher cognitive load than one list, differently colored.
 export default function QuestionCard({
   question,
   mode = "immediate",

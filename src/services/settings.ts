@@ -1,5 +1,10 @@
 import { supabase } from "@/lib/supabase";
 
+// No `.eq("user_id", ...)` needed on either call below -- RLS scopes select
+// to the caller's own row, and `user_id` defaults to auth.uid() on insert.
+// `maybeSingle()` (not `single()`) on fetch because a brand-new user has no
+// row yet, which is a valid "no preference saved" result, not an error.
+
 export type ThemePreference = "system" | "light" | "dark";
 
 function isThemePreference(value: string): value is ThemePreference {

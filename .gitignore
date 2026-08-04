@@ -42,6 +42,13 @@ yarn-error.log*
 /data/*.sql
 !/data/questions.template.csv
 
+# local-only /dev-preview fixture harness for exercising the app without a
+# real Google OAuth session (see src/dev/AI_INSTRUCTIONS.md for what it is
+# and how to recreate it -- that one file is the tracked exception)
+/src/app/dev-preview/
+/src/dev/*
+!/src/dev/AI_INSTRUCTIONS.md
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

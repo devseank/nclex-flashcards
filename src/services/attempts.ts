@@ -1,5 +1,10 @@
 import { supabase } from "@/lib/supabase";
 
+// `user_id` is never passed from the client on insert (see recordAttempt
+// below) -- the column defaults to auth.uid() and RLS scopes every select
+// to `user_id = auth.uid()`, so the Postgres side enforces per-user
+// isolation regardless of what this code does. See supabase/schema.sql.
+
 export type Attempt = {
   id: number;
   questionId: number;
