@@ -63,8 +63,8 @@ export default function FlashcardApp() {
     modeTitle,
     historyEntries,
     historyDetailEntry,
-    startMode,
-    startTypeMode,
+    startPlay,
+    startTypePlay,
     startReviewByRange,
     startReviewByCategory,
     startReviewByType,
@@ -102,7 +102,7 @@ export default function FlashcardApp() {
         <div className="view-fade-in w-full max-w-sm">
           <PixelWindow title="MENU.EXE">
             <Landing
-              onSelectMode={(m) => startMode(m)}
+              onSelectPlay={() => startPlay()}
               onSelectCategory={goToCategoryPick}
               onSelectType={goToTypePick}
               onSelectReview={goToReviewPick}
@@ -118,7 +118,7 @@ export default function FlashcardApp() {
         <PickerScreen title="CATEGORY.EXE" notice={notice}>
           <CategoryMode
             categories={categories}
-            onStart={(category, m) => startMode(m, category)}
+            onStart={startPlay}
             onStartWrong={startReviewByCategory}
             onBack={backToMenu}
           />
@@ -127,7 +127,7 @@ export default function FlashcardApp() {
 
       {view === "typePick" && (
         <PickerScreen title="TYPE.EXE" notice={notice}>
-          <TypeMode onStart={startTypeMode} onStartWrong={startReviewByType} onBack={backToMenu} />
+          <TypeMode onStart={startTypePlay} onStartWrong={startReviewByType} onBack={backToMenu} />
         </PickerScreen>
       )}
 

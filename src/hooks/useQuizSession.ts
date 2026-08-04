@@ -10,9 +10,8 @@ import {
 } from "@/services/attempts";
 import { getErrorMessage } from "@/lib/errorMessage";
 import { startOfToday, startOfWeek } from "@/lib/dateRanges";
-import { SessionMode, shuffle, pickRandom, isCorrect, selectMostWrong, selectUnattempted, selectLeastRecentlyTried } from "@/lib/quizLogic";
+import { SessionMode, pickRandom, isCorrect, selectMostWrong, selectUnattempted, selectLeastRecentlyTried } from "@/lib/quizLogic";
 import { QuestionKind, KIND_LABELS, matchesKind } from "@/lib/questionKind";
-import { Mode } from "@/components/Landing";
 import { ReviewRange } from "@/components/ReviewMode";
 import { NewRange } from "@/components/NewMode";
 import { HistoryLimit } from "@/components/HistoryMode";
@@ -34,9 +33,7 @@ export type View =
 export type Notice = { text: string; tone: "info" | "error" };
 
 const MODE_LABELS: Record<SessionMode, string> = {
-  quick5: "QUICK 5",
-  quick10: "QUICK 10",
-  infinite: "INFINITE",
+  infinite: "PLAY",
   review: "REVIEW",
   new: "NEW",
 };
@@ -89,17 +86,12 @@ export function useQuizSession(questions: Question[] | null) {
     }
   }
 
-  function startMode(m: Mode, category: string | null = null) {
+  function startPlay(category: string | null = null) {
     if (!questions) return;
     const pool = category ? questions.filter((q) => q.category === category) : questions;
     if (pool.length === 0) return;
 
-    if (m === "infinite") {
-      beginSession(pool, m, "", category);
-    } else {
-      const count = m === "quick5" ? 5 : 10;
-      beginSession(shuffle(pool).slice(0, Math.min(count, pool.length)), m, "", category);
-    }
+    beginSession(pool, "infinite", "", category);
 
     // Fire-and-forget: powers the cheer message's attempt history. Not
     // awaited so quiz start stays instant; the cheer just appears a beat
@@ -109,17 +101,12 @@ export function useQuizSession(questions: Question[] | null) {
       .catch(() => {});
   }
 
-  function startTypeMode(kind: QuestionKind, m: Mode) {
+  function startTypePlay(kind: QuestionKind) {
     if (!questions) return;
     const pool = questions.filter((q) => matchesKind(q, kind));
     if (pool.length === 0) return;
 
-    if (m === "infinite") {
-      beginSession(pool, m, "", KIND_LABELS[kind]);
-    } else {
-      const count = m === "quick5" ? 5 : 10;
-      beginSession(shuffle(pool).slice(0, Math.min(count, pool.length)), m, "", KIND_LABELS[kind]);
-    }
+    beginSession(pool, "infinite", "", KIND_LABELS[kind]);
 
     fetchAttempts()
       .then((attempts) => setQuestionStats(computeQuestionStats(attempts)))
@@ -331,8 +318,8 @@ export function useQuizSession(questions: Question[] | null) {
     modeTitle,
     historyEntries,
     historyDetailEntry,
-    startMode,
-    startTypeMode,
+    startPlay,
+    startTypePlay,
     startReviewByRange,
     startReviewByCategory,
     startReviewByType,

@@ -1,8 +1,7 @@
 import { Question } from "@/services/questions";
 import { Attempt, computeQuestionStats } from "@/services/attempts";
-import { Mode } from "@/components/Landing";
 
-export type SessionMode = Mode | "review" | "new";
+export type SessionMode = "infinite" | "review" | "new";
 
 export function shuffle<T>(items: T[]): T[] {
   const copy = [...items];

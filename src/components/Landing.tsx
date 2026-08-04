@@ -1,17 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+// A small pixel-font header above a group of related menu buttons, so this
+// home screen reads as organized sections instead of one long wall of
+// buttons.
+function SectionLabel({ children }: { children: string }) {
+  return <p className="font-pixel text-[9px] text-gray-400">{children}</p>;
+}
 
-export type Mode = "quick5" | "quick10" | "infinite";
-
-const MODE_OPTIONS: { key: Mode; label: string }[] = [
-  { key: "quick5", label: "QUICK 5" },
-  { key: "quick10", label: "QUICK 10" },
-  { key: "infinite", label: "INFINITE" },
-];
-
+// No toggle/expand step here -- this component is only ever rendered as the
+// home screen's own content (already inside a "MENU.EXE" window), so
+// hiding it behind its own extra "open menu" tap was a redundant step.
 export default function Landing({
-  onSelectMode,
+  onSelectPlay,
   onSelectCategory,
   onSelectType,
   onSelectReview,
@@ -19,7 +19,7 @@ export default function Landing({
   onSelectHistory,
   onSelectAnalytics,
 }: {
-  onSelectMode: (mode: Mode) => void;
+  onSelectPlay: () => void;
   onSelectCategory: () => void;
   onSelectType: () => void;
   onSelectReview: () => void;
@@ -27,108 +27,75 @@ export default function Landing({
   onSelectHistory: () => void;
   onSelectAnalytics: () => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   return (
-    <div ref={ref} className="relative w-full">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-label="Open menu"
-        aria-expanded={open}
-        className="nes-btn is-primary w-full font-pixel text-sm py-3 flex items-center justify-center gap-3 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#12314a]"
-      >
-        <span aria-hidden="true">☰</span> MENU
-      </button>
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <SectionLabel>PLAY</SectionLabel>
+        <button
+          type="button"
+          onClick={onSelectPlay}
+          className="shine-sweep nes-btn is-primary w-full overflow-hidden font-pixel text-sm py-3 flex items-center justify-center gap-2"
+        >
+          <span aria-hidden="true">▶</span> PLAY
+        </button>
+      </div>
 
-      {open && (
-        <div className="dropdown-fade-in nes-container is-rounded bg-white p-3 pb-[calc(2rem+env(safe-area-inset-bottom))] space-y-3 absolute left-0 right-0 mt-3 z-10">
-          {MODE_OPTIONS.map((opt) => (
-            <button
-              key={opt.key}
-              type="button"
-              onClick={() => {
-                onSelectMode(opt.key);
-                setOpen(false);
-              }}
-              className="nes-btn w-full font-pixel text-xs py-2"
-            >
-              {opt.label}
-            </button>
-          ))}
+      <div className="space-y-2">
+        <SectionLabel>FILTER</SectionLabel>
+        <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
-            onClick={() => {
-              onSelectCategory();
-              setOpen(false);
-            }}
-            className="nes-btn is-warning w-full font-pixel text-xs py-2"
+            onClick={onSelectCategory}
+            className="nes-btn is-warning font-pixel text-[10px] py-2"
           >
             CATEGORY
           </button>
           <button
             type="button"
-            onClick={() => {
-              onSelectType();
-              setOpen(false);
-            }}
-            className="nes-btn w-full font-pixel text-xs py-2"
+            onClick={onSelectType}
+            className="nes-btn font-pixel text-[10px] py-2"
           >
             TYPE
           </button>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <SectionLabel>SMART REVIEW</SectionLabel>
+        <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
-            onClick={() => {
-              onSelectReview();
-              setOpen(false);
-            }}
-            className="nes-btn is-error w-full font-pixel text-xs py-2"
+            onClick={onSelectReview}
+            className="nes-btn is-error font-pixel text-[10px] py-2"
           >
             REVIEW
           </button>
           <button
             type="button"
-            onClick={() => {
-              onSelectNew();
-              setOpen(false);
-            }}
-            className="nes-btn is-primary w-full font-pixel text-xs py-2"
+            onClick={onSelectNew}
+            className="nes-btn is-primary font-pixel text-[10px] py-2"
           >
             NEW
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              onSelectHistory();
-              setOpen(false);
-            }}
-            className="nes-btn is-warning w-full font-pixel text-xs py-2"
-          >
-            HISTORY
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              onSelectAnalytics();
-              setOpen(false);
-            }}
-            className="nes-btn is-success w-full font-pixel text-xs py-2"
-          >
-            ANALYTICS
-          </button>
         </div>
-      )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={onSelectHistory}
+          className="nes-btn is-warning font-pixel text-[10px] py-2"
+        >
+          HISTORY
+        </button>
+        <button
+          type="button"
+          onClick={onSelectAnalytics}
+          className="nes-btn is-success font-pixel text-[10px] py-2"
+        >
+          ANALYTICS
+        </button>
+      </div>
     </div>
   );
 }

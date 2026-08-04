@@ -135,18 +135,19 @@ html {
   }
 }
 
-/* Periodic light sweep across the golden NEW badge. The parent clips this
-   via overflow-hidden, so the sweep never spills onto surrounding content. */
-@keyframes badge-shine {
+/* Periodic light sweep -- used on the golden NEW badge and the PLAY button.
+   The element needs its own overflow-hidden so the sweep never spills onto
+   surrounding content. */
+@keyframes shine-sweep {
   0%, 20% { transform: translateX(-150%) skewX(-20deg); }
   55%, 100% { transform: translateX(220%) skewX(-20deg); }
 }
 
-.badge-shine {
+.shine-sweep {
   isolation: isolate;
 }
 
-.badge-shine::after {
+.shine-sweep::after {
   content: "";
   position: absolute;
   top: 0;
@@ -154,11 +155,11 @@ html {
   width: 35%;
   height: 100%;
   background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.9), transparent);
-  animation: badge-shine 2.6s ease-in-out infinite;
+  animation: shine-sweep 2.6s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .badge-shine::after {
+  .shine-sweep::after {
     animation: none;
   }
 }

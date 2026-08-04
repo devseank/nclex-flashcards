@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Mode } from "@/components/Landing";
 import { QuestionKind, KIND_LABELS } from "@/lib/questionKind";
 
 const KIND_OPTIONS: { key: QuestionKind; label: string; variant: string }[] = [
@@ -10,18 +9,12 @@ const KIND_OPTIONS: { key: QuestionKind; label: string; variant: string }[] = [
   { key: "sequence", label: KIND_LABELS.sequence, variant: "is-success" },
 ];
 
-const MODE_OPTIONS: { key: Mode; label: string }[] = [
-  { key: "quick5", label: "QUICK 5" },
-  { key: "quick10", label: "QUICK 10" },
-  { key: "infinite", label: "INFINITE" },
-];
-
 export default function TypeMode({
   onStart,
   onStartWrong,
   onBack,
 }: {
-  onStart: (kind: QuestionKind, mode: Mode) => void;
+  onStart: (kind: QuestionKind) => void;
   onStartWrong: (kind: QuestionKind) => void;
   onBack: () => void;
 }) {
@@ -54,16 +47,13 @@ export default function TypeMode({
   return (
     <div className="space-y-3">
       <p className="text-sm text-gray-500">{KIND_LABELS[kind]}</p>
-      {MODE_OPTIONS.map((opt) => (
-        <button
-          key={opt.key}
-          type="button"
-          onClick={() => onStart(kind, opt.key)}
-          className="nes-btn w-full font-pixel text-xs py-2"
-        >
-          {opt.label}
-        </button>
-      ))}
+      <button
+        type="button"
+        onClick={() => onStart(kind)}
+        className="nes-btn is-primary w-full font-pixel text-xs py-2"
+      >
+        PLAY
+      </button>
       <button
         type="button"
         onClick={() => onStartWrong(kind)}

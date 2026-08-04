@@ -1,14 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Mode } from "@/components/Landing";
 import { categoryVariant } from "@/lib/categoryVariant";
-
-const MODE_OPTIONS: { key: Mode; label: string }[] = [
-  { key: "quick5", label: "QUICK 5" },
-  { key: "quick10", label: "QUICK 10" },
-  { key: "infinite", label: "INFINITE" },
-];
 
 export default function CategoryMode({
   categories,
@@ -17,7 +10,7 @@ export default function CategoryMode({
   onBack,
 }: {
   categories: string[];
-  onStart: (category: string, mode: Mode) => void;
+  onStart: (category: string) => void;
   onStartWrong: (category: string) => void;
   onBack: () => void;
 }) {
@@ -50,16 +43,13 @@ export default function CategoryMode({
   return (
     <div className="space-y-3">
       <p className="text-sm text-gray-500">{category}</p>
-      {MODE_OPTIONS.map((opt) => (
-        <button
-          key={opt.key}
-          type="button"
-          onClick={() => onStart(category, opt.key)}
-          className="nes-btn w-full font-pixel text-xs py-2"
-        >
-          {opt.label}
-        </button>
-      ))}
+      <button
+        type="button"
+        onClick={() => onStart(category)}
+        className="nes-btn is-primary w-full font-pixel text-xs py-2"
+      >
+        PLAY
+      </button>
       <button
         type="button"
         onClick={() => onStartWrong(category)}
