@@ -17,12 +17,20 @@ import { createPortal } from "react-dom";
 // out of. WebKit's actual fix for viewport-vs-toolbar sizing is the
 // dvh/svh/lvh units (Safari 15.4+, see
 // https://webkit.org/blog/12445/new-webkit-features-in-safari-15-4/), which
-// this app already leans on via Tailwind's `min-h-dvh` on the page root --
-// so the right move is to trust the platform's own mechanism here rather
-// than duplicate it with JS.
+// this app already leans on via Tailwind's `min-h-dvh` on the page root.
+//
+// FOOTER_BUFFER gives the bar a sacrificial empty "footer" strip below the
+// button, roughly as tall as Safari's collapsed toolbar. If that chrome
+// does intrude on the bottom of the page mid-animation, it eats into this
+// empty padding first rather than the button itself.
+const FOOTER_BUFFER = "3.5rem";
+
 export default function StickyNextBar({ onClick }: { onClick: () => void }) {
   return createPortal(
-    <div className="gpu-layer fixed inset-x-0 bottom-0 z-40 border-t-4 border-black bg-white px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+    <div
+      className="gpu-layer fixed inset-x-0 bottom-0 z-40 border-t-4 border-black bg-white px-4 pt-3"
+      style={{ paddingBottom: `calc(${FOOTER_BUFFER} + env(safe-area-inset-bottom))` }}
+    >
       <button
         type="button"
         onClick={onClick}
