@@ -9,6 +9,9 @@ import CategoryMode from "@/components/CategoryMode";
 import TypeMode from "@/components/TypeMode";
 import ReviewMode from "@/components/ReviewMode";
 import NewMode from "@/components/NewMode";
+import HistoryMode from "@/components/HistoryMode";
+import HistoryList from "@/components/HistoryList";
+import HistoryDetail from "@/components/HistoryDetail";
 import Analytics from "@/components/Analytics";
 import PixelWindow from "@/components/PixelWindow";
 import SessionScreen from "@/components/SessionScreen";
@@ -58,17 +61,23 @@ export default function FlashcardApp() {
     notice,
     score,
     modeTitle,
+    historyEntries,
+    historyDetailEntry,
     startMode,
     startTypeMode,
     startReviewByRange,
     startReviewByCategory,
     startReviewByType,
     startNewByRange,
+    startHistoryList,
+    selectHistoryEntry,
+    backToHistoryList,
     backToMenu,
     goToCategoryPick,
     goToTypePick,
     goToReviewPick,
     goToNewPick,
+    goToHistoryPick,
     goToAnalytics,
     handleNext,
   } = useQuizSession(questions);
@@ -98,6 +107,7 @@ export default function FlashcardApp() {
               onSelectType={goToTypePick}
               onSelectReview={goToReviewPick}
               onSelectNew={goToNewPick}
+              onSelectHistory={goToHistoryPick}
               onSelectAnalytics={goToAnalytics}
             />
           </PixelWindow>
@@ -131,6 +141,29 @@ export default function FlashcardApp() {
         <PickerScreen title="NEW.EXE" notice={notice}>
           <NewMode onSelect={startNewByRange} onBack={backToMenu} />
         </PickerScreen>
+      )}
+
+      {view === "historyPick" && (
+        <PickerScreen title="HISTORY.EXE" notice={notice}>
+          <HistoryMode onSelect={startHistoryList} onBack={backToMenu} />
+        </PickerScreen>
+      )}
+
+      {view === "historyList" && (
+        <div className="view-fade-in w-full max-w-xl">
+          <HistoryList entries={historyEntries} onSelect={selectHistoryEntry} onBack={goToHistoryPick} />
+        </div>
+      )}
+
+      {view === "historyDetail" && historyDetailEntry && (
+        <div className="view-fade-in w-full max-w-xl">
+          <HistoryDetail
+            question={historyDetailEntry.question}
+            response={historyDetailEntry.attempt.selectedIndices}
+            stats={questionStats?.get(historyDetailEntry.question.id)}
+            onBack={backToHistoryList}
+          />
+        </div>
       )}
 
       {view === "analytics" && questions && (

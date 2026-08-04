@@ -16,6 +16,7 @@ export default function Landing({
   onSelectType,
   onSelectReview,
   onSelectNew,
+  onSelectHistory,
   onSelectAnalytics,
 }: {
   onSelectMode: (mode: Mode) => void;
@@ -23,6 +24,7 @@ export default function Landing({
   onSelectType: () => void;
   onSelectReview: () => void;
   onSelectNew: () => void;
+  onSelectHistory: () => void;
   onSelectAnalytics: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -104,6 +106,16 @@ export default function Landing({
             className="nes-btn is-primary w-full font-pixel text-xs py-2"
           >
             NEW
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              onSelectHistory();
+              setOpen(false);
+            }}
+            className="nes-btn is-warning w-full font-pixel text-xs py-2"
+          >
+            HISTORY
           </button>
           <button
             type="button"

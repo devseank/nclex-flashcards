@@ -15,8 +15,21 @@ import { QuestionKind, KIND_LABELS, matchesKind } from "@/lib/questionKind";
 import { Mode } from "@/components/Landing";
 import { ReviewRange } from "@/components/ReviewMode";
 import { NewRange } from "@/components/NewMode";
+import { HistoryLimit } from "@/components/HistoryMode";
+import { HistoryEntry } from "@/components/HistoryList";
 
-export type View = "menu" | "categoryPick" | "typePick" | "reviewPick" | "newPick" | "session" | "finished" | "analytics";
+export type View =
+  | "menu"
+  | "categoryPick"
+  | "typePick"
+  | "reviewPick"
+  | "newPick"
+  | "historyPick"
+  | "historyList"
+  | "historyDetail"
+  | "session"
+  | "finished"
+  | "analytics";
 
 export type Notice = { text: string; tone: "info" | "error" };
 
@@ -55,6 +68,8 @@ export function useQuizSession(questions: Question[] | null) {
   const [answers, setAnswers] = useState<number[][]>([]);
   const [questionStats, setQuestionStats] = useState<Map<number, QuestionStats> | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
+  const [historyDetailEntry, setHistoryDetailEntry] = useState<HistoryEntry | null>(null);
 
   function beginSession(pool: Question[], m: SessionMode, label: string, category: string | null) {
     setMode(m);
@@ -194,6 +209,43 @@ export function useQuizSession(questions: Question[] | null) {
     }
   }
 
+  async function startHistoryList(limit: HistoryLimit) {
+    if (!questions) return;
+
+    try {
+      const attempts = await fetchAttempts();
+      const entries: HistoryEntry[] = attempts
+        .slice()
+        .sort((a, b) => (a.attemptedAt < b.attemptedAt ? 1 : -1))
+        .slice(0, limit)
+        .flatMap((attempt) => {
+          const question = questions.find((q) => q.id === attempt.questionId);
+          return question ? [{ attempt, question }] : [];
+        });
+
+      if (entries.length === 0) {
+        setNotice({ text: "No attempts yet — answer a few questions first!", tone: "info" });
+        return;
+      }
+
+      setQuestionStats(computeQuestionStats(attempts));
+      setHistoryEntries(entries);
+      setNotice(null);
+      setView("historyList");
+    } catch (err) {
+      setNotice({ text: getErrorMessage(err), tone: "error" });
+    }
+  }
+
+  function selectHistoryEntry(entry: HistoryEntry) {
+    setHistoryDetailEntry(entry);
+    setView("historyDetail");
+  }
+
+  function backToHistoryList() {
+    setView("historyList");
+  }
+
   function backToMenu() {
     setView("menu");
     setMode(null);
@@ -202,6 +254,8 @@ export function useQuizSession(questions: Question[] | null) {
     setCurrent(null);
     setQuestionStats(null);
     setNotice(null);
+    setHistoryEntries([]);
+    setHistoryDetailEntry(null);
   }
 
   function goToCategoryPick() {
@@ -212,6 +266,11 @@ export function useQuizSession(questions: Question[] | null) {
   function goToTypePick() {
     setNotice(null);
     setView("typePick");
+  }
+
+  function goToHistoryPick() {
+    setNotice(null);
+    setView("historyPick");
   }
 
   function goToReviewPick() {
@@ -270,17 +329,23 @@ export function useQuizSession(questions: Question[] | null) {
     notice,
     score,
     modeTitle,
+    historyEntries,
+    historyDetailEntry,
     startMode,
     startTypeMode,
     startReviewByRange,
     startReviewByCategory,
     startReviewByType,
     startNewByRange,
+    startHistoryList,
+    selectHistoryEntry,
+    backToHistoryList,
     backToMenu,
     goToCategoryPick,
     goToTypePick,
     goToReviewPick,
     goToNewPick,
+    goToHistoryPick,
     goToAnalytics,
     handleNext,
   };
