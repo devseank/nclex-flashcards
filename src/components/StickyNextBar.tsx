@@ -10,7 +10,10 @@ import { createPortal } from "react-dom";
 // to that wrapper instead of the real viewport.
 export default function StickyNextBar({ onClick }: { onClick: () => void }) {
   return createPortal(
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t-4 border-black bg-white/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-sm">
+    // Solid background, no backdrop-filter: blurring behind a position:fixed
+    // element is exactly the combination that triggers iOS Safari's
+    // repaint-during-scroll bug (see .sticky-fixed in globals.css).
+    <div className="sticky-fixed fixed inset-x-0 bottom-0 z-40 border-t-4 border-black bg-white px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
       <button
         type="button"
         onClick={onClick}

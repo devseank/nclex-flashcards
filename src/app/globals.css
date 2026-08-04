@@ -55,6 +55,18 @@ html {
   background-color: #209cee;
 }
 
+/* iOS Safari can fail to repaint a position:fixed element during fast
+   scrolling (especially scrolling up) -- it briefly vanishes rather than
+   staying put. Forcing the element onto its own GPU compositing layer up
+   front (rather than letting Safari create/destroy that layer per scroll
+   frame) is the standard fix for this class of bug. */
+.sticky-fixed {
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
 @keyframes blink {
   0%, 49% { opacity: 1; }
   50%, 100% { opacity: 0; }
