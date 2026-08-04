@@ -20,7 +20,7 @@ export default function AnimatedHeart() {
         type="button"
         onClick={handleClick}
         aria-label="Boop the heart"
-        className="cursor-pointer bg-transparent border-none outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#12314a]"
+        className="cursor-pointer bg-transparent border-none outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--text-navy-strong)]"
       >
         <span className="heartbeat inline-block">
           <i className="nes-icon heart is-large m-0 block" />

@@ -63,3 +63,33 @@ create policy "Users can read their own attempts"
   for select
   to authenticated
   using (user_id = auth.uid());
+
+-- One row per user, upserted whenever a preference changes (currently just
+-- the theme). `user_id` is both the primary key and defaults to the
+-- caller's own id, so upserts never need to pass it explicitly.
+create table if not exists public.user_settings (
+  user_id uuid primary key default auth.uid() references auth.users (id) on delete cascade,
+  theme text not null default 'system' check (theme in ('system', 'light', 'dark')),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.user_settings enable row level security;
+
+create policy "Users can read their own settings"
+  on public.user_settings
+  for select
+  to authenticated
+  using (user_id = auth.uid());
+
+create policy "Users can insert their own settings"
+  on public.user_settings
+  for insert
+  to authenticated
+  with check (user_id = auth.uid());
+
+create policy "Users can update their own settings"
+  on public.user_settings
+  for update
+  to authenticated
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());

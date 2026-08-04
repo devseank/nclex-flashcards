@@ -219,7 +219,7 @@ export default function SequenceFlashcard({
       </div>
 
       {!showAnswer && (
-        <button type="button" onClick={reset} className="font-pixel text-[10px] text-[#33415c] underline">
+        <button type="button" onClick={reset} className="font-pixel text-[10px] text-[var(--text-navy)] underline">
           Reset order
         </button>
       )}

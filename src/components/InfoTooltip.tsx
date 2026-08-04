@@ -10,7 +10,7 @@ export default function InfoTooltip({ text }: { text: string }) {
       </button>
       <span
         role="tooltip"
-        className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 w-48 -translate-x-1/2 rounded border border-[#12314a] bg-white p-2 text-[10px] leading-snug text-[#12314a] opacity-0 shadow transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+        className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 w-48 -translate-x-1/2 rounded border border-[var(--text-navy-strong)] bg-white p-2 text-[10px] leading-snug text-[var(--text-navy-strong)] opacity-0 shadow transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
       >
         {text}
       </span>

@@ -36,7 +36,7 @@ export default function TypeMode({
         <button
           type="button"
           onClick={onBack}
-          className="font-pixel text-[10px] text-[#33415c] underline"
+          className="font-pixel text-[10px] text-[var(--text-navy)] underline"
         >
           ← MENU
         </button>
@@ -64,7 +64,7 @@ export default function TypeMode({
       <button
         type="button"
         onClick={() => setKind(null)}
-        className="font-pixel text-[10px] text-[#33415c] underline"
+        className="font-pixel text-[10px] text-[var(--text-navy)] underline"
       >
         ← TYPES
       </button>

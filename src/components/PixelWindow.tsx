@@ -31,7 +31,7 @@ export default function PixelWindow({
           type="button"
           onClick={handleCloseClick}
           aria-label="Close (not really)"
-          className="cursor-pointer bg-[#faf1de] border-2 border-black leading-none p-1 flex items-center justify-center outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#12314a]"
+          className="cursor-pointer bg-[#faf1de] border-2 border-black leading-none p-1 flex items-center justify-center outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--text-navy-strong)]"
         >
           <i className="nes-icon close is-small m-0 block" />
         </button>

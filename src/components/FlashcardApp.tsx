@@ -89,7 +89,7 @@ export default function FlashcardApp() {
     return (
       <div className={pageClassName}>
         <SignOutButton />
-        <p className="font-pixel text-sm text-[#33415c] text-center leading-relaxed">{error}</p>
+        <p className="font-pixel text-sm text-[var(--text-navy)] text-center leading-relaxed">{error}</p>
       </div>
     );
   }
@@ -167,7 +167,7 @@ export default function FlashcardApp() {
       )}
 
       {view === "analytics" && questions && (
-        <div className="view-fade-in w-full">
+        <div className="view-fade-in w-full max-w-xl">
           <Analytics questions={questions} onBack={backToMenu} />
         </div>
       )}

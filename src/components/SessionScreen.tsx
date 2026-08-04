@@ -28,12 +28,12 @@ export default function SessionScreen({
         <button
           type="button"
           onClick={onBack}
-          className="font-pixel text-[10px] text-[#33415c] underline"
+          className="font-pixel text-[10px] text-[var(--text-navy)] underline"
         >
           ← MENU
         </button>
         {mode !== "infinite" && (
-          <span className="font-pixel text-[10px] text-[#33415c]">
+          <span className="font-pixel text-[10px] text-[var(--text-navy)]">
             {index + 1} / {queueLength}
           </span>
         )}

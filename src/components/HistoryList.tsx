@@ -21,7 +21,7 @@ export default function HistoryList({
         <button
           type="button"
           onClick={onBack}
-          className="font-pixel text-[10px] text-[#33415c] underline"
+          className="font-pixel text-[10px] text-[var(--text-navy)] underline"
         >
           ← BACK
         </button>

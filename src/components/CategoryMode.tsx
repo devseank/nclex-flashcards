@@ -32,7 +32,7 @@ export default function CategoryMode({
         <button
           type="button"
           onClick={onBack}
-          className="font-pixel text-[10px] text-[#33415c] underline"
+          className="font-pixel text-[10px] text-[var(--text-navy)] underline"
         >
           ← MENU
         </button>
@@ -60,7 +60,7 @@ export default function CategoryMode({
       <button
         type="button"
         onClick={() => setCategory(null)}
-        className="font-pixel text-[10px] text-[#33415c] underline"
+        className="font-pixel text-[10px] text-[var(--text-navy)] underline"
       >
         ← CATEGORIES
       </button>

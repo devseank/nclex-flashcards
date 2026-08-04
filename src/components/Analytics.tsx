@@ -63,7 +63,7 @@ export default function Analytics({
     <button
       type="button"
       onClick={onBack}
-      className="font-pixel text-[10px] text-[#33415c] underline self-start"
+      className="font-pixel text-[10px] text-[var(--text-navy)] underline self-start"
     >
       ← MENU
     </button>
@@ -73,7 +73,7 @@ export default function Analytics({
     return (
       <div className="w-full max-w-xl flex flex-col gap-4">
         {backLink}
-        <p className="font-pixel text-sm text-[#33415c] text-center leading-relaxed">{error}</p>
+        <p className="font-pixel text-sm text-[var(--text-navy)] text-center leading-relaxed">{error}</p>
       </div>
     );
   }
@@ -127,15 +127,15 @@ export default function Analytics({
       <PixelWindow title="STATS.EXE">
         <div className="grid grid-cols-3 gap-2 text-center">
           <div>
-            <p className="font-pixel text-xl text-[#12314a]">{todayCount}</p>
+            <p className="font-pixel text-xl text-[var(--text-navy-strong)]">{todayCount}</p>
             <p className="text-xs text-gray-500">Today</p>
           </div>
           <div>
-            <p className="font-pixel text-xl text-[#12314a]">{weekCount}</p>
+            <p className="font-pixel text-xl text-[var(--text-navy-strong)]">{weekCount}</p>
             <p className="text-xs text-gray-500">This week</p>
           </div>
           <div>
-            <p className="font-pixel text-xl text-[#12314a]">{monthCount}</p>
+            <p className="font-pixel text-xl text-[var(--text-navy-strong)]">{monthCount}</p>
             <p className="text-xs text-gray-500">This month</p>
           </div>
         </div>

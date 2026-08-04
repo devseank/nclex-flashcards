@@ -7,7 +7,7 @@ export default function SignOutButton() {
     <button
       type="button"
       onClick={() => supabase.auth.signOut()}
-      className="font-pixel text-[10px] text-[#33415c] underline"
+      className="font-pixel text-[10px] text-[var(--text-navy)] underline"
     >
       Sign out
     </button>

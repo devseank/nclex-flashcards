@@ -1,8 +1,24 @@
 @import "tailwindcss";
 @import "nes.css/css/nes.min.css" layer(components);
 
+/* Dark mode is toggled by adding/removing `.dark` on <html> (see
+   ThemeProvider in src/lib/theme.tsx), not by the OS-only media-query
+   default -- this lets the in-app SYSTEM/LIGHT/DARK picker override the
+   device setting instead of only ever following it. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #eaf2fb;
+  --card-bg: #ffffff;
+  --text-navy: #33415c;
+  --text-navy-strong: #12314a;
+}
+
+.dark {
+  --background: #10161f;
+  --card-bg: #1b2432;
+  --text-navy: #9fc9ff;
+  --text-navy-strong: #cfe6ff;
 }
 
 @theme inline {
@@ -25,6 +41,72 @@ body {
   background: var(--background);
 }
 
+.dark body {
+  color: #dbe4f0;
+}
+
+/* Every card/panel in the app is `nes-container ... bg-white` (or plain
+   `bg-white` for smaller surfaces like tooltips/the sticky next bar) --
+   overriding the utility class itself here covers all of them at once
+   instead of touching every component. */
+.dark .bg-white {
+  background-color: var(--card-bg);
+}
+
+.dark .text-gray-400,
+.dark .text-gray-500,
+.dark .text-gray-700 {
+  color: #93a3b8;
+}
+
+/* Per-choice rationale box on Flashcard (Tailwind's gray-50/gray-300, not
+   the bg-white nes-container cards the rule above already handles). */
+.dark .bg-gray-50 {
+  background-color: #232e40;
+}
+
+.dark .border-gray-300 {
+  border-color: #3d4c63;
+}
+
+/* nes.css's own is-disabled look (light gray fill, dimmed opacity) reads as
+   another stray light box against a dark card. */
+.dark .nes-btn.is-disabled {
+  background-color: #2a3547;
+  color: #93a3b8;
+}
+
+/* Plain (no color variant) nes-btn instances -- unselected/unanswered
+   choice buttons on Flashcard/SequenceFlashcard, list rows on
+   History/CategoryMode/TypeMode/HistoryMode -- default to nes.css's own
+   white/dark-gray colors, which stay bright white even under `.dark`. The
+   :not() chain keeps this from also repainting the colored is-primary/
+   is-success/is-warning/is-error/is-disabled variants, which already read
+   fine as-is in dark mode. */
+.dark .nes-btn:not(.is-primary):not(.is-success):not(.is-warning):not(.is-error):not(.is-disabled) {
+  background-color: var(--card-bg);
+  color: #dbe4f0;
+  /* nes.css's pixel border is a fixed near-black SVG (border-image-source),
+     and its bevel highlight (::after) is only inset on the bottom+right
+     edges -- against this dark background both nearly disappear on the
+     top/left edges, where nothing but that near-black border was ever
+     doing the job. A visible ring on all 4 sides fixes that without
+     touching the border-image/bevel nes.css already draws. Outline, not
+     box-shadow: several of these buttons (e.g. HistoryList's rows) have
+     their own `overflow-hidden` for text-truncate, which clips a box-shadow
+     extending past the border -- outline isn't part of the box model and
+     is never clipped by an element's own overflow. */
+  outline: 2px solid #4a5a75;
+  outline-offset: 0px;
+  /* nes.css's own WebKit media-query hack sets border-image-repeat:space,
+     which tiles the pixel-corner image with gaps whenever a button's width
+     isn't an exact multiple of the tile size -- normally imperceptible on a
+     white background, but the gaps land right against our new ring above
+     and read as a dashed border. Stretching instead of tiling removes the
+     gaps entirely (the corner image has no repeating detail to distort). */
+  border-image-repeat: stretch;
+}
+
 .font-pixel {
   font-family: var(--font-pixel), monospace;
 }
@@ -35,6 +117,10 @@ body {
 html {
   scrollbar-width: thin;
   scrollbar-color: #12314a var(--background);
+}
+
+.dark html {
+  scrollbar-color: #345170 var(--background);
 }
 
 ::-webkit-scrollbar {
@@ -49,6 +135,10 @@ html {
   background-color: #12314a;
   border: 2px solid var(--background);
   border-radius: 0;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background-color: #345170;
 }
 
 ::-webkit-scrollbar-thumb:hover {

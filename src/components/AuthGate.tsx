@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import type { Session } from "@supabase/supabase-js";
+import { useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import { useSession } from "@/lib/useSession";
 import AnimatedHeart from "@/components/AnimatedHeart";
 import PixelWindow from "@/components/PixelWindow";
 
@@ -24,20 +24,13 @@ function signInWithGoogle() {
 }
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
-  const [session, setSession] = useState<Session | null | undefined>(undefined);
+  const session = useSession();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
-
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session?.user.email) {
-        localStorage.setItem(LAST_EMAIL_KEY, session.user.email);
-      }
-    });
-
-    return () => listener.subscription.unsubscribe();
-  }, []);
+    if (session?.user.email) {
+      localStorage.setItem(LAST_EMAIL_KEY, session.user.email);
+    }
+  }, [session]);
 
   if (session === undefined) {
     return <div className="min-h-dvh" />;
@@ -51,7 +44,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
           <button
             type="button"
             onClick={signInWithGoogle}
-            className="font-pixel text-sm text-[#33415c] blink flex items-center justify-center gap-2 mx-auto cursor-pointer bg-transparent border-none outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#12314a]"
+            className="font-pixel text-sm text-[var(--text-navy)] blink flex items-center justify-center gap-2 mx-auto cursor-pointer bg-transparent border-none outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--text-navy-strong)]"
           >
             <i className="nes-icon google is-small m-0" />
             PRESS START
