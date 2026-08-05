@@ -17,7 +17,9 @@ A pixel-art ([nes.css](https://nostalgic-css.github.io/NES.css/)) flashcard app 
 
 ## Features
 
-- **Study modes** — PLAY (endless random practice, optionally filtered by category or question type), REVIEW (most-missed questions — today / this week / all time / least-recently-tried), and NEW (questions you haven't attempted yet — today / this week / all time).
+- **Study modes** — PLAY (spaced-repetition practice, see [Spaced repetition](#spaced-repetition) below), REVIEW (most-missed questions — today / this week / all time / least-recently-tried), and NEW (questions you haven't attempted yet — today / this week / all time).
+- **FILTER** — narrow any PLAY/REVIEW session by category, question type, and/or tags in one combined query, with a live-search box for tags and a live count of matching questions before you commit.
+- **Category + freeform tags** — every question has exactly one category plus any number of freeform tags not scoped to that category (e.g. a Pharmacology question and a Prioritization question can share a "Cardiovascular" tag).
 - **Three question types** — single choice, select-all-that-apply (SATA), and drag-and-drop step-ordering (sequence), all sharing one answer-comparison UI so right/wrong reads the same way regardless of type.
 - **Per-question memory** — every question shows your attempt count, correct/incorrect split, and last-attempted date; brand-new questions get a golden, shine-swept "NEW" badge and a first-time cheer message instead of the usual encouragement.
 - **Brief answer feedback** — a randomized confetti burst on correct answers, a shake + color flash on wrong ones, both short enough to never slow down the next question.
@@ -26,6 +28,27 @@ A pixel-art ([nes.css](https://nostalgic-css.github.io/NES.css/)) flashcard app 
 - **Dark mode** — SYSTEM / LIGHT / DARK, defaults to the OS preference, and syncs to your account (via a `user_settings` table) so it follows you across devices once you're signed in.
 - Signed in via Google OAuth (Supabase Auth); every question/attempt is scoped to your own account via Postgres row-level security.
 
+## Spaced repetition
+
+PLAY doesn't pick questions purely at random — it uses a Leitner-style box
+system derived entirely from your attempt history (no separate schedule
+table to keep in sync): a correct answer bumps a question up a box, meaning
+a longer wait before it's due again; an incorrect answer drops it straight
+back to box 0, due immediately. Box intervals: immediate / 1 day / 3 days /
+7 days / 14 days / 30 days.
+
+Rather than strict priority tiers (which turned out to have real starvation
+bugs — see `src/lib/srs.ts`'s comments for the two that were caught and
+rejected), the next question is chosen by **weighted-random across the
+whole pool** every time: never-attempted, due, and not-yet-due questions all
+compete, just with different weights, so nothing is ever *impossible* to
+see next, only rarer. On top of that, a hard **escape valve** force-picks
+anything that's been overdue long enough, guaranteeing a worst-case bound on
+how long a question can go unseen — independent of how large the question
+bank grows. See [`src/lib/srs.ts`](src/lib/srs.ts) for the exact
+weights/thresholds and [`src/lib/srs.test.ts`](src/lib/srs.test.ts) for the
+test suite covering that guarantee (`pnpm test`).
+
 ## Tech stack
 
 - **Next.js 16** (App Router, static export via `output: "export"`) + **React 19**
@@ -33,6 +56,7 @@ A pixel-art ([nes.css](https://nostalgic-css.github.io/NES.css/)) flashcard app 
 - **Supabase** (Postgres + Auth) — see [`supabase/schema.sql`](supabase/schema.sql) for the full schema
 - **[@dnd-kit](https://dndkit.com/)** for the sequence question's drag-and-drop
 - **Recharts** for the analytics charts
+- **Vitest** for unit tests on pure-logic modules (`src/lib/*.test.ts`) — see [Development notes](#development-notes)
 - Deployed to **GitHub Pages** via GitHub Actions ([`.github/workflows/deploy.yml`](.github/workflows/deploy.yml))
 
 ## Getting started
@@ -64,7 +88,9 @@ src/
   app/            Next.js App Router entrypoint (layout, page, globals.css)
   components/     UI components (one file per screen/widget)
   hooks/          useQuizSession -- owns all quiz state/view transitions
-  lib/            Small framework-agnostic helpers (quiz logic, theme, date ranges, ...)
+  lib/            Small framework-agnostic helpers (quiz logic, spaced-repetition
+                  scheduling, category/tag/type filtering, theme, date ranges, ...) --
+                  see srs.ts + srs.test.ts for the PLAY scheduling algorithm
   services/       Supabase reads/writes (questions, attempts, settings)
   dev/            Dev-only fixture harness for /dev-preview -- not in the production build
 supabase/
@@ -83,5 +109,5 @@ Pushing to `main` triggers [`.github/workflows/deploy.yml`](.github/workflows/de
 
 ## Development notes
 
-- `pnpm lint` and `pnpm build` should both be clean before pushing — there's no automated test suite, so these (plus manual verification via `/dev-preview` or a real signed-in session) are the only safety net.
+- `pnpm lint`, `pnpm test`, and `pnpm build` should all be clean before pushing. `pnpm test` runs the Vitest suite, currently covering the spaced-repetition scheduling logic in `src/lib/srs.test.ts` — extend it when you touch quiz/scheduling logic that can be tested without a browser. There's still no automated coverage for UI/component behavior, so manual verification via `/dev-preview` or a real signed-in session remains the safety net for those.
 - See [`AGENTS.md`](AGENTS.md) for architecture notes and conventions aimed at AI coding agents working in this repo.

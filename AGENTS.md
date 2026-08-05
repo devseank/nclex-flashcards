@@ -88,15 +88,45 @@ self-verification rules, separate from the ones below.
   the Supabase SQL Editor again. If you add/change a table, update this file
   *and* tell the user explicitly that they need to run it themselves — you
   cannot reach their Supabase project directly.
+- **Every "which questions match this filter/query?" question funnels
+  through one seam, never an inline `.filter()` at the call site.**
+  `src/lib/questionFilter.ts`'s `queryQuestions(pool, filter)` is that seam
+  for category/type/tag filtering; `src/lib/srs.ts`'s `pickNextForReview`
+  is the equivalent for PLAY's spaced-repetition question *ordering*. Both
+  exist so a future backend/API swap (or algorithm change) only touches one
+  function's body — no caller needs to change. Add new filtering/picking
+  logic inside these, don't reintroduce ad-hoc filtering elsewhere.
+- **PLAY's question picker (`src/lib/srs.ts`) is weighted-random with a
+  hard escape valve on top, not strict priority tiers.** An earlier design
+  used strict tiers (overdue > new > not-yet-due) and had two real bugs,
+  caught before shipping: never-attempted questions could starve
+  not-yet-due ones indefinitely in a large question bank, and the "soonest
+  due" fallback had no variety (the same question kept resurfacing).
+  Weighted-random-across-the-whole-pool fixes both, but alone only gives
+  good odds, not a guarantee — the escape valve (force-pick anything overdue
+  past a threshold) is what makes the worst-case starve bound provable and
+  independent of pool size. Don't reintroduce tiered or queue-based picking
+  without re-deriving why it was rejected; the worked-out numbers are in
+  `src/lib/srs.ts`'s comments and `src/lib/srs.test.ts`'s escape-valve test.
+- **Spaced-repetition schedule state is derived, never stored.**
+  `computeSchedules` replays a question's `attempts` history through the
+  Leitner box state machine on every call — there's no separate schedule
+  table to keep in sync with the attempts log. If you're tempted to cache
+  or persist a question's box/due-date, don't; recompute it instead, same
+  as `selectMostWrong`/`selectLeastRecentlyTried` already do for their own
+  derived state.
 
 ## Verification and results validation
 
-No automated test suite exists for this app — the steps below are the only
-safety net, and skipping them is how regressions ship silently. Do all of
-these before considering a change finished, not just the ones that seem
-relevant:
+A Vitest suite exists for pure-logic modules (`src/lib/*.test.ts`, run via
+`pnpm test`) — extend it when adding or changing quiz/scheduling/filtering
+logic that can be tested without a browser (see `src/lib/srs.test.ts` for
+the pattern). There's still no automated coverage for UI/component
+behavior, so the steps below remain the only safety net for those, and
+skipping them is how regressions ship silently. Do all of these before
+considering a change finished, not just the ones that seem relevant:
 
-1. **`pnpm lint` and `pnpm build` must both be clean.** Build failures on
+1. **`pnpm lint`, `pnpm test`, and `pnpm build` must all be clean.** Build failures on
    `GITHUB_PAGES=true` specifically (basePath/asset issues) won't always
    surface on a plain `pnpm build` — if you touched anything asset- or
    route-related, also run `GITHUB_PAGES=true pnpm build` and grep the

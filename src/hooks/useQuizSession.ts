@@ -6,12 +6,14 @@ import {
   recordAttempt,
   fetchAttempts,
   computeQuestionStats,
+  Attempt,
   QuestionStats,
 } from "@/services/attempts";
 import { getErrorMessage } from "@/lib/errorMessage";
 import { startOfToday, startOfWeek } from "@/lib/dateRanges";
 import { QuestionFilter, EMPTY_FILTER, queryQuestions, describeFilter } from "@/lib/questionFilter";
-import { SessionMode, pickRandom, isCorrect, selectMostWrong, selectUnattempted, selectLeastRecentlyTried } from "@/lib/quizLogic";
+import { SessionMode, isCorrect, selectMostWrong, selectUnattempted, selectLeastRecentlyTried } from "@/lib/quizLogic";
+import { pickNextForReview } from "@/lib/srs";
 import { ReviewRange } from "@/components/ReviewMode";
 import { NewRange } from "@/components/NewMode";
 import { HistoryLimit } from "@/components/HistoryMode";
@@ -63,6 +65,12 @@ export function useQuizSession(questions: Question[] | null) {
   const [current, setCurrent] = useState<Question | null>(null);
   const [answers, setAnswers] = useState<number[][]>([]);
   const [questionStats, setQuestionStats] = useState<Map<number, QuestionStats> | null>(null);
+  // Raw attempt history (not just the derived `questionStats` map above) --
+  // feeds `pickNextForReview`'s spaced-repetition scheduling. Empty until
+  // the first fetch resolves, which just means the picker treats everything
+  // as "new" (equal weight, same as plain random) until then -- no special
+  // casing needed for that gap.
+  const [attempts, setAttempts] = useState<Attempt[]>([]);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
   const [historyDetailEntry, setHistoryDetailEntry] = useState<HistoryEntry | null>(null);
@@ -77,7 +85,7 @@ export function useQuizSession(questions: Question[] | null) {
 
     if (m === "infinite") {
       setQueue(pool);
-      setCurrent(pickRandom(pool));
+      setCurrent(pickNextForReview(pool, attempts));
     } else {
       setQueue(pool);
       setIndex(0);
@@ -99,11 +107,15 @@ export function useQuizSession(questions: Question[] | null) {
     }
     beginSession(pool, "infinite", "", label);
 
-    // Fire-and-forget: powers the cheer message's attempt history. Not
-    // awaited so quiz start stays instant; the cheer just appears a beat
+    // Fire-and-forget: powers the cheer message's attempt history and the
+    // SRS scheduling data for subsequent picks. Not awaited so quiz start
+    // stays instant; the cheer (and SRS-aware picking) just kick in a beat
     // after the first question renders once this resolves.
     fetchAttempts()
-      .then((attempts) => setQuestionStats(computeQuestionStats(attempts)))
+      .then((fetched) => {
+        setQuestionStats(computeQuestionStats(fetched));
+        setAttempts(fetched);
+      })
       .catch(() => {});
   }
 
@@ -247,14 +259,25 @@ export function useQuizSession(questions: Question[] | null) {
   }
 
   function handleNext(selected: number[]) {
+    // Built locally (not read back from state) so the very next pick sees
+    // this answer immediately -- React's state update wouldn't be visible
+    // within this same function call otherwise.
+    let updatedAttempts = attempts;
+
     if (current && selected.length > 0) {
-      recordAttempt(current.id, selected, isCorrect(current, selected)).catch((err) =>
+      const wasCorrect = isCorrect(current, selected);
+      recordAttempt(current.id, selected, wasCorrect).catch((err) =>
         console.error("Failed to record attempt:", err),
       );
+      updatedAttempts = [
+        ...attempts,
+        { id: -1, questionId: current.id, selectedIndices: selected, isCorrect: wasCorrect, attemptedAt: new Date().toISOString() },
+      ];
+      setAttempts(updatedAttempts);
     }
 
     if (mode === "infinite") {
-      setCurrent((prev) => pickRandom(queue, prev?.id));
+      setCurrent((prev) => pickNextForReview(queue, updatedAttempts, prev?.id));
       return;
     }
 
