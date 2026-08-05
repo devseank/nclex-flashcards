@@ -1,8 +1,23 @@
 # Instructions for AI agents working in this folder
 
-This folder holds the growing NCLEX question bank. `data/questions.csv` and
-`data/questions.sql` are gitignored (private, real study content) —
-`data/questions.template.csv` and this file are the only tracked exceptions.
+This folder holds the growing NCLEX question bank. `data/questions.csv`,
+`data/questions.sql`, and `data/updates.sql` are gitignored (private, real
+study content) — `data/questions.template.csv` and this file are the only
+tracked exceptions.
+
+Two SQL files, two different jobs — don't blend them:
+- **`data/questions.sql`** is a pure, mechanical 1:1 mirror of
+  `data/questions.csv`, regenerated in full by
+  `scripts/csv-to-sql.mjs` (rule 6). Every row is an `insert`. Never
+  hand-edit it and never add `update`/one-off statements to it — if you
+  need those, they go in `updates.sql` instead.
+- **`data/updates.sql`** holds `update` statements and any other
+  miscellaneous one-off SQL that isn't "insert this CSV's rows" — e.g.
+  backfilling a new column on rows that already exist, fixing a
+  miscategorized row, other data corrections. Unlike `questions.sql`, this
+  one *is* hand-authored/accumulated over time, not mechanically
+  regenerated from the CSV. Match `question` (the unique column) in the
+  `where` clause so it's safe to paste in more than once.
 
 ## Rules
 
@@ -58,7 +73,21 @@ This folder holds the growing NCLEX question bank. `data/questions.csv` and
    question/rationale/choice looks wrong, flag it to the user and ask —
    don't silently rewrite it as a side effect of an unrelated append.
 5. **Match the column format exactly** — see `data/questions.template.csv`:
-   `category,question,choice_1,choice_2,...,correct_answer,rationale,question_type,correct_order`
+   `category,tags,question,choice_1,choice_2,...,correct_answer,rationale,question_type,correct_order`
+   - `category`: exactly one, required — the bounded "what kind of
+     question" grouping (`Pharmacology`, `Prioritization`,
+     `Maternal-Newborn`, ...). Reuse an existing category exactly (check the
+     file first) rather than inventing a near-duplicate.
+   - `tags`: zero or more freeform tags, pipe-delimited if more than one
+     (e.g. `Respiratory`, or `Respiratory | Pediatric`). **Not scoped to a
+     single category** — the same tag can and should be reused across
+     categories when it fits (e.g. `Cardiovascular` can tag both a
+     Pharmacology question and a Prioritization question). There's no fixed
+     taxonomy to look up: whatever strings already appear across existing
+     rows' `tags` *are* the tag list — reuse an existing tag's exact
+     spelling/casing rather than inventing a near-duplicate (`Cardiovascular`
+     vs `Cardiovascular System`). Leave blank for questions that don't need
+     any — most categories won't need tags on every question.
    - `choice_N`: add as many `choice_1`, `choice_2`, ... columns as the
      question needs (the parser reads however many `choice_N` columns exist
      in the header). Leave a cell blank for rows that use fewer.
@@ -92,6 +121,7 @@ This folder holds the growing NCLEX question bank. `data/questions.csv` and
    pastes directly into the Supabase SQL Editor — a malformed statement
    fails loudly there, but a *malformed value* (wrong answer, mis-escaped
    quote that shifts columns) can succeed silently and corrupt data.
-8. **Never commit `questions.csv` or `questions.sql`.** They're gitignored
-   on purpose — some source content may be copyrighted, and this data is for
-   local/private use only. Don't remove the `.gitignore` exceptions for them.
+8. **Never commit `questions.csv`, `questions.sql`, or `updates.sql`.**
+   They're gitignored on purpose — some source content may be copyrighted,
+   and this data is for local/private use only. Don't remove the
+   `.gitignore` exceptions for them.

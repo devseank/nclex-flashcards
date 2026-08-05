@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { fetchAllQuestions, Question } from "@/services/questions";
 import { getErrorMessage } from "@/lib/errorMessage";
+import { getAllCategories, getTagsForCategory } from "@/lib/tags";
 import { useQuizSession, Notice } from "@/hooks/useQuizSession";
 import Landing from "@/components/Landing";
 import CategoryMode from "@/components/CategoryMode";
@@ -48,7 +49,7 @@ export default function FlashcardApp() {
       .catch((err) => setError(getErrorMessage(err)));
   }, []);
 
-  const categories = questions ? [...new Set(questions.map((q) => q.category))].sort() : [];
+  const categories = questions ? getAllCategories(questions) : [];
 
   const {
     view,
@@ -118,6 +119,7 @@ export default function FlashcardApp() {
         <PickerScreen title="CATEGORY.EXE" notice={notice}>
           <CategoryMode
             categories={categories}
+            tagsForCategory={(category) => (questions ? getTagsForCategory(questions, category) : [])}
             onStart={startPlay}
             onStartWrong={startReviewByCategory}
             onBack={backToMenu}

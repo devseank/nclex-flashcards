@@ -6,6 +6,8 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  LabelList,
+  LabelProps,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -19,27 +21,27 @@ import RangeSelect, { RANGE_LABELS } from "@/components/RangeSelect";
 import { getErrorMessage } from "@/lib/errorMessage";
 import { startOfToday, startOfWeek, startOfMonth } from "@/lib/dateRanges";
 import { AnalyticsRange, buildTrendData } from "@/lib/analyticsTrend";
+import { useIsDarkMode } from "@/lib/useIsDarkMode";
 
-// Fixed hex values, not CSS vars -- these are passed as SVG stroke/fill
-// props straight to recharts, which needs literal color strings rather than
-// `var(--...)` (recharts doesn't re-render on a CSS custom property change,
-// e.g. a dark-mode toggle, so these intentionally stay constant in both
-// themes rather than trying to track it).
-const NAVY = "#12314a";
+// Bar fill colors stay fixed in both themes -- they're already saturated
+// enough to read fine against either a light or dark card.
 const BLUE = "#209cee";
 const GREEN = "#92cc41";
 const YELLOW = "#f7d51d";
 const RED = "#e76e55";
 
-const pixelTooltipStyle = {
-  contentStyle: {
-    border: `2px solid ${NAVY}`,
-    borderRadius: 0,
-    fontFamily: "var(--font-body), sans-serif",
-    fontSize: 12,
-  },
-  labelStyle: { color: NAVY, fontWeight: 700 },
-};
+// Axis/grid/tooltip colors, unlike the bar fills above, MUST flip with the
+// theme (dark navy text is invisible on a dark card) -- but they're passed
+// as SVG stroke/fill props straight to recharts, which needs a literal
+// color string, not `var(--...)` (recharts doesn't re-render just because
+// a CSS custom property changed underneath it). useIsDarkMode() makes this
+// a real prop-value change on a real re-render instead.
+const NAVY_LIGHT = "#12314a";
+const NAVY_DARK = "#cfe6ff";
+const GRID_LIGHT = "#ddd";
+const GRID_DARK = "#3d4c63";
+const TOOLTIP_BG_LIGHT = "#ffffff";
+const TOOLTIP_BG_DARK = "#1b2432";
 
 const TREND_TOOLTIP =
   "How many questions you've answered, grouped by hour (Today), day (This week), or week (All time).";
@@ -57,6 +59,52 @@ export default function Analytics({
   const [error, setError] = useState<string | null>(null);
   const [trendRange, setTrendRange] = useState<AnalyticsRange>("week");
   const [categoriesRange, setCategoriesRange] = useState<AnalyticsRange>("week");
+  const isDark = useIsDarkMode();
+  const navy = isDark ? NAVY_DARK : NAVY_LIGHT;
+  const gridStroke = isDark ? GRID_DARK : GRID_LIGHT;
+  const tooltipStyle = {
+    contentStyle: {
+      border: `2px solid ${navy}`,
+      borderRadius: 0,
+      fontFamily: "var(--font-body), sans-serif",
+      fontSize: 12,
+      backgroundColor: isDark ? TOOLTIP_BG_DARK : TOOLTIP_BG_LIGHT,
+      color: navy,
+    },
+    labelStyle: { color: navy, fontWeight: 700 },
+  };
+
+  // Renders the category name in the reserved right-hand margin (see
+  // categoryChartRightMargin below) instead of in a YAxis column to the
+  // *left*, so long names (e.g. "Maternal-Newborn") no longer eat into the
+  // chart's plotting width -- the reason bars used to start well right of
+  // the card's left edge. Recharts hands every label the same
+  // `parentViewBox` (the plot area's own bounding box, identical for every
+  // row) rather than that row's own bar geometry, so anchoring at its right
+  // edge with textAnchor="end" right-aligns every name at one consistent x
+  // regardless of how long that row's own bar is -- never inside a bar,
+  // never at a ragged, differently-placed spot per row. Always the
+  // theme-aware `navy`: this column sits in the margin, past where any bar
+  // can reach, so it's always over the plain card background, never a bar's
+  // own fill color.
+  function renderCategoryLabel(props: LabelProps) {
+    const y = Number(props.y ?? 0);
+    const height = Number(props.height ?? 0);
+    // This chart is cartesian (never polar), so parentViewBox is always the
+    // {x, y, width, height} shape -- narrow past the ViewBox union's polar
+    // half, which has no x/width, to read them.
+    const parentViewBox = props.parentViewBox as { x?: number; width?: number } | undefined;
+    // parentViewBox already spans the full reserved area including
+    // categoryChartRightMargin (its right edge is the chart's own right
+    // edge, not the axis's 0-100 plotting range) -- anchoring there directly
+    // puts every label inside that reserved strip, no further offset needed.
+    const rightEdge = Number(parentViewBox?.x ?? 0) + Number(parentViewBox?.width ?? 0) - 4;
+    return (
+      <text x={rightEdge} y={y + height / 2} fontSize={10} fill={navy} textAnchor="end" dominantBaseline="middle">
+        {props.value}
+      </text>
+    );
+  }
 
   useEffect(() => {
     fetchAttempts()
@@ -125,6 +173,13 @@ export default function Analytics({
     }))
     .sort((a, b) => a.accuracy - b.accuracy);
 
+  // Every label renders right-aligned in this reserved right-hand strip
+  // (see renderCategoryLabel) rather than a YAxis column on the left, so
+  // it needs to be wide enough for the longest category name or that name
+  // would get clipped against the card's own edge.
+  const longestCategoryName = Math.max(0, ...categoryData.map((d) => d.category.length));
+  const categoryChartRightMargin = longestCategoryName * 5.5 + 12;
+
   return (
     <div className="w-full max-w-xl flex flex-col gap-6">
       {backLink}
@@ -152,10 +207,10 @@ export default function Analytics({
           <div className="h-48 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={trendData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#ddd" />
-                <XAxis dataKey="label" fontSize={10} stroke={NAVY} />
-                <YAxis allowDecimals={false} fontSize={10} stroke={NAVY} width={24} />
-                <Tooltip {...pixelTooltipStyle} />
+                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+                <XAxis dataKey="label" fontSize={10} stroke={navy} tick={{ fill: navy }} />
+                <YAxis allowDecimals={false} fontSize={10} stroke={navy} tick={{ fill: navy }} width={24} />
+                <Tooltip {...tooltipStyle} />
                 <Bar dataKey="count" fill={BLUE} radius={0} />
               </BarChart>
             </ResponsiveContainer>
@@ -169,17 +224,15 @@ export default function Analytics({
           {categoryData.length > 0 ? (
             <div style={{ height: Math.max(160, categoryData.length * 40) }} className="w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={categoryData} layout="vertical" margin={{ left: 8 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#ddd" />
-                  <XAxis type="number" domain={[0, 100]} fontSize={10} stroke={NAVY} />
-                  <YAxis
-                    type="category"
-                    dataKey="category"
-                    fontSize={10}
-                    stroke={NAVY}
-                    width={110}
-                  />
-                  <Tooltip {...pixelTooltipStyle} formatter={(v) => `${v}%`} />
+                <BarChart data={categoryData} layout="vertical" margin={{ left: 8, right: categoryChartRightMargin }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+                  <XAxis type="number" domain={[0, 100]} fontSize={10} stroke={navy} tick={{ fill: navy }} />
+                  {/* No visible tick text -- category names render in the
+                      reserved right-hand margin via renderCategoryLabel
+                      below, so this axis only needs to exist for the
+                      categorical scale. */}
+                  <YAxis type="category" dataKey="category" width={1} axisLine={false} tickLine={false} tick={false} />
+                  <Tooltip {...tooltipStyle} formatter={(v) => `${v}%`} />
                   <Bar dataKey="accuracy" radius={0}>
                     {categoryData.map((entry, i) => (
                       <Cell
@@ -187,6 +240,7 @@ export default function Analytics({
                         fill={entry.accuracy >= 80 ? GREEN : entry.accuracy >= 50 ? YELLOW : RED}
                       />
                     ))}
+                    <LabelList dataKey="category" content={renderCategoryLabel} />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>

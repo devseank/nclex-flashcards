@@ -94,12 +94,15 @@ for (const block of blocks) {
 // the file they're appended to, not just whatever this batch happens to need.
 const maxChoices = Math.max(9, ...rows.map((r) => r.choices.length));
 const choiceColumns = Array.from({ length: maxChoices }, (_, i) => `choice_${i + 1}`);
-const header = ["category", "question", ...choiceColumns, "correct_answer", "rationale", "question_type", "correct_order"].join(",");
+const header = ["category", "tags", "question", ...choiceColumns, "correct_answer", "rationale", "question_type", "correct_order"].join(",");
 
+// tags is always blank here -- this pasted-text format has no structured
+// tag info to extract, only a single leading category. Fill tags in by
+// hand afterward if the batch warrants any.
 const csvRows = rows.map((r) => {
   const padded = [...r.choices];
   while (padded.length < maxChoices) padded.push("");
-  return [r.category, r.question, ...padded, r.correctAnswer, r.rationale, "", ""].map(csvField).join(",");
+  return [r.category, "", r.question, ...padded, r.correctAnswer, r.rationale, "", ""].map(csvField).join(",");
 });
 
 writeFileSync(outputPath, [header, ...csvRows].join("\n") + "\n");

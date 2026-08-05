@@ -2,7 +2,15 @@ import { supabase } from "@/lib/supabase";
 
 type QuestionBase = {
   id: number;
+  // Exactly one, required -- the bounded "what kind of question" dimension
+  // (Pharmacology, Prioritization, Maternal-Newborn, ...).
   category: string;
+  // Zero or more freeform tags, NOT scoped to a single category -- the
+  // "what's it about" dimension (e.g. "Respiratory" can tag both a
+  // Pharmacology question and a Prioritization question). No fixed
+  // taxonomy: whatever strings appear across all questions' tags *are* the
+  // tag list (see src/lib/tags.ts).
+  tags: string[];
   question: string;
   choices: string[];
   rationale: string;
@@ -25,6 +33,7 @@ export type Question = ChoiceQuestion | SequenceQuestion;
 type QuestionRow = {
   id: number;
   category: string;
+  tags: string[];
   question: string;
   choices: string[];
   rationale: string;
@@ -38,6 +47,7 @@ function toQuestion(row: QuestionRow): Question {
   const base: QuestionBase = {
     id: row.id,
     category: row.category,
+    tags: row.tags,
     question: row.question,
     choices: row.choices,
     rationale: row.rationale,
@@ -53,7 +63,7 @@ function toQuestion(row: QuestionRow): Question {
 export async function fetchAllQuestions(): Promise<Question[]> {
   const { data, error } = await supabase
     .from("questions")
-    .select("id, category, question, choices, rationale, question_type, correct_indices, correct_order, created_at");
+    .select("id, category, tags, question, choices, rationale, question_type, correct_indices, correct_order, created_at");
 
   if (error) throw error;
   return (data ?? []).map(toQuestion);

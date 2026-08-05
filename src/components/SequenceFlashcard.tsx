@@ -171,6 +171,7 @@ export default function SequenceFlashcard({
         className={`nes-btn ${categoryVariant(question.category)} font-pixel text-[10px] tracking-wide !cursor-default`}
       >
         {question.category}
+        {question.tags.length > 0 && ` — ${question.tags.join(", ")}`}
       </button>
 
       {stats && (

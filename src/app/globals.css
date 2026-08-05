@@ -107,6 +107,25 @@ body {
   border-image-repeat: stretch;
 }
 
+/* nes-select (RangeSelect) has the exact same problem as the plain nes-btn
+   case above: its border is the same fixed near-black SVG
+   (border-image-source), and its own background stays browser-default
+   white -- both disappear against a dark card. The dropdown-arrow dots
+   (::after) are drawn via box-shadow with no per-shadow color, so they
+   inherit `color`, which is why overriding just `color` here is enough to
+   re-color them too. */
+.dark .nes-select select {
+  background-color: var(--card-bg);
+  color: #dbe4f0;
+  outline: 2px solid #4a5a75;
+  outline-offset: 0px;
+  border-image-repeat: stretch;
+}
+
+.dark .nes-select::after {
+  color: #dbe4f0;
+}
+
 .font-pixel {
   font-family: var(--font-pixel), monospace;
 }

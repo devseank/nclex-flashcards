@@ -4,9 +4,15 @@
 // unique constraint this depends on).
 //
 // Expected CSV columns:
-//   category, question, choice_1, choice_2, ... (as many as needed),
+//   category, tags, question, choice_1, choice_2, ... (as many as needed),
 //   correct_answer, rationale, question_type, correct_order
 //
+// - category: exactly one, required -- the bounded "what kind of question"
+//   grouping (Pharmacology, Prioritization, Maternal-Newborn, ...).
+// - tags: zero or more freeform tags, NOT scoped to a single category --
+//   the "what's it about" dimension (e.g. "Respiratory" can tag both a
+//   Pharmacology question and a Prioritization question). Joined with " | "
+//   if more than one. Leave blank if the question doesn't need any yet.
 // - choice_N: as many choice_1, choice_2, ... columns as the question needs.
 //   Leave a cell blank if a given row doesn't use that many choices.
 // - question_type: "choice" (default, leave blank) or "sequence".
@@ -34,6 +40,14 @@ const rows = parse(csvText, { columns: true, skip_empty_lines: true, trim: true 
 
 function sqlString(value) {
   return `'${String(value).replace(/'/g, "''")}'`;
+}
+
+function sqlTextArray(pipeDelimited) {
+  const tags = String(pipeDelimited ?? "")
+    .split("|")
+    .map((t) => t.trim())
+    .filter((t) => t !== "");
+  return `array[${tags.map(sqlString).join(",")}]::text[]`;
 }
 
 function matchChoiceIndices(pipeDelimited, choices, fieldName, row, rowNumber) {
@@ -75,7 +89,7 @@ const values = rows.map((row, i) => {
   }
 
   return (
-    `(${sqlString(row.category)}, ${sqlString(row.question)}, ${sqlString(choicesJson)}::jsonb, ` +
+    `(${sqlString(row.category)}, ${sqlTextArray(row.tags)}, ${sqlString(row.question)}, ${sqlString(choicesJson)}::jsonb, ` +
     `${sqlString(questionType)}, ${correctIndicesSql}, ${correctOrderSql}, ${sqlString(row.rationale)})`
   );
 });
@@ -86,5 +100,5 @@ if (values.length === 0) {
 }
 
 console.log(
-  `insert into public.questions (category, question, choices, question_type, correct_indices, correct_order, rationale)\nvalues\n  ${values.join(",\n  ")}\non conflict (question) do nothing;`,
+  `insert into public.questions (category, tags, question, choices, question_type, correct_indices, correct_order, rationale)\nvalues\n  ${values.join(",\n  ")}\non conflict (question) do nothing;`,
 );

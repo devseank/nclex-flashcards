@@ -2,7 +2,16 @@
 
 create table if not exists public.questions (
   id bigint generated always as identity primary key,
+  -- Exactly one, required -- the bounded, small set a question's *type*
+  -- falls into (Pharmacology, Prioritization, Maternal-Newborn, ...). This
+  -- is the "what kind of question is this" dimension.
   category text not null,
+  -- Zero or more freeform tags, NOT scoped to a single category -- the
+  -- "what's it about" dimension (e.g. "Respiratory" can tag both a
+  -- Pharmacology question and a Prioritization question). No fixed
+  -- taxonomy/enum to keep in sync: whatever strings appear across
+  -- `questions.tags` *are* the tag list.
+  tags text[] not null default '{}',
   -- unique so importing an overlapping/compounded CSV can safely use
   -- `on conflict (question) do nothing` instead of re-inserting duplicates
   question text not null unique,
@@ -18,6 +27,20 @@ create table if not exists public.questions (
   rationale text not null,
   created_at timestamptz not null default now()
 );
+
+-- Migrating an existing project: `create table if not exists` above is a
+-- no-op against an already-existing table, so this adds `tags` and retires
+-- the old single-value `subcategory` column those questions used to have
+-- (superseded by the multi-value `tags`). `category` itself is unchanged.
+-- Safe/idempotent to re-run. Run this BEFORE re-importing questions.csv/
+-- questions.sql with the category+tags format.
+alter table public.questions add column if not exists tags text[] not null default '{}';
+alter table public.questions drop column if exists subcategory;
+
+-- GIN index for the array-containment filtering CategoryMode does
+-- (tags @> array[...]) -- cheap at this table's size today, but correct
+-- practice for tag-array queries generally and costs nothing to have.
+create index if not exists questions_tags_idx on public.questions using gin (tags);
 
 alter table public.questions enable row level security;
 

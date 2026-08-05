@@ -10,6 +10,7 @@ import {
 } from "@/services/attempts";
 import { getErrorMessage } from "@/lib/errorMessage";
 import { startOfToday, startOfWeek } from "@/lib/dateRanges";
+import { matchesFilter } from "@/lib/tags";
 import { SessionMode, pickRandom, isCorrect, selectMostWrong, selectUnattempted, selectLeastRecentlyTried } from "@/lib/quizLogic";
 import { QuestionKind, KIND_LABELS, matchesKind } from "@/lib/questionKind";
 import { ReviewRange } from "@/components/ReviewMode";
@@ -57,7 +58,7 @@ const NEW_RANGE_LABELS: Record<NewRange, string> = {
 export function useQuizSession(questions: Question[] | null) {
   const [view, setView] = useState<View>("menu");
   const [mode, setMode] = useState<SessionMode | null>(null);
-  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [filterLabel, setFilterLabel] = useState<string | null>(null);
   const [sessionLabel, setSessionLabel] = useState("");
   const [queue, setQueue] = useState<Question[]>([]);
   const [index, setIndex] = useState(0);
@@ -68,9 +69,9 @@ export function useQuizSession(questions: Question[] | null) {
   const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
   const [historyDetailEntry, setHistoryDetailEntry] = useState<HistoryEntry | null>(null);
 
-  function beginSession(pool: Question[], m: SessionMode, label: string, category: string | null) {
+  function beginSession(pool: Question[], m: SessionMode, label: string, filter: string | null) {
     setMode(m);
-    setCategoryFilter(category);
+    setFilterLabel(filter);
     setSessionLabel(label);
     setAnswers([]);
     setNotice(null);
@@ -86,12 +87,13 @@ export function useQuizSession(questions: Question[] | null) {
     }
   }
 
-  function startPlay(category: string | null = null) {
+  function startPlay(category: string | null = null, tags: string[] = []) {
     if (!questions) return;
-    const pool = category ? questions.filter((q) => q.category === category) : questions;
+    const pool = questions.filter((q) => matchesFilter(q, category, tags));
     if (pool.length === 0) return;
 
-    beginSession(pool, "infinite", "", category);
+    const label = category && tags.length > 0 ? `${category} — ${tags.join(", ")}` : category;
+    beginSession(pool, "infinite", "", label);
 
     // Fire-and-forget: powers the cheer message's attempt history. Not
     // awaited so quiz start stays instant; the cheer just appears a beat
@@ -178,19 +180,20 @@ export function useQuizSession(questions: Question[] | null) {
     }
   }
 
-  async function startReviewByCategory(category: string) {
+  async function startReviewByCategory(category: string, tags: string[] = []) {
     if (!questions) return;
-    const pool = questions.filter((q) => q.category === category);
+    const pool = questions.filter((q) => matchesFilter(q, category, tags));
+    const label = tags.length > 0 ? `${category} — ${tags.join(", ")}` : category;
 
     try {
       const attempts = await fetchAttempts();
       const mostWrong = selectMostWrong(pool, attempts, null);
       if (mostWrong.length === 0) {
-        setNotice({ text: `No incorrect answers in ${category} — nice work!`, tone: "info" });
+        setNotice({ text: `No incorrect answers in ${label} — nice work!`, tone: "info" });
         return;
       }
       setQuestionStats(computeQuestionStats(attempts));
-      beginSession(mostWrong, "review", `${category} — MOST WRONG`, category);
+      beginSession(mostWrong, "review", `${label} — MOST WRONG`, label);
     } catch (err) {
       setNotice({ text: getErrorMessage(err), tone: "error" });
     }
@@ -236,7 +239,7 @@ export function useQuizSession(questions: Question[] | null) {
   function backToMenu() {
     setView("menu");
     setMode(null);
-    setCategoryFilter(null);
+    setFilterLabel(null);
     setSessionLabel("");
     setCurrent(null);
     setQuestionStats(null);
@@ -303,7 +306,7 @@ export function useQuizSession(questions: Question[] | null) {
   const modeTitle =
     mode === "review" || mode === "new"
       ? sessionLabel
-      : mode && (categoryFilter ? `${categoryFilter} — ${MODE_LABELS[mode]}` : MODE_LABELS[mode]);
+      : mode && (filterLabel ? `${filterLabel} — ${MODE_LABELS[mode]}` : MODE_LABELS[mode]);
 
   return {
     view,
