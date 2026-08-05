@@ -25,6 +25,10 @@ create table if not exists public.questions (
   correct_indices integer[],
   correct_order integer[],
   rationale text not null,
+  -- Optional -- a URL to an illustration for this question (e.g. an
+  -- anatomy diagram). When several questions share one image, reuse the
+  -- exact same URL across their rows rather than duplicating the file.
+  image_url text,
   created_at timestamptz not null default now()
 );
 
@@ -36,6 +40,18 @@ create table if not exists public.questions (
 -- questions.sql with the category+tags format.
 alter table public.questions add column if not exists tags text[] not null default '{}';
 alter table public.questions drop column if exists subcategory;
+alter table public.questions add column if not exists image_url text;
+
+-- Public bucket for question illustration images (see `image_url` above).
+-- Marking a bucket public makes Supabase serve its objects directly from
+-- `/storage/v1/object/public/...` without requiring auth or a matching RLS
+-- policy on `storage.objects` -- fine here since these are just anatomy
+-- diagrams, nothing sensitive. Upload files via Supabase Studio's Storage
+-- UI (service role, bypasses RLS) and paste the resulting public URL into
+-- `image_url`.
+insert into storage.buckets (id, name, public)
+values ('question-images', 'question-images', true)
+on conflict (id) do nothing;
 
 -- GIN index for the array-containment filtering CategoryMode does
 -- (tags @> array[...]) -- cheap at this table's size today, but correct

@@ -77,6 +77,11 @@ Two SQL files, two different jobs — don't blend them:
      spelling/casing), pipe-delimited if more than one. Leave a row's tags
      blank only if it genuinely doesn't fit any tag worth having, not by
      default.
+   - if the pasted question refers to an image ("refer to the image below",
+     a diagram, an illustration), that content can't come from plain pasted
+     text — flag it to the user rather than silently dropping the visual
+     reference. Fill in `image_url` once they've uploaded the file and given
+     you the resulting URL (see rule 5 below); don't invent a placeholder.
    If anything looks off, fix that row by hand (or re-parse after adjusting
    the input) rather than appending it as-is — a wrong `correct_answer` is
    worse than a skipped question, since it teaches the wrong thing silently.
@@ -86,7 +91,7 @@ Two SQL files, two different jobs — don't blend them:
    question/rationale/choice looks wrong, flag it to the user and ask —
    don't silently rewrite it as a side effect of an unrelated append.
 5. **Match the column format exactly** — see `data/questions.template.csv`:
-   `category,tags,question,choice_1,choice_2,...,correct_answer,rationale,question_type,correct_order`
+   `category,tags,image_url,question,choice_1,choice_2,...,correct_answer,rationale,question_type,correct_order`
    - `category`: exactly one, required — the bounded "what kind of
      question" grouping (`Pharmacology`, `Prioritization`,
      `Maternal-Newborn`, ...). Reuse an existing category exactly (check the
@@ -101,6 +106,15 @@ Two SQL files, two different jobs — don't blend them:
      spelling/casing rather than inventing a near-duplicate (`Cardiovascular`
      vs `Cardiovascular System`). Leave blank for questions that don't need
      any — most categories won't need tags on every question.
+   - `image_url`: optional. A URL to an illustration for this question
+     (e.g. an anatomy diagram the question refers to as "the image below").
+     The user uploads the actual image file by hand via the Supabase Studio
+     Storage UI (bucket `question-images`, created in `supabase/schema.sql`)
+     and pastes the resulting public URL here — there's no programmatic
+     upload path from this environment. **When several questions share one
+     image, reuse the exact same URL string across their rows** rather than
+     treating them as separate images. Leave blank for questions with no
+     image — most questions won't need one.
    - `choice_N`: add as many `choice_1`, `choice_2`, ... columns as the
      question needs (the parser reads however many `choice_N` columns exist
      in the header). Leave a cell blank for rows that use fewer.

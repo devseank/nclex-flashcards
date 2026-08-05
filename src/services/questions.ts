@@ -15,6 +15,10 @@ type QuestionBase = {
   choices: string[];
   rationale: string;
   createdAt: string;
+  // A URL to an illustration for this question (e.g. an anatomy diagram),
+  // if any -- undefined for the common case of no image. Multiple
+  // questions can share the same URL when they refer to the same image.
+  imageUrl?: string;
 };
 
 export type ChoiceQuestion = QuestionBase & {
@@ -41,6 +45,7 @@ type QuestionRow = {
   correct_indices: number[] | null;
   correct_order: number[] | null;
   created_at: string;
+  image_url: string | null;
 };
 
 function toQuestion(row: QuestionRow): Question {
@@ -52,6 +57,7 @@ function toQuestion(row: QuestionRow): Question {
     choices: row.choices,
     rationale: row.rationale,
     createdAt: row.created_at,
+    imageUrl: row.image_url ?? undefined,
   };
 
   if (row.question_type === "sequence") {
@@ -63,7 +69,7 @@ function toQuestion(row: QuestionRow): Question {
 export async function fetchAllQuestions(): Promise<Question[]> {
   const { data, error } = await supabase
     .from("questions")
-    .select("id, category, tags, question, choices, rationale, question_type, correct_indices, correct_order, created_at");
+    .select("id, category, tags, question, choices, rationale, question_type, correct_indices, correct_order, created_at, image_url");
 
   if (error) throw error;
   return (data ?? []).map(toQuestion);

@@ -190,6 +190,15 @@ export default function SequenceFlashcard({
         )}
       </p>
 
+      {question.imageUrl && (
+        // eslint-disable-next-line @next/next/no-img-element -- static export (next/image needs no server either way, this app already sets images.unoptimized)
+        <img
+          src={question.imageUrl}
+          alt="Question illustration"
+          className="max-h-80 w-full rounded border-4 border-black object-contain"
+        />
+      )}
+
       <div className="space-y-2">
         <p className="font-pixel text-[10px] text-gray-500">STEPS</p>
         <DndContext

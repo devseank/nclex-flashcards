@@ -128,6 +128,15 @@ export default function Flashcard({
         )}
       </p>
 
+      {question.imageUrl && (
+        // eslint-disable-next-line @next/next/no-img-element -- static export (next/image needs no server either way, this app already sets images.unoptimized)
+        <img
+          src={question.imageUrl}
+          alt="Question illustration"
+          className="max-h-80 w-full rounded border-4 border-black object-contain"
+        />
+      )}
+
       {showAnswer && (
         <p className="font-pixel text-xs">{isFullyCorrect ? "CORRECT!" : "NOT QUITE"}</p>
       )}
