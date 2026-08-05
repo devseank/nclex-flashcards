@@ -3,7 +3,7 @@ import { QuestionKind, matchesKind } from "@/lib/questionKind";
 
 // One combined query across all three facets a question can be filtered by.
 // Each facet is independently optional ("ANY") -- category is single-valued
-// (a question has exactly one), kinds/tags are OR/AND respectively (see
+// (a question has exactly one), kinds/tags are both OR (see
 // matchesQuestionFilter below).
 export type QuestionFilter = {
   category: string | null;
@@ -19,11 +19,15 @@ export function isFilterEmpty(filter: QuestionFilter): boolean {
 
 // category: ANY if unset, else exact match (a question has exactly one).
 // kinds: ANY if empty, else OR -- question must match at least one selected kind.
-// tags: ANY if empty, else AND -- question must have ALL selected tags.
+// tags: ANY if empty, else OR -- question must have at least one selected tag.
+// Tags used to be AND (require every selected tag on the same question),
+// but most questions carry only 0-1 tags in practice, so requiring 2+ tags
+// on one question almost always returned zero results -- OR is both what
+// actually surfaces results and what most multi-select tag pickers mean.
 function matchesQuestionFilter(question: Question, filter: QuestionFilter): boolean {
   const categoryOk = !filter.category || question.category === filter.category;
   const kindOk = filter.kinds.length === 0 || filter.kinds.some((k) => matchesKind(question, k));
-  const tagsOk = filter.tags.every((t) => question.tags.includes(t));
+  const tagsOk = filter.tags.length === 0 || filter.tags.some((t) => question.tags.includes(t));
   return categoryOk && kindOk && tagsOk;
 }
 

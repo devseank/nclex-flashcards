@@ -138,15 +138,24 @@ export default function FilterMode({
           />
           <div className="grid grid-cols-2 gap-2">
             <ToggleButton label="ALL" isSelected={tags.length === 0} selectedVariant="is-success" onClick={() => setTags([])} />
-            {visibleTags.map((t) => (
-              <ToggleButton
-                key={t}
-                label={t}
-                isSelected={tags.includes(t)}
-                selectedVariant="is-success"
-                onClick={() => toggleTag(t)}
-              />
-            ))}
+            {visibleTags.map((t) => {
+              // Count for this tag alone (category/type applied, but not
+              // combined with any OTHER currently-selected tags) -- with OR
+              // semantics, selecting more tags only ever adds matches, so
+              // showing each tag's own contribution is more useful at a
+              // glance than a combined number that changes depending on
+              // what else happens to be selected already.
+              const tagMatchCount = queryQuestions(questions, { category, kinds, tags: [t] }).length;
+              return (
+                <ToggleButton
+                  key={t}
+                  label={`${t} (${tagMatchCount})`}
+                  isSelected={tags.includes(t)}
+                  selectedVariant="is-success"
+                  onClick={() => toggleTag(t)}
+                />
+              );
+            })}
           </div>
           {visibleTags.length === 0 && (
             <p className="text-xs text-gray-400">No tags match &quot;{tagSearch}&quot;.</p>
