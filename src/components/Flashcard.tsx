@@ -167,23 +167,24 @@ export default function Flashcard({
         })}
       </div>
 
-      {isMultiSelect && !showAnswer && (
-        <button
-          type="button"
-          disabled={selected.length === 0}
-          onClick={() => reveal(selected)}
-          className="nes-btn is-primary w-full font-pixel text-xs py-2 disabled:opacity-50"
-        >
-          CHECK ANSWER
-        </button>
-      )}
-
       {/* Single-choice auto-reveals the instant a choice is picked, so NEXT
           is never reachable pre-reveal there -- only SATA (isMultiSelect)
           has a real gap between selecting and CHECK ANSWER, where NEXT was
           otherwise sitting right there ready to skip the question before
-          it's actually been checked. */}
-      {mode !== "review" && <StickyNextBar onClick={() => onNext?.(selected)} disabled={isMultiSelect && !showAnswer} />}
+          it's actually been checked. CHECK ANSWER lives in the sticky bar
+          itself (left column, NEXT on the right) rather than as a separate
+          full-width button above it. */}
+      {mode !== "review" && (
+        <StickyNextBar
+          onClick={() => onNext?.(selected)}
+          disabled={isMultiSelect && !showAnswer}
+          check={
+            isMultiSelect && !showAnswer
+              ? { label: "CHECK ANSWER", onClick: () => reveal(selected), disabled: selected.length === 0 }
+              : undefined
+          }
+        />
+      )}
     </div>
   );
 }

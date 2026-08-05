@@ -225,16 +225,6 @@ export default function SequenceFlashcard({
         </button>
       )}
 
-      {!showAnswer && (
-        <button
-          type="button"
-          onClick={reveal}
-          className="nes-btn is-primary w-full font-pixel text-xs py-2"
-        >
-          CHECK ORDER
-        </button>
-      )}
-
       {showAnswer && (
         <div className="space-y-2">
           <p className="font-pixel text-[10px] text-gray-500">CORRECT ORDER</p>
@@ -266,8 +256,16 @@ export default function SequenceFlashcard({
           would otherwise be reachable at any point while still dragging,
           letting a question get skipped (and an attempt recorded against
           whatever order it happened to be in) before CHECK ORDER was ever
-          pressed. */}
-      {mode !== "review" && <StickyNextBar onClick={() => onNext?.(order)} disabled={!showAnswer} />}
+          pressed. CHECK ORDER lives in the sticky bar itself (left column,
+          NEXT on the right) rather than as a separate full-width button
+          above it. */}
+      {mode !== "review" && (
+        <StickyNextBar
+          onClick={() => onNext?.(order)}
+          disabled={!showAnswer}
+          check={!showAnswer ? { label: "CHECK ORDER", onClick: reveal } : undefined}
+        />
+      )}
     </div>
   );
 }
