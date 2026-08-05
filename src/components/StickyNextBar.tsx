@@ -25,7 +25,7 @@ import { createPortal } from "react-dom";
 // empty padding first rather than the button itself.
 const FOOTER_BUFFER = "3.5rem";
 
-export default function StickyNextBar({ onClick }: { onClick: () => void }) {
+export default function StickyNextBar({ onClick, disabled = false }: { onClick: () => void; disabled?: boolean }) {
   return createPortal(
     <div
       className="gpu-layer fixed inset-x-0 bottom-0 z-40 border-t-4 border-black bg-white px-4 pt-3"
@@ -33,8 +33,9 @@ export default function StickyNextBar({ onClick }: { onClick: () => void }) {
     >
       <button
         type="button"
+        disabled={disabled}
         onClick={onClick}
-        className="nes-btn is-primary mx-auto block w-full max-w-xl font-pixel text-xs py-2"
+        className="nes-btn is-primary mx-auto block w-full max-w-xl font-pixel text-xs py-2 disabled:opacity-50"
       >
         NEXT
       </button>

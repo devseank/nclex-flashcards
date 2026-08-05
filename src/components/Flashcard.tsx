@@ -178,7 +178,12 @@ export default function Flashcard({
         </button>
       )}
 
-      {mode !== "review" && <StickyNextBar onClick={() => onNext?.(selected)} />}
+      {/* Single-choice auto-reveals the instant a choice is picked, so NEXT
+          is never reachable pre-reveal there -- only SATA (isMultiSelect)
+          has a real gap between selecting and CHECK ANSWER, where NEXT was
+          otherwise sitting right there ready to skip the question before
+          it's actually been checked. */}
+      {mode !== "review" && <StickyNextBar onClick={() => onNext?.(selected)} disabled={isMultiSelect && !showAnswer} />}
     </div>
   );
 }

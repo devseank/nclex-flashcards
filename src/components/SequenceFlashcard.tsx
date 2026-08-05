@@ -262,7 +262,12 @@ export default function SequenceFlashcard({
         </div>
       )}
 
-      {mode !== "review" && <StickyNextBar onClick={() => onNext?.(order)} />}
+      {/* Unlike single-choice, sequence has no auto-reveal moment -- NEXT
+          would otherwise be reachable at any point while still dragging,
+          letting a question get skipped (and an attempt recorded against
+          whatever order it happened to be in) before CHECK ORDER was ever
+          pressed. */}
+      {mode !== "review" && <StickyNextBar onClick={() => onNext?.(order)} disabled={!showAnswer} />}
     </div>
   );
 }
