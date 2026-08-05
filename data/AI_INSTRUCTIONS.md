@@ -64,6 +64,19 @@ Two SQL files, two different jobs — don't blend them:
      that question.
    - The rationale reads coherently and its per-option sentences line up
      with the choice they're explaining.
+   - `category` (the CLI arg you passed) actually fits every question in the
+     batch — a source page's own title is a starting guess, not a
+     guarantee, and some pages mix topics. Check it against categories
+     already in the file (`cut -d',' -f1 data/questions.csv | sort -u`) and
+     reuse an exact match; only introduce a new category name if the batch
+     genuinely doesn't fit any existing one.
+   - `tags` got filled in, not left blank. The parser always emits an empty
+     `tags` column — it has no way to infer subject tags from the pasted
+     text, so this is on you. Read each question and add whichever existing
+     tags apply (check what's already in use per rule 5 below; reuse exact
+     spelling/casing), pipe-delimited if more than one. Leave a row's tags
+     blank only if it genuinely doesn't fit any tag worth having, not by
+     default.
    If anything looks off, fix that row by hand (or re-parse after adjusting
    the input) rather than appending it as-is — a wrong `correct_answer` is
    worse than a skipped question, since it teaches the wrong thing silently.
