@@ -3,11 +3,9 @@
 import { useEffect, useState } from "react";
 import { fetchAllQuestions, Question } from "@/services/questions";
 import { getErrorMessage } from "@/lib/errorMessage";
-import { getAllCategories, getTagsForCategory } from "@/lib/tags";
 import { useQuizSession, Notice } from "@/hooks/useQuizSession";
 import Landing from "@/components/Landing";
-import CategoryMode from "@/components/CategoryMode";
-import TypeMode from "@/components/TypeMode";
+import FilterMode from "@/components/FilterMode";
 import ReviewMode from "@/components/ReviewMode";
 import NewMode from "@/components/NewMode";
 import HistoryMode from "@/components/HistoryMode";
@@ -49,8 +47,6 @@ export default function FlashcardApp() {
       .catch((err) => setError(getErrorMessage(err)));
   }, []);
 
-  const categories = questions ? getAllCategories(questions) : [];
-
   const {
     view,
     mode,
@@ -65,17 +61,14 @@ export default function FlashcardApp() {
     historyEntries,
     historyDetailEntry,
     startPlay,
-    startTypePlay,
+    startReviewByFilter,
     startReviewByRange,
-    startReviewByCategory,
-    startReviewByType,
     startNewByRange,
     startHistoryList,
     selectHistoryEntry,
     backToHistoryList,
     backToMenu,
-    goToCategoryPick,
-    goToTypePick,
+    goToFilterPick,
     goToReviewPick,
     goToNewPick,
     goToHistoryPick,
@@ -104,8 +97,7 @@ export default function FlashcardApp() {
           <PixelWindow title="MENU.EXE">
             <Landing
               onSelectPlay={() => startPlay()}
-              onSelectCategory={goToCategoryPick}
-              onSelectType={goToTypePick}
+              onSelectFilter={goToFilterPick}
               onSelectReview={goToReviewPick}
               onSelectNew={goToNewPick}
               onSelectHistory={goToHistoryPick}
@@ -115,21 +107,9 @@ export default function FlashcardApp() {
         </div>
       )}
 
-      {view === "categoryPick" && (
-        <PickerScreen title="CATEGORY.EXE" notice={notice}>
-          <CategoryMode
-            categories={categories}
-            tagsForCategory={(category) => (questions ? getTagsForCategory(questions, category) : [])}
-            onStart={startPlay}
-            onStartWrong={startReviewByCategory}
-            onBack={backToMenu}
-          />
-        </PickerScreen>
-      )}
-
-      {view === "typePick" && (
-        <PickerScreen title="TYPE.EXE" notice={notice}>
-          <TypeMode onStart={startTypePlay} onStartWrong={startReviewByType} onBack={backToMenu} />
+      {view === "filterPick" && questions && (
+        <PickerScreen title="FILTER.EXE" notice={notice}>
+          <FilterMode questions={questions} onPlay={startPlay} onMostWrong={startReviewByFilter} onBack={backToMenu} />
         </PickerScreen>
       )}
 

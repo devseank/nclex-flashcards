@@ -19,9 +19,13 @@ export function getTagsForCategory(questions: Question[], category: string): str
   return [...set].sort();
 }
 
-// A question matches a category (if given) and ALL of the given tags
-// (AND/intersection, not "any of") -- picking multiple tags narrows
-// further, same as picking a category then a subcategory used to.
-export function matchesFilter(question: Question, category: string | null, tags: string[]): boolean {
-  return (!category || question.category === category) && tags.every((t) => question.tags.includes(t));
+// Distinct, sorted tags across every question -- used when no category is
+// selected (the filter's tag pool shouldn't be empty just because the
+// category facet is at ANY).
+export function getAllTags(questions: Question[]): string[] {
+  const set = new Set<string>();
+  for (const q of questions) {
+    for (const t of q.tags) set.add(t);
+  }
+  return [...set].sort();
 }

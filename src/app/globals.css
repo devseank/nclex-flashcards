@@ -78,7 +78,7 @@ body {
 
 /* Plain (no color variant) nes-btn instances -- unselected/unanswered
    choice buttons on Flashcard/SequenceFlashcard, list rows on
-   History/CategoryMode/TypeMode/HistoryMode -- default to nes.css's own
+   History/FilterMode/HistoryMode -- default to nes.css's own
    white/dark-gray colors, which stay bright white even under `.dark`. The
    :not() chain keeps this from also repainting the colored is-primary/
    is-success/is-warning/is-error/is-disabled variants, which already read
@@ -124,6 +124,21 @@ body {
 
 .dark .nes-select::after {
   color: #dbe4f0;
+}
+
+/* nes-input (the tag search box in FilterMode) -- same fixed near-black
+   border-image-source problem as nes-select/nes-btn above, plus a
+   browser-default-white background, both invisible against a dark card. */
+.dark .nes-input {
+  background-color: var(--card-bg);
+  color: #dbe4f0;
+  outline: 2px solid #4a5a75;
+  outline-offset: 0px;
+  border-image-repeat: stretch;
+}
+
+.dark .nes-input::placeholder {
+  color: #6b7d99;
 }
 
 .font-pixel {

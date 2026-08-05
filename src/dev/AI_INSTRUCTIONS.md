@@ -50,7 +50,7 @@ read the **current** `src/hooks/useQuizSession.ts` and
    `useQuizSessionTest`, `fetchAllQuestions` swapped for
    `fetchAllQuestionsFixture`, and `<AuthGate>`/`<SignOutButton>` removed
    (no auth to gate). Every screen component it renders (`Landing`,
-   `CategoryMode`, `Flashcard`, `Analytics`, ...) should be the **real**
+   `FilterMode`, `Flashcard`, `Analytics`, ...) should be the **real**
    production component, imported directly — only the data layer is fake.
    Note: `Analytics.tsx` itself calls the real `fetchAttempts` from
    `@/services/attempts` internally rather than taking attempts as a prop —

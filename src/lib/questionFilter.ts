@@ -1,0 +1,55 @@
+import { Question } from "@/services/questions";
+import { QuestionKind, matchesKind } from "@/lib/questionKind";
+
+// One combined query across all three facets a question can be filtered by.
+// Each facet is independently optional ("ANY") -- category is single-valued
+// (a question has exactly one), kinds/tags are OR/AND respectively (see
+// matchesQuestionFilter below).
+export type QuestionFilter = {
+  category: string | null;
+  kinds: QuestionKind[];
+  tags: string[];
+};
+
+export const EMPTY_FILTER: QuestionFilter = { category: null, kinds: [], tags: [] };
+
+export function isFilterEmpty(filter: QuestionFilter): boolean {
+  return !filter.category && filter.kinds.length === 0 && filter.tags.length === 0;
+}
+
+// category: ANY if unset, else exact match (a question has exactly one).
+// kinds: ANY if empty, else OR -- question must match at least one selected kind.
+// tags: ANY if empty, else AND -- question must have ALL selected tags.
+function matchesQuestionFilter(question: Question, filter: QuestionFilter): boolean {
+  const categoryOk = !filter.category || question.category === filter.category;
+  const kindOk = filter.kinds.length === 0 || filter.kinds.some((k) => matchesKind(question, k));
+  const tagsOk = filter.tags.every((t) => question.tags.includes(t));
+  return categoryOk && kindOk && tagsOk;
+}
+
+// The one seam every call site asks "which questions match this filter?"
+// through -- never by inlining `.filter(matchesQuestionFilter)` at the call
+// site itself. Today this is a plain client-side filter; if this ever moves
+// behind a real backend/API, only this function's body changes (likely to an
+// async request) -- no caller needs to change.
+export function queryQuestions(pool: Question[], filter: QuestionFilter): Question[] {
+  return pool.filter((q) => matchesQuestionFilter(q, filter));
+}
+
+const KIND_SHORT_LABELS: Record<QuestionKind, string> = {
+  single: "SINGLE",
+  sata: "SATA",
+  sequence: "SEQUENCE",
+};
+
+// Builds the human-readable session/filter label, e.g.
+// "Pharmacology — SINGLE, SATA — Cardiovascular, Endocrine". Omits any facet
+// left at ANY. Returns null for an entirely empty filter (the plain PLAY
+// case), same as today's category-only label did.
+export function describeFilter(filter: QuestionFilter): string | null {
+  const parts: string[] = [];
+  if (filter.category) parts.push(filter.category);
+  if (filter.kinds.length > 0) parts.push(filter.kinds.map((k) => KIND_SHORT_LABELS[k]).join(", "));
+  if (filter.tags.length > 0) parts.push(filter.tags.join(", "));
+  return parts.length > 0 ? parts.join(" — ") : null;
+}

@@ -14,16 +14,14 @@ function SectionLabel({ children }: { children: string }) {
 // hiding it behind its own extra "open menu" tap was a redundant step.
 export default function Landing({
   onSelectPlay,
-  onSelectCategory,
-  onSelectType,
+  onSelectFilter,
   onSelectReview,
   onSelectNew,
   onSelectHistory,
   onSelectAnalytics,
 }: {
   onSelectPlay: () => void;
-  onSelectCategory: () => void;
-  onSelectType: () => void;
+  onSelectFilter: () => void;
   onSelectReview: () => void;
   onSelectNew: () => void;
   onSelectHistory: () => void;
@@ -44,22 +42,13 @@ export default function Landing({
 
       <div className="space-y-2">
         <SectionLabel>FILTER</SectionLabel>
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={onSelectCategory}
-            className="nes-btn is-warning font-pixel text-[10px] py-2"
-          >
-            CATEGORY
-          </button>
-          <button
-            type="button"
-            onClick={onSelectType}
-            className="nes-btn font-pixel text-[10px] py-2"
-          >
-            TYPE
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={onSelectFilter}
+          className="nes-btn is-warning w-full font-pixel text-[10px] py-2"
+        >
+          FILTER
+        </button>
       </div>
 
       <div className="space-y-2">

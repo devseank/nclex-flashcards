@@ -10,9 +10,8 @@ import {
 } from "@/services/attempts";
 import { getErrorMessage } from "@/lib/errorMessage";
 import { startOfToday, startOfWeek } from "@/lib/dateRanges";
-import { matchesFilter } from "@/lib/tags";
+import { QuestionFilter, EMPTY_FILTER, queryQuestions, describeFilter } from "@/lib/questionFilter";
 import { SessionMode, pickRandom, isCorrect, selectMostWrong, selectUnattempted, selectLeastRecentlyTried } from "@/lib/quizLogic";
-import { QuestionKind, KIND_LABELS, matchesKind } from "@/lib/questionKind";
 import { ReviewRange } from "@/components/ReviewMode";
 import { NewRange } from "@/components/NewMode";
 import { HistoryLimit } from "@/components/HistoryMode";
@@ -20,8 +19,7 @@ import { HistoryEntry } from "@/components/HistoryList";
 
 export type View =
   | "menu"
-  | "categoryPick"
-  | "typePick"
+  | "filterPick"
   | "reviewPick"
   | "newPick"
   | "historyPick"
@@ -53,8 +51,8 @@ const NEW_RANGE_LABELS: Record<NewRange, string> = {
 };
 
 // Owns all quiz-session state and the actions that transition between
-// screens (start a mode/category/review, answer a question, return to
-// menu). FlashcardApp just wires this up to the right screen components.
+// screens (start a mode/filter/review, answer a question, return to menu).
+// FlashcardApp just wires this up to the right screen components.
 export function useQuizSession(questions: Question[] | null) {
   const [view, setView] = useState<View>("menu");
   const [mode, setMode] = useState<SessionMode | null>(null);
@@ -87,12 +85,18 @@ export function useQuizSession(questions: Question[] | null) {
     }
   }
 
-  function startPlay(category: string | null = null, tags: string[] = []) {
+  function startPlay(filter: QuestionFilter = EMPTY_FILTER) {
     if (!questions) return;
-    const pool = questions.filter((q) => matchesFilter(q, category, tags));
-    if (pool.length === 0) return;
-
-    const label = category && tags.length > 0 ? `${category} — ${tags.join(", ")}` : category;
+    const pool = queryQuestions(questions, filter);
+    const label = describeFilter(filter);
+    if (pool.length === 0) {
+      // Multiple selected tags are an intersection (a question must have
+      // ALL of them), so a combination that's individually valid per-facet
+      // can still produce zero matches -- without this, PLAY just silently
+      // did nothing.
+      setNotice({ text: `No questions match ${label ?? "this filter"} — try a broader filter.`, tone: "info" });
+      return;
+    }
     beginSession(pool, "infinite", "", label);
 
     // Fire-and-forget: powers the cheer message's attempt history. Not
@@ -103,31 +107,20 @@ export function useQuizSession(questions: Question[] | null) {
       .catch(() => {});
   }
 
-  function startTypePlay(kind: QuestionKind) {
+  async function startReviewByFilter(filter: QuestionFilter) {
     if (!questions) return;
-    const pool = questions.filter((q) => matchesKind(q, kind));
-    if (pool.length === 0) return;
-
-    beginSession(pool, "infinite", "", KIND_LABELS[kind]);
-
-    fetchAttempts()
-      .then((attempts) => setQuestionStats(computeQuestionStats(attempts)))
-      .catch(() => {});
-  }
-
-  async function startReviewByType(kind: QuestionKind) {
-    if (!questions) return;
-    const pool = questions.filter((q) => matchesKind(q, kind));
+    const pool = queryQuestions(questions, filter);
+    const label = describeFilter(filter);
 
     try {
       const attempts = await fetchAttempts();
       const mostWrong = selectMostWrong(pool, attempts, null);
       if (mostWrong.length === 0) {
-        setNotice({ text: `No incorrect answers in ${KIND_LABELS[kind]} — nice work!`, tone: "info" });
+        setNotice({ text: `No incorrect answers in ${label ?? "this filter"} — nice work!`, tone: "info" });
         return;
       }
       setQuestionStats(computeQuestionStats(attempts));
-      beginSession(mostWrong, "review", `${KIND_LABELS[kind]} — MOST WRONG`, null);
+      beginSession(mostWrong, "review", `${label ?? "REVIEW"} — MOST WRONG`, label);
     } catch (err) {
       setNotice({ text: getErrorMessage(err), tone: "error" });
     }
@@ -175,25 +168,6 @@ export function useQuizSession(questions: Question[] | null) {
         return;
       }
       beginSession(unattempted, "new", `${NEW_RANGE_LABELS[range]} QUESTIONS`, null);
-    } catch (err) {
-      setNotice({ text: getErrorMessage(err), tone: "error" });
-    }
-  }
-
-  async function startReviewByCategory(category: string, tags: string[] = []) {
-    if (!questions) return;
-    const pool = questions.filter((q) => matchesFilter(q, category, tags));
-    const label = tags.length > 0 ? `${category} — ${tags.join(", ")}` : category;
-
-    try {
-      const attempts = await fetchAttempts();
-      const mostWrong = selectMostWrong(pool, attempts, null);
-      if (mostWrong.length === 0) {
-        setNotice({ text: `No incorrect answers in ${label} — nice work!`, tone: "info" });
-        return;
-      }
-      setQuestionStats(computeQuestionStats(attempts));
-      beginSession(mostWrong, "review", `${label} — MOST WRONG`, label);
     } catch (err) {
       setNotice({ text: getErrorMessage(err), tone: "error" });
     }
@@ -248,14 +222,9 @@ export function useQuizSession(questions: Question[] | null) {
     setHistoryDetailEntry(null);
   }
 
-  function goToCategoryPick() {
+  function goToFilterPick() {
     setNotice(null);
-    setView("categoryPick");
-  }
-
-  function goToTypePick() {
-    setNotice(null);
-    setView("typePick");
+    setView("filterPick");
   }
 
   function goToHistoryPick() {
@@ -322,17 +291,14 @@ export function useQuizSession(questions: Question[] | null) {
     historyEntries,
     historyDetailEntry,
     startPlay,
-    startTypePlay,
+    startReviewByFilter,
     startReviewByRange,
-    startReviewByCategory,
-    startReviewByType,
     startNewByRange,
     startHistoryList,
     selectHistoryEntry,
     backToHistoryList,
     backToMenu,
-    goToCategoryPick,
-    goToTypePick,
+    goToFilterPick,
     goToReviewPick,
     goToNewPick,
     goToHistoryPick,
