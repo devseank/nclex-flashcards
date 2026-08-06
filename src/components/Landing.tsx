@@ -1,6 +1,6 @@
 "use client";
 
-import ThemeToggle from "@/components/ThemeToggle";
+import ThemeToggle from "@/components/ui/ThemeToggle";
 
 // A small pixel-font header above a group of related menu buttons, so this
 // home screen reads as organized sections instead of one long wall of

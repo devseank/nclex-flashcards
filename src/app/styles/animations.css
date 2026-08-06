@@ -1,0 +1,186 @@
+/* iOS Safari can fail to repaint an element that's repositioned every
+   scroll frame (it briefly vanishes rather than staying put). Forcing it
+   onto its own GPU compositing layer up front, rather than letting Safari
+   create/destroy that layer on the fly, is the standard fix. */
+.gpu-layer {
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+@keyframes blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+.blink {
+  animation: blink 1s steps(1, end) infinite;
+}
+
+@keyframes heartbeat {
+  0%, 100% { transform: scale(1); }
+  15% { transform: scale(1.3); }
+  30% { transform: scale(1); }
+  45% { transform: scale(1.18); }
+  60% { transform: scale(1); }
+}
+
+.heartbeat {
+  animation: heartbeat 1.8s ease-in-out infinite;
+}
+
+@keyframes burst-float {
+  0% { transform: translateY(0) scale(0.7); opacity: 1; }
+  100% { transform: translateY(-48px) scale(1.1); opacity: 0; }
+}
+
+.burst-heart {
+  animation: burst-float 0.8s ease-out forwards;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+.shake {
+  animation: shake 0.4s ease-in-out;
+}
+
+/* Entrance-only transitions -- opacity/transform are compositor-only, so
+   these never delay layout or first paint of the content underneath them. */
+@keyframes view-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.view-fade-in {
+  animation: view-fade-in 160ms ease-out both;
+}
+
+@keyframes dropdown-fade-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.dropdown-fade-in {
+  animation: dropdown-fade-in 150ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .view-fade-in,
+  .dropdown-fade-in {
+    animation: none;
+  }
+}
+
+/* Periodic light sweep -- used on the golden NEW badge and the PLAY button.
+   The element needs its own overflow-hidden so the sweep never spills onto
+   surrounding content. */
+@keyframes shine-sweep {
+  0%, 20% { transform: translateX(-150%) skewX(-20deg); }
+  55%, 100% { transform: translateX(220%) skewX(-20deg); }
+}
+
+.shine-sweep {
+  isolation: isolate;
+}
+
+.shine-sweep::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 35%;
+  height: 100%;
+  background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.9), transparent);
+  animation: shine-sweep 2.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shine-sweep::after {
+    animation: none;
+  }
+}
+
+/* Brief, CSS-only answer feedback. All under ~750ms and compositor-only
+   (opacity/transform), so nothing here ever delays revealing the actual
+   answer -- it's a decorative overlay on top of it. */
+@keyframes confetti-radial {
+  0% { transform: translate(calc(-50% + var(--confetti-start-x)), -50%) rotate(var(--confetti-angle)) translateY(0) scale(1); opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--confetti-start-x)), -50%) rotate(var(--confetti-angle)) translateY(-90px) scale(0.5); opacity: 0; }
+}
+
+@keyframes confetti-shower {
+  0% { transform: translate(calc(-50% + var(--confetti-start-x) + var(--confetti-drift)), -50%) translateY(0); opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--confetti-start-x) + var(--confetti-drift) * 3), -50%) translateY(-100px); opacity: 0; }
+}
+
+@keyframes confetti-sidesweep {
+  0% { transform: translate(calc(-50% + var(--confetti-start-x)), -50%) translate(0, var(--confetti-drift)) rotate(0deg); opacity: 1; }
+  100% {
+    transform: translate(calc(-50% + var(--confetti-start-x)), -50%) translate(calc(var(--confetti-direction) * 110px), var(--confetti-drift))
+      rotate(calc(var(--confetti-direction) * 180deg));
+    opacity: 0;
+  }
+}
+
+.confetti-piece {
+  left: 50%;
+  top: 50%;
+  animation-duration: 700ms;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+}
+
+.confetti-radial { animation-name: confetti-radial; }
+.confetti-shower { animation-name: confetti-shower; }
+.confetti-sidesweep { animation-name: confetti-sidesweep; }
+
+/* A translucent veil that pulses in and back out, rather than swapping the
+   card's actual background to a solid color (which read as jarring and "too
+   black" against the pixel-art white card when it was solid near-black). */
+@keyframes flash-pulse {
+  0%, 100% { opacity: 0; }
+  30%, 70% { opacity: 1; }
+}
+
+.flash-wrong::before,
+.flash-correct::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  /* NES.css buttons all set position:relative (z-index:auto); without an
+     explicit z-index here, ties go to DOM order and the buttons (rendered
+     after this pseudo-element) would paint over it, hiding the flash. */
+  z-index: 50;
+  opacity: 0;
+  pointer-events: none;
+  animation: flash-pulse 380ms ease-in-out;
+}
+
+.flash-wrong::before {
+  background: rgba(50, 15, 15, 0.35);
+}
+
+.flash-correct::before {
+  background: rgba(255, 210, 0, 0.45);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shake {
+    animation: none;
+  }
+  .flash-wrong::before,
+  .flash-correct::before {
+    animation: none;
+  }
+  .confetti-piece {
+    animation: none;
+    opacity: 0;
+  }
+}

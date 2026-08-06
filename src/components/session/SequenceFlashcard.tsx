@@ -23,10 +23,10 @@ import { SequenceQuestion } from "@/services/questions";
 import { QuestionStats } from "@/services/attempts";
 import { categoryVariant } from "@/lib/categoryVariant";
 import { cheerMessage } from "@/lib/cheerMessage";
-import NewBadge from "@/components/NewBadge";
-import ConfettiBurst, { ConfettiConfig, buildConfettiConfig } from "@/components/ConfettiBurst";
-import StickyNextBar from "@/components/StickyNextBar";
-import { FlashcardMode } from "@/components/Flashcard";
+import NewBadge from "@/components/ui/NewBadge";
+import ConfettiBurst, { ConfettiConfig, buildConfettiConfig } from "@/components/session/ConfettiBurst";
+import StickyNextBar from "@/components/session/StickyNextBar";
+import { FlashcardMode } from "@/components/session/Flashcard";
 
 // Rationale for sequence questions is a numbered walkthrough ("1. ... 2. ...")
 // rather than "Option A:" notes -- split it into its own paragraphs the same

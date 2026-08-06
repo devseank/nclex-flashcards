@@ -14,10 +14,10 @@ import { startOfToday, startOfWeek } from "@/lib/dateRanges";
 import { QuestionFilter, EMPTY_FILTER, queryQuestions, describeFilter } from "@/lib/questionFilter";
 import { SessionMode, isCorrect, selectMostWrong, selectUnattempted, selectLeastRecentlyTried } from "@/lib/quizLogic";
 import { pickNextForReview } from "@/lib/srs";
-import { ReviewRange } from "@/components/ReviewMode";
-import { NewRange } from "@/components/NewMode";
-import { HistoryLimit } from "@/components/HistoryMode";
-import { HistoryEntry } from "@/components/HistoryList";
+import { ReviewRange } from "@/components/picker/ReviewMode";
+import { NewRange } from "@/components/picker/NewMode";
+import { HistoryLimit } from "@/components/picker/HistoryMode";
+import { HistoryEntry } from "@/components/history/HistoryList";
 
 export type View =
   | "menu"

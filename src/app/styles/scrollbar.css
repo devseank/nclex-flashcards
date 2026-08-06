@@ -1,0 +1,33 @@
+/* Thin, pixel-themed scrollbar (app's navy/blue) instead of the default
+   OS look, so the page reads as scrollable at a glance. Firefox via
+   scrollbar-width/scrollbar-color; Chrome/Safari/Edge via ::-webkit-*. */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: #12314a var(--background);
+}
+
+.dark html {
+  scrollbar-color: #345170 var(--background);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #12314a;
+  border: 2px solid var(--background);
+  border-radius: 0;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background-color: #345170;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #209cee;
+}

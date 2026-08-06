@@ -5,18 +5,18 @@ import { fetchAllQuestions, Question } from "@/services/questions";
 import { getErrorMessage } from "@/lib/errorMessage";
 import { useQuizSession, Notice } from "@/hooks/useQuizSession";
 import Landing from "@/components/Landing";
-import FilterMode from "@/components/FilterMode";
-import ReviewMode from "@/components/ReviewMode";
-import NewMode from "@/components/NewMode";
-import HistoryMode from "@/components/HistoryMode";
-import HistoryList from "@/components/HistoryList";
-import HistoryDetail from "@/components/HistoryDetail";
-import Analytics from "@/components/Analytics";
-import PixelWindow from "@/components/PixelWindow";
-import SessionScreen from "@/components/SessionScreen";
-import FinishedScreen from "@/components/FinishedScreen";
-import SignOutButton from "@/components/SignOutButton";
-import NoticeBanner from "@/components/NoticeBanner";
+import FilterMode from "@/components/picker/FilterMode";
+import ReviewMode from "@/components/picker/ReviewMode";
+import NewMode from "@/components/picker/NewMode";
+import HistoryMode from "@/components/picker/HistoryMode";
+import HistoryList from "@/components/history/HistoryList";
+import HistoryDetail from "@/components/history/HistoryDetail";
+import Analytics from "@/components/analytics/Analytics";
+import PixelWindow from "@/components/ui/PixelWindow";
+import SessionScreen from "@/components/session/SessionScreen";
+import FinishedScreen from "@/components/session/FinishedScreen";
+import SignOutButton from "@/components/auth/SignOutButton";
+import NoticeBanner from "@/components/ui/NoticeBanner";
 
 // A PixelWindow plus its below-the-fold notice banner, for the two picker
 // screens (category/review) that share this exact layout.

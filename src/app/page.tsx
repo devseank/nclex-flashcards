@@ -1,6 +1,6 @@
 "use client";
 
-import AuthGate from "@/components/AuthGate";
+import AuthGate from "@/components/auth/AuthGate";
 import FlashcardApp from "@/components/FlashcardApp";
 
 export default function Home() {

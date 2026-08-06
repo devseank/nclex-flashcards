@@ -1,6 +1,6 @@
 "use client";
 
-import QuestionCard from "@/components/QuestionCard";
+import QuestionCard from "@/components/session/QuestionCard";
 import { Question } from "@/services/questions";
 import { QuestionStats } from "@/services/attempts";
 import { SessionMode } from "@/lib/quizLogic";

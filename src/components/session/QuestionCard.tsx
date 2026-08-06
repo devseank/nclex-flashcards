@@ -2,8 +2,8 @@
 
 import { Question } from "@/services/questions";
 import { QuestionStats } from "@/services/attempts";
-import Flashcard, { FlashcardMode } from "@/components/Flashcard";
-import SequenceFlashcard from "@/components/SequenceFlashcard";
+import Flashcard, { FlashcardMode } from "@/components/session/Flashcard";
+import SequenceFlashcard from "@/components/session/SequenceFlashcard";
 
 // Thin dispatcher by question.type, not a shared visual component -- each
 // question type keeps its own answer-comparison rendering (colored

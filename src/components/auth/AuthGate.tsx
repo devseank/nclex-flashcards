@@ -3,8 +3,8 @@
 import { useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { useSession } from "@/lib/useSession";
-import AnimatedHeart from "@/components/AnimatedHeart";
-import PixelWindow from "@/components/PixelWindow";
+import AnimatedHeart from "@/components/session/AnimatedHeart";
+import PixelWindow from "@/components/ui/PixelWindow";
 
 const LAST_EMAIL_KEY = "nclex-last-email";
 

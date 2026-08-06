@@ -2,7 +2,7 @@
 
 import { Question } from "@/services/questions";
 import { QuestionStats } from "@/services/attempts";
-import QuestionCard from "@/components/QuestionCard";
+import QuestionCard from "@/components/session/QuestionCard";
 
 export default function HistoryDetail({
   question,

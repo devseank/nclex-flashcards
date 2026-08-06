@@ -1,7 +1,7 @@
 "use client";
 
-import QuestionCard from "@/components/QuestionCard";
-import PixelWindow from "@/components/PixelWindow";
+import QuestionCard from "@/components/session/QuestionCard";
+import PixelWindow from "@/components/ui/PixelWindow";
 import { Question } from "@/services/questions";
 import { QuestionStats } from "@/services/attempts";
 

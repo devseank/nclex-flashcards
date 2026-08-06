@@ -1,0 +1,70 @@
+/* Dark mode is toggled by adding/removing `.dark` on <html> (see
+   ThemeProvider in src/lib/theme.tsx), not by the OS-only media-query
+   default -- this lets the in-app SYSTEM/LIGHT/DARK picker override the
+   device setting instead of only ever following it. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: #eaf2fb;
+  --card-bg: #ffffff;
+  --text-navy: #33415c;
+  --text-navy-strong: #12314a;
+}
+
+.dark {
+  --background: #10161f;
+  --card-bg: #1b2432;
+  --text-navy: #9fc9ff;
+  --text-navy-strong: #cfe6ff;
+
+  /* Dimmer counterparts of nes.css's is-primary/is-success/is-warning/
+     is-error accent colors -- same hue, pulled down in lightness/saturation
+     so the colored buttons don't glow at full light-mode brightness against
+     a near-black background. Named per-variant (base/hover/bevel, matching
+     the three shades nes.css itself uses per variant) and referenced by
+     nes-overrides.css instead of repeating hex values across each variant's
+     6 selectors. */
+  --dim-primary: #1d5f8a;
+  --dim-primary-hover: #17516f;
+  --dim-primary-bevel: #0c3550;
+
+  --dim-success: #4c7a2e;
+  --dim-success-hover: #3f6626;
+  --dim-success-bevel: #274216;
+
+  --dim-warning: #b8952f;
+  --dim-warning-hover: #9c7d27;
+  --dim-warning-bevel: #6b5719;
+
+  --dim-error: #99392c;
+  --dim-error-hover: #7f2e24;
+  --dim-error-bevel: #4f1b16;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --font-pixel: var(--font-pixel);
+  --font-body: var(--font-body);
+}
+
+/* NES.css defaults body to "Press Start 2P" everywhere; override for readability. */
+html,
+body,
+pre,
+code,
+kbd,
+samp {
+  font-family: var(--font-body), sans-serif;
+}
+
+body {
+  background: var(--background);
+}
+
+.dark body {
+  color: #dbe4f0;
+}
+
+.font-pixel {
+  font-family: var(--font-pixel), monospace;
+}

@@ -15,9 +15,9 @@ import {
 } from "recharts";
 import { fetchAttempts, Attempt } from "@/services/attempts";
 import { Question } from "@/services/questions";
-import PixelWindow from "@/components/PixelWindow";
-import InfoTooltip from "@/components/InfoTooltip";
-import RangeSelect, { RANGE_LABELS } from "@/components/RangeSelect";
+import PixelWindow from "@/components/ui/PixelWindow";
+import InfoTooltip from "@/components/ui/InfoTooltip";
+import RangeSelect, { RANGE_LABELS } from "@/components/ui/RangeSelect";
 import { getErrorMessage } from "@/lib/errorMessage";
 import { startOfToday, startOfWeek, startOfMonth } from "@/lib/dateRanges";
 import { AnalyticsRange, buildTrendData } from "@/lib/analyticsTrend";
@@ -72,6 +72,11 @@ export default function Analytics({
       color: navy,
     },
     labelStyle: { color: navy, fontWeight: 700 },
+    // recharts' own item-value line defaults to a hardcoded black (or the
+    // bar's own fill color) when no itemStyle is given -- fine against the
+    // light tooltip background, but nearly invisible against the dark one,
+    // since nothing here was overriding it before.
+    itemStyle: { color: navy },
   };
 
   // Renders the category name in the reserved right-hand margin (see

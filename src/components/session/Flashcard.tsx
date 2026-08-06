@@ -5,9 +5,9 @@ import { ChoiceQuestion } from "@/services/questions";
 import { QuestionStats } from "@/services/attempts";
 import { categoryVariant } from "@/lib/categoryVariant";
 import { cheerMessage } from "@/lib/cheerMessage";
-import NewBadge from "@/components/NewBadge";
-import ConfettiBurst, { ConfettiConfig, buildConfettiConfig } from "@/components/ConfettiBurst";
-import StickyNextBar from "@/components/StickyNextBar";
+import NewBadge from "@/components/ui/NewBadge";
+import ConfettiBurst, { ConfettiConfig, buildConfettiConfig } from "@/components/session/ConfettiBurst";
+import StickyNextBar from "@/components/session/StickyNextBar";
 
 export type FlashcardMode = "immediate" | "review";
 
