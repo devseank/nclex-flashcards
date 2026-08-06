@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Question } from "@/services/questions";
 import {
   recordAttempt,
@@ -33,6 +33,11 @@ export type View =
 
 export type Notice = { text: string; tone: "info" | "error" };
 
+// What each pushed browser-history entry represents -- just the view it was
+// on, so popstate can restore it directly with setView (see the effects in
+// useQuizSession below).
+type NavHistoryState = { nclexView: View };
+
 const MODE_LABELS: Record<SessionMode, string> = {
   infinite: "PLAY",
   review: "REVIEW",
@@ -56,7 +61,14 @@ const NEW_RANGE_LABELS: Record<NewRange, string> = {
 // screens (start a mode/filter/review, answer a question, return to menu).
 // FlashcardApp just wires this up to the right screen components.
 export function useQuizSession(questions: Question[] | null) {
-  const [view, setView] = useState<View>("menu");
+  const [view, setView] = useState<View>(() => {
+    if (typeof window === "undefined") return "menu";
+    // Next.js's App Router remounts client components on back/forward (see
+    // the mount effect below), so a fresh mount isn't necessarily a fresh
+    // load -- read back whatever this history entry was tagged with, if
+    // anything, instead of always defaulting to "menu".
+    return (window.history.state as NavHistoryState | null)?.nclexView ?? "menu";
+  });
   const [mode, setMode] = useState<SessionMode | null>(null);
   const [filterLabel, setFilterLabel] = useState<string | null>(null);
   const [sessionLabel, setSessionLabel] = useState("");
@@ -74,6 +86,60 @@ export function useQuizSession(questions: Question[] | null) {
   const [notice, setNotice] = useState<Notice | null>(null);
   const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
   const [historyDetailEntry, setHistoryDetailEntry] = useState<HistoryEntry | null>(null);
+
+  // Makes the browser/hardware back button (and iOS/Android swipe-back)
+  // navigate within the app instead of leaving the page entirely. Every
+  // `view` change pushes a same-URL history entry tagged with that view;
+  // going back pops to a previously-tagged entry and popstate restores it
+  // with setView. isPoppingRef distinguishes "view changed because the user
+  // (or code) navigated forward/sideways" (push a new entry) from "view
+  // changed because popstate just told us to" (don't re-push, or every back
+  // press would immediately cancel itself out with a fresh forward entry).
+  const isPoppingRef = useRef(false);
+  const isFirstRenderRef = useRef(true);
+
+  useEffect(() => {
+    // Next.js's App Router keeps its own bookkeeping in `history.state`
+    // (an internal RSC tree cache) and -- as observed directly -- fully
+    // remounts client components like this one in response to popstate, as
+    // part of restoring that cache. Its own replaceState call preserves
+    // whatever was already in `history.state` (merging its fields in
+    // alongside ours), so only seed "menu" if nothing has tagged this entry
+    // yet (a genuine first load, not a remount); otherwise leave it alone --
+    // the lazy useState initializer above already read the correct,
+    // preserved value for this render. Spreading the existing state (rather
+    // than replacing it outright) keeps Next's own fields intact either way.
+    const existing = window.history.state as NavHistoryState | null;
+    if (!existing?.nclexView) {
+      window.history.replaceState({ ...existing, nclexView: "menu" } satisfies NavHistoryState, "");
+    }
+
+    function handlePopState(e: PopStateEvent) {
+      const targetView = (e.state as NavHistoryState | null)?.nclexView;
+      // No tagged view means the user has gone back past every entry this
+      // app ever pushed (e.g. onto whatever page linked here) -- nothing of
+      // ours left to restore, so let the browser's own navigation proceed
+      // rather than trapping the user inside the app.
+      if (!targetView) return;
+      isPoppingRef.current = true;
+      setView(targetView);
+    }
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  useEffect(() => {
+    if (isFirstRenderRef.current) {
+      isFirstRenderRef.current = false;
+      return;
+    }
+    if (isPoppingRef.current) {
+      isPoppingRef.current = false;
+      return;
+    }
+    window.history.pushState({ ...window.history.state, nclexView: view } satisfies NavHistoryState, "");
+  }, [view]);
 
   function beginSession(pool: Question[], m: SessionMode, label: string, filter: string | null) {
     setMode(m);
