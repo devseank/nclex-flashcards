@@ -6,14 +6,15 @@ export function getAllCategories(questions: Question[]): string[] {
   return [...new Set(questions.map((q) => q.category))].sort();
 }
 
-// Tags that actually appear on at least one question in this category.
-// Tags aren't scoped to a single category in the data model (the same tag
-// can appear under multiple categories), but a picker narrowing "within
-// category X" only wants the ones actually relevant there.
-export function getTagsForCategory(questions: Question[], category: string): string[] {
+// Tags that actually appear on at least one question in any of these
+// categories. Tags aren't scoped to a single category in the data model
+// (the same tag can appear under multiple categories), but a picker
+// narrowing "within category X (or Y, or Z)" only wants the ones actually
+// relevant there.
+export function getTagsForCategories(questions: Question[], categories: string[]): string[] {
   const set = new Set<string>();
   for (const q of questions) {
-    if (q.category !== category) continue;
+    if (!categories.includes(q.category)) continue;
     for (const t of q.tags) set.add(t);
   }
   return [...set].sort();

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Question } from "@/services/questions";
-import { getAllCategories, getAllTags, getTagsForCategory } from "@/lib/tags";
+import { getAllCategories, getAllTags, getTagsForCategories } from "@/lib/tags";
 import { QuestionKind, KIND_LABELS } from "@/lib/questionKind";
 import { QuestionFilter, queryQuestions } from "@/lib/questionFilter";
 import { categoryVariant } from "@/lib/categoryVariant";
@@ -54,34 +54,38 @@ export default function FilterMode({
   onMostWrong: (filter: QuestionFilter) => void;
   onBack: () => void;
 }) {
-  const [category, setCategory] = useState<string | null>(null);
+  const [categories, setCategories] = useState<string[]>([]);
   const [kinds, setKinds] = useState<QuestionKind[]>([]);
   const [tags, setTags] = useState<string[]>([]);
   const [tagSearch, setTagSearch] = useState("");
 
-  const categories = getAllCategories(questions);
-  // Tags narrow by selected category (so the list only shows what's
+  const allCategories = getAllCategories(questions);
+  // Tags narrow by selected categories (so the list only shows what's
   // actually relevant), but not by selected type -- keeps the interaction
   // predictable rather than tags disappearing when a type is toggled.
-  const tagPool = category ? getTagsForCategory(questions, category) : getAllTags(questions);
+  const tagPool = categories.length > 0 ? getTagsForCategories(questions, categories) : getAllTags(questions);
   const search = tagSearch.trim().toLowerCase();
   const visibleTags = search ? tagPool.filter((t) => t.toLowerCase().includes(search)) : tagPool;
 
-  const filter: QuestionFilter = { category, kinds, tags };
+  const filter: QuestionFilter = { categories, kinds, tags };
   const matchCount = queryQuestions(questions, filter).length;
 
-  function toggleCategory(c: string) {
-    // A tag selected under the old category may not exist under the new
-    // one (or under ANY) -- clearing avoids an invisible, still-applied
-    // tag silently zeroing out matches, the same class of bug just fixed
-    // in startPlay.
-    setCategory((prev) => (prev === c ? null : c));
-    setTags([]);
+  // A tag selected under the old category set may not exist under the new
+  // one -- dropping any that fall outside the new pool avoids an invisible,
+  // still-applied tag silently zeroing out matches, the same class of bug
+  // just fixed in startPlay.
+  function updateCategories(next: string[]) {
+    setCategories(next);
+    const pool = next.length > 0 ? getTagsForCategories(questions, next) : getAllTags(questions);
+    setTags((prev) => prev.filter((t) => pool.includes(t)));
   }
 
-  function clearCategory() {
-    setCategory(null);
-    setTags([]);
+  function toggleCategory(c: string) {
+    updateCategories(categories.includes(c) ? categories.filter((x) => x !== c) : [...categories, c]);
+  }
+
+  function clearCategories() {
+    updateCategories([]);
   }
 
   function toggleKind(k: QuestionKind) {
@@ -95,14 +99,14 @@ export default function FilterMode({
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <p className="text-xs text-gray-400">CATEGORY (optional)</p>
+        <p className="text-xs text-gray-400">CATEGORY (optional, pick any)</p>
         <div className="grid grid-cols-2 gap-2">
-          <ToggleButton label="ALL" isSelected={category === null} selectedVariant="is-warning" onClick={clearCategory} />
-          {categories.map((c) => (
+          <ToggleButton label="ALL" isSelected={categories.length === 0} selectedVariant="is-warning" onClick={clearCategories} />
+          {allCategories.map((c) => (
             <ToggleButton
               key={c}
               label={c}
-              isSelected={category === c}
+              isSelected={categories.includes(c)}
               selectedVariant={categoryVariant(c)}
               onClick={() => toggleCategory(c)}
             />
@@ -145,7 +149,7 @@ export default function FilterMode({
               // showing each tag's own contribution is more useful at a
               // glance than a combined number that changes depending on
               // what else happens to be selected already.
-              const tagMatchCount = queryQuestions(questions, { category, kinds, tags: [t] }).length;
+              const tagMatchCount = queryQuestions(questions, { categories, kinds, tags: [t] }).length;
               return (
                 <ToggleButton
                   key={t}
