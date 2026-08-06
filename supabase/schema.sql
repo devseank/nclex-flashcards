@@ -58,12 +58,14 @@ alter table public.questions add column if not exists grid_answer integer[];
 alter table public.questions add column if not exists ai_generated boolean not null default false;
 
 -- Migrating an existing project: backfills `source` for every question
--- imported before this column existed. The default only exists to satisfy
--- the not-null constraint while backfilling already-existing rows -- it's
+-- imported before this column existed. Backfilled to '' (unknown) rather
+-- than a guessed batch name, since which of the pre-existing questions
+-- actually came from which source was never tracked. The default only
+-- exists to satisfy the not-null constraint while backfilling -- it's
 -- dropped immediately after so a future insert that forgets to set
--- `source` fails loudly instead of silently getting mislabeled as
--- 'nurselabs'. Safe/idempotent to re-run.
-alter table public.questions add column if not exists source text not null default 'nurselabs';
+-- `source` fails loudly instead of silently getting tagged ''.
+-- Safe/idempotent to re-run.
+alter table public.questions add column if not exists source text not null default '';
 alter table public.questions alter column source drop default;
 
 -- Migrating an existing project: `create table if not exists` above is a
@@ -142,9 +144,19 @@ create policy "Users can read their own attempts"
 -- caller's own id, so upserts never need to pass it explicitly.
 create table if not exists public.user_settings (
   user_id uuid primary key default auth.uid() references auth.users (id) on delete cascade,
-  theme text not null default 'system' check (theme in ('system', 'light', 'dark')),
+  theme text not null default 'light' check (theme in ('light', 'dark')),
   updated_at timestamptz not null default now()
 );
+
+-- Migrating an existing project: theme used to be a 3-way
+-- system/light/dark choice; the app only ever offers light/dark now (no
+-- persistent "system" mode), so any existing 'system' rows get resolved to
+-- a real choice before the check constraint is tightened to match. Safe/
+-- idempotent to re-run.
+update public.user_settings set theme = 'light' where theme = 'system';
+alter table public.user_settings alter column theme set default 'light';
+alter table public.user_settings drop constraint if exists user_settings_theme_check;
+alter table public.user_settings add constraint user_settings_theme_check check (theme in ('light', 'dark'));
 
 alter table public.user_settings enable row level security;
 

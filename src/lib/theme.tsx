@@ -10,12 +10,17 @@ import { fetchThemePreference, saveThemePreference, ThemePreference } from "@/se
 export const THEME_STORAGE_KEY = "nclex-theme";
 
 function isThemePreference(value: string | null): value is ThemePreference {
-  return value === "system" || value === "light" || value === "dark";
+  return value === "light" || value === "dark";
 }
 
-function applyResolvedTheme(pref: ThemePreference) {
-  const isDark = pref === "dark" || (pref === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
-  document.documentElement.classList.toggle("dark", isDark);
+// Only ever called once, for a user with no stored preference yet (new
+// device, or pre-existing account from before this was a plain light/dark
+// choice) -- picks a starting point from the OS setting, but the result is
+// then saved as a real "light"/"dark" choice, never re-checked against the
+// OS again. There's no persistent "system" mode to fall back into.
+function resolveInitialTheme(): ThemePreference {
+  if (typeof window === "undefined") return "light";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
 type ThemeContextValue = {
@@ -28,7 +33,7 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<ThemePreference>(() => {
     const cached = typeof window === "undefined" ? null : localStorage.getItem(THEME_STORAGE_KEY);
-    return isThemePreference(cached) ? cached : "system";
+    return isThemePreference(cached) ? cached : resolveInitialTheme();
   });
   const session = useSession();
 
@@ -48,13 +53,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [session]);
 
   useEffect(() => {
-    applyResolvedTheme(theme);
-    if (theme !== "system") return;
-
-    const mql = window.matchMedia("(prefers-color-scheme: dark)");
-    const onChange = () => applyResolvedTheme("system");
-    mql.addEventListener("change", onChange);
-    return () => mql.removeEventListener("change", onChange);
+    document.documentElement.classList.toggle("dark", theme === "dark");
   }, [theme]);
 
   const setTheme = useCallback(

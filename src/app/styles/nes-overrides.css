@@ -10,6 +10,19 @@
   background-color: var(--card-bg);
 }
 
+/* nes-container.is-rounded's border is the same fixed near-black SVG
+   border-image-source as nes-btn/nes-select/nes-input (rgb(33,37,41)) --
+   not literally invisible against --card-bg like those were, since it's
+   close in darkness to the card background, but very low-contrast, which
+   reads as "no border" at a glance. Same fix as the others: a visible
+   outline plus stretching instead of tiling so the outline doesn't pick up
+   nes.css's WebKit border-image-repeat:space gaps as a dashed artifact. */
+.dark .nes-container.is-rounded {
+  outline: 2px solid #4a5a75;
+  outline-offset: 0px;
+  border-image-repeat: stretch;
+}
+
 .dark .text-gray-400,
 .dark .text-gray-500,
 .dark .text-gray-700 {

@@ -5,10 +5,10 @@ import { supabase } from "@/lib/supabase";
 // `maybeSingle()` (not `single()`) on fetch because a brand-new user has no
 // row yet, which is a valid "no preference saved" result, not an error.
 
-export type ThemePreference = "system" | "light" | "dark";
+export type ThemePreference = "light" | "dark";
 
 function isThemePreference(value: string): value is ThemePreference {
-  return value === "system" || value === "light" || value === "dark";
+  return value === "light" || value === "dark";
 }
 
 export async function fetchThemePreference(): Promise<ThemePreference | null> {

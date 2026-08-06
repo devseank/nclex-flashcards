@@ -15,7 +15,7 @@ import Analytics from "@/components/analytics/Analytics";
 import PixelWindow from "@/components/ui/PixelWindow";
 import SessionScreen from "@/components/session/SessionScreen";
 import FinishedScreen from "@/components/session/FinishedScreen";
-import SignOutButton from "@/components/auth/SignOutButton";
+import AccountMenu from "@/components/auth/AccountMenu";
 import NoticeBanner from "@/components/ui/NoticeBanner";
 
 // A PixelWindow plus its below-the-fold notice banner, for the two picker
@@ -82,7 +82,6 @@ export default function FlashcardApp() {
   if (error) {
     return (
       <div className={pageClassName}>
-        <SignOutButton />
         <p className="font-pixel text-sm text-[var(--text-navy)] text-center leading-relaxed">{error}</p>
       </div>
     );
@@ -90,11 +89,9 @@ export default function FlashcardApp() {
 
   return (
     <div className={pageClassName}>
-      <SignOutButton />
-
       {questions && view === "menu" && (
         <div className="view-fade-in w-full max-w-sm">
-          <PixelWindow title="MENU.EXE">
+          <PixelWindow title="MENU.EXE" headerAction={<AccountMenu />}>
             <Landing
               onSelectPlay={() => startPlay()}
               onSelectFilter={goToFilterPick}
