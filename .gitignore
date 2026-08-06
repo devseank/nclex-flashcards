@@ -40,6 +40,7 @@ yarn-error.log*
 # real question bank content stays private, never pushed to the public repo
 /data/*.csv
 /data/*.sql
+/data/archive-checkpoint.txt
 !/data/questions.template.csv
 
 # local-only /dev-preview fixture harness for exercising the app without a

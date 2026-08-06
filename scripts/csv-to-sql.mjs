@@ -30,18 +30,52 @@
 //
 // Usage:
 //   node scripts/csv-to-sql.mjs data/questions.csv > data/questions.sql
+//
+// Archiving (see data/AI_INSTRUCTIONS.md rule 9): once the bank grows large
+// enough that the full INSERT is too big to paste into the Supabase SQL
+// Editor in one go, older rows get split off into data/archived-NN.sql and
+// a checkpoint file (data/archive-checkpoint.txt, gitignored -- just an
+// integer) records how many rows are archived. With no --start/--end
+// flags, this script always emits only the rows AFTER that checkpoint, so
+// a plain re-run after appending new questions keeps questions.sql small
+// (just the new stuff) instead of regenerating the whole multi-hundred-row
+// file every time. --start/--end (1-indexed, inclusive, counting CSV data
+// rows) override this to carve out an explicit archive slice, e.g.:
+//   node scripts/csv-to-sql.mjs data/questions.csv --start=1 --end=150 > data/archived-01.sql
 
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { parse } from "csv-parse/sync";
 
-const inputPath = process.argv[2];
+const args = process.argv.slice(2).filter((a) => !a.startsWith("--"));
+const flags = Object.fromEntries(
+  process.argv
+    .slice(2)
+    .filter((a) => a.startsWith("--"))
+    .map((a) => a.slice(2).split("=")),
+);
+
+const inputPath = args[0];
 if (!inputPath) {
-  console.error("Usage: node scripts/csv-to-sql.mjs <input.csv>");
+  console.error("Usage: node scripts/csv-to-sql.mjs <input.csv> [--start=N] [--end=M]");
   process.exit(1);
 }
 
 const csvText = readFileSync(inputPath, "utf-8");
-const rows = parse(csvText, { columns: true, skip_empty_lines: true, trim: true });
+const allRows = parse(csvText, { columns: true, skip_empty_lines: true, trim: true });
+
+const checkpointPath = join(dirname(inputPath), "archive-checkpoint.txt");
+const checkpoint = existsSync(checkpointPath) ? Number(readFileSync(checkpointPath, "utf-8").trim()) || 0 : 0;
+
+const startRow = flags.start ? Number(flags.start) : checkpoint + 1;
+const endRow = flags.end ? Number(flags.end) : allRows.length;
+const rows = allRows.slice(startRow - 1, endRow);
+
+if (rows.length === 0) {
+  console.error(`No rows in range [${startRow}, ${endRow}] (${allRows.length} total, ${checkpoint} already archived).`);
+  console.log(`-- No new questions since last archive checkpoint (${checkpoint}/${allRows.length}).`);
+  process.exit(0);
+}
 
 function sqlString(value) {
   return `'${String(value).replace(/'/g, "''")}'`;
@@ -72,7 +106,7 @@ function matchChoiceIndices(pipeDelimited, choices, fieldName, row, rowNumber) {
 }
 
 const values = rows.map((row, i) => {
-  const rowNumber = i + 2;
+  const rowNumber = startRow + i + 1; // +1 for the CSV header line
   const choices = Object.keys(row)
     .filter((key) => /^choice_\d+$/.test(key))
     .sort((a, b) => Number(a.split("_")[1]) - Number(b.split("_")[1]))
@@ -101,10 +135,7 @@ const values = rows.map((row, i) => {
   );
 });
 
-if (values.length === 0) {
-  console.error("No rows found in CSV.");
-  process.exit(1);
-}
+console.error(`Generated ${values.length} row(s) (CSV rows ${startRow}-${endRow} of ${allRows.length}).`);
 
 console.log(
   `insert into public.questions (category, tags, question, choices, question_type, correct_indices, correct_order, rationale, image_url)\nvalues\n  ${values.join(",\n  ")}\non conflict (question) do nothing;`,

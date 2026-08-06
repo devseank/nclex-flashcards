@@ -21,7 +21,9 @@ if (!inputPath || !outputPath) {
 const raw = readFileSync(inputPath, "utf-8");
 
 const NOISE_LINES = new Set(["Correct", "Incorrect", "Correct answer", "Incorrect answer", "1 point(s)"]);
-const CHOICE_LETTERS = ["A", "B", "C", "D", "E", "F", "G", "H", "I"];
+// Up to Z -- some diagram-labeling questions (e.g. a detailed cross-section
+// with 10+ labeled points) go past I.
+const CHOICE_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
 const blocks = raw
   .split(/\n(?=\d+\.\s\d+\.\sQuestion\n)/)
@@ -49,26 +51,32 @@ for (const block of blocks) {
 
   let idx = 1;
   const questionLines = [];
-  while (idx < lines.length && !/^[A-I]\.\s/.test(lines[idx])) {
+  while (idx < lines.length && !/^[A-Z]\.\s/.test(lines[idx])) {
     questionLines.push(lines[idx]);
     idx++;
   }
   const question = questionLines.join(" ").trim();
 
   const choices = {};
-  while (idx < lines.length && !/^(Correct Answers?|Answer):/.test(lines[idx])) {
-    const m = lines[idx].match(/^([A-I])\.\s(.+)$/);
+  while (idx < lines.length && !/^(Correct Answers?|Answer):/i.test(lines[idx])) {
+    const m = lines[idx].match(/^([A-Z])\.\s(.+)$/);
     if (m && !(m[1] in choices)) choices[m[1]] = m[2].trim();
     idx++;
   }
 
   const answerLine = lines[idx];
-  const answerMatch = answerLine?.match(/^(?:Correct Answers?|Answer):\s*((?:[A-I]\b[,\s]*(?:and\s+)?)+)/);
-  if (!answerMatch) {
+  // "and" or "&" both join the last letter in a multi-answer list (e.g.
+  // "A, B, & E").
+  const answerMatch = answerLine?.match(/^(?:Correct Answers?|Answer):\s*((?:[A-Z]\b[,\s]*(?:(?:and|&)\s*)?)+)/i);
+  // Some pasted formats restate the answer as "Correct answer: #4 is Option
+  // J. Renal vein" -- the letter doesn't come immediately after the colon,
+  // so fall back to whatever letter(s) follow the word "Option".
+  const optionMatches = answerLine ? [...answerLine.matchAll(/\bOption\s+([A-Z])\b/gi)].map((m) => m[1].toUpperCase()) : [];
+  if (!answerMatch && optionMatches.length === 0) {
     skipped.push({ reason: "couldn't find a parseable answer line", preview: question.slice(0, 80) });
     continue;
   }
-  const correctLetters = [...new Set(answerMatch[1].match(/[A-I]/g) ?? [])];
+  const correctLetters = answerMatch ? [...new Set(answerMatch[1].match(/[A-Z]/g) ?? [])] : [...new Set(optionMatches)];
   idx++;
 
   const rationale = lines
@@ -94,15 +102,17 @@ for (const block of blocks) {
 // the file they're appended to, not just whatever this batch happens to need.
 const maxChoices = Math.max(9, ...rows.map((r) => r.choices.length));
 const choiceColumns = Array.from({ length: maxChoices }, (_, i) => `choice_${i + 1}`);
-const header = ["category", "tags", "question", ...choiceColumns, "correct_answer", "rationale", "question_type", "correct_order"].join(",");
+const header = ["category", "tags", "image_url", "question", ...choiceColumns, "correct_answer", "rationale", "question_type", "correct_order"].join(
+  ",",
+);
 
-// tags is always blank here -- this pasted-text format has no structured
-// tag info to extract, only a single leading category. Fill tags in by
-// hand afterward if the batch warrants any.
+// tags and image_url are always blank here -- this pasted-text format has
+// no structured tag info or image reference to extract, only a single
+// leading category. Fill both in by hand afterward if the batch warrants.
 const csvRows = rows.map((r) => {
   const padded = [...r.choices];
   while (padded.length < maxChoices) padded.push("");
-  return [r.category, "", r.question, ...padded, r.correctAnswer, r.rationale, "", ""].map(csvField).join(",");
+  return [r.category, "", "", r.question, ...padded, r.correctAnswer, r.rationale, "", ""].map(csvField).join(",");
 });
 
 writeFileSync(outputPath, [header, ...csvRows].join("\n") + "\n");
