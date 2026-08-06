@@ -19,6 +19,28 @@
   --card-bg: #1b2432;
   --text-navy: #9fc9ff;
   --text-navy-strong: #cfe6ff;
+
+  /* Dimmer counterparts of nes.css's is-primary/is-success/is-warning/
+     is-error accent colors -- same hue, pulled down in lightness/saturation
+     so the colored buttons don't glow at full light-mode brightness against
+     a near-black background. Named per-variant (base/hover/bevel, matching
+     the three shades nes.css itself uses per variant) and referenced below
+     instead of repeating hex values across each variant's 6 selectors. */
+  --dim-primary: #1d5f8a;
+  --dim-primary-hover: #17516f;
+  --dim-primary-bevel: #0c3550;
+
+  --dim-success: #4c7a2e;
+  --dim-success-hover: #3f6626;
+  --dim-success-bevel: #274216;
+
+  --dim-warning: #b8952f;
+  --dim-warning-hover: #9c7d27;
+  --dim-warning-bevel: #6b5719;
+
+  --dim-error: #99392c;
+  --dim-error-hover: #7f2e24;
+  --dim-error-bevel: #4f1b16;
 }
 
 @theme inline {
@@ -76,13 +98,97 @@ body {
   color: #93a3b8;
 }
 
+/* is-primary/is-success/is-warning/is-error each get a dimmer counterpart of
+   their light-mode color (see the --dim-* variables above) instead of
+   nes.css's full-brightness defaults, which glow against a near-black card.
+   Mirrors nes.css's own per-variant structure exactly (base fill, ::after
+   bevel shadow, :hover, :hover::after, :focus ring, :active::after) so
+   these behave identically to the light-mode versions, just dimmer. Text
+   color is left alone -- it already has enough contrast against the dimmer
+   fills too. */
+.dark .nes-btn.is-primary {
+  background-color: var(--dim-primary);
+}
+.dark .nes-btn.is-primary::after {
+  box-shadow: inset -4px -4px var(--dim-primary-bevel);
+}
+.dark .nes-btn.is-primary:hover {
+  background-color: var(--dim-primary-hover);
+}
+.dark .nes-btn.is-primary:hover::after {
+  box-shadow: inset -6px -6px var(--dim-primary-bevel);
+}
+.dark .nes-btn.is-primary:focus {
+  box-shadow: 0 0 0 6px rgba(12, 53, 80, 0.35);
+}
+.dark .nes-btn.is-primary:active:not(.is-disabled)::after {
+  box-shadow: inset 4px 4px var(--dim-primary-bevel);
+}
+
+.dark .nes-btn.is-success {
+  background-color: var(--dim-success);
+}
+.dark .nes-btn.is-success::after {
+  box-shadow: inset -4px -4px var(--dim-success-bevel);
+}
+.dark .nes-btn.is-success:hover {
+  background-color: var(--dim-success-hover);
+}
+.dark .nes-btn.is-success:hover::after {
+  box-shadow: inset -6px -6px var(--dim-success-bevel);
+}
+.dark .nes-btn.is-success:focus {
+  box-shadow: 0 0 0 6px rgba(39, 66, 22, 0.35);
+}
+.dark .nes-btn.is-success:active:not(.is-disabled)::after {
+  box-shadow: inset 4px 4px var(--dim-success-bevel);
+}
+
+.dark .nes-btn.is-warning {
+  background-color: var(--dim-warning);
+}
+.dark .nes-btn.is-warning::after {
+  box-shadow: inset -4px -4px var(--dim-warning-bevel);
+}
+.dark .nes-btn.is-warning:hover {
+  background-color: var(--dim-warning-hover);
+}
+.dark .nes-btn.is-warning:hover::after {
+  box-shadow: inset -6px -6px var(--dim-warning-bevel);
+}
+.dark .nes-btn.is-warning:focus {
+  box-shadow: 0 0 0 6px rgba(107, 87, 25, 0.35);
+}
+.dark .nes-btn.is-warning:active:not(.is-disabled)::after {
+  box-shadow: inset 4px 4px var(--dim-warning-bevel);
+}
+
+.dark .nes-btn.is-error {
+  background-color: var(--dim-error);
+}
+.dark .nes-btn.is-error::after {
+  box-shadow: inset -4px -4px var(--dim-error-bevel);
+}
+.dark .nes-btn.is-error:hover {
+  background-color: var(--dim-error-hover);
+}
+.dark .nes-btn.is-error:hover::after {
+  box-shadow: inset -6px -6px var(--dim-error-bevel);
+}
+.dark .nes-btn.is-error:focus {
+  box-shadow: 0 0 0 6px rgba(79, 27, 22, 0.35);
+}
+.dark .nes-btn.is-error:active:not(.is-disabled)::after {
+  box-shadow: inset 4px 4px var(--dim-error-bevel);
+}
+
 /* Plain (no color variant) nes-btn instances -- unselected/unanswered
    choice buttons on Flashcard/SequenceFlashcard, list rows on
    History/FilterMode/HistoryMode -- default to nes.css's own
    white/dark-gray colors, which stay bright white even under `.dark`. The
    :not() chain keeps this from also repainting the colored is-primary/
-   is-success/is-warning/is-error/is-disabled variants, which already read
-   fine as-is in dark mode. */
+   is-success/is-warning/is-error/is-disabled variants, which get their own
+   dimmed treatment above/below instead. */
 .dark .nes-btn:not(.is-primary):not(.is-success):not(.is-warning):not(.is-error):not(.is-disabled) {
   background-color: var(--card-bg);
   color: #dbe4f0;
