@@ -17,20 +17,54 @@ create table if not exists public.questions (
   question text not null unique,
   choices jsonb not null,
   -- 'choice' (default): pick one or more of `choices` -- correct_indices is
-  -- set, correct_order is null.
+  -- set, correct_order/grid_columns/grid_answer are null.
   -- 'sequence': arrange all of `choices` in the right order (e.g. steps of
   -- a procedure) -- correct_order is set (a permutation of choices'
-  -- indices), correct_indices is null.
+  -- indices), the rest are null.
+  -- 'grid': an NGN-style matrix -- `choices` are the row labels (e.g.
+  -- findings/interventions), `grid_columns` are the column headers (e.g.
+  -- ["Indicated", "Not indicated"]), and `grid_answer` gives, for each row
+  -- (same order as `choices`), the index into `grid_columns` that's
+  -- correct for that row. correct_indices/correct_order are null.
   question_type text not null default 'choice',
   correct_indices integer[],
   correct_order integer[],
+  grid_columns text[],
+  grid_answer integer[],
   rationale text not null,
   -- Optional -- a URL to an illustration for this question (e.g. an
   -- anatomy diagram). When several questions share one image, reuse the
   -- exact same URL across their rows rather than duplicating the file.
   image_url text,
+  -- True when the choices/rationale (or both) were written by an AI to
+  -- reconstruct a question from a source that didn't give us enough to
+  -- transcribe faithfully (e.g. a fill-in-the-blank whose distractor
+  -- options were never shown) -- surfaced as a small badge in the UI so
+  -- it's never confused for the source's own original content.
+  ai_generated boolean not null default false,
+  -- Which quiz-content batch/export this question was transcribed from
+  -- (e.g. 'nurselabs', 'naxlex') -- provenance for spot-checking a source's
+  -- accuracy or removing its content later, not shown in the app UI itself.
+  -- No default: every future insert must say where its content came from.
+  source text not null,
   created_at timestamptz not null default now()
 );
+
+-- Migrating an existing project: adds grid support + the AI-generated
+-- content flag to a table created before this feature existed. Safe/
+-- idempotent to re-run.
+alter table public.questions add column if not exists grid_columns text[];
+alter table public.questions add column if not exists grid_answer integer[];
+alter table public.questions add column if not exists ai_generated boolean not null default false;
+
+-- Migrating an existing project: backfills `source` for every question
+-- imported before this column existed. The default only exists to satisfy
+-- the not-null constraint while backfilling already-existing rows -- it's
+-- dropped immediately after so a future insert that forgets to set
+-- `source` fails loudly instead of silently getting mislabeled as
+-- 'nurselabs'. Safe/idempotent to re-run.
+alter table public.questions add column if not exists source text not null default 'nurselabs';
+alter table public.questions alter column source drop default;
 
 -- Migrating an existing project: `create table if not exists` above is a
 -- no-op against an already-existing table, so this adds `tags` and retires

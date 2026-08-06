@@ -4,6 +4,7 @@ import { Question } from "@/services/questions";
 import { QuestionStats } from "@/services/attempts";
 import Flashcard, { FlashcardMode } from "@/components/session/Flashcard";
 import SequenceFlashcard from "@/components/session/SequenceFlashcard";
+import GridFlashcard from "@/components/session/GridFlashcard";
 
 // Thin dispatcher by question.type, not a shared visual component -- each
 // question type keeps its own answer-comparison rendering (colored
@@ -29,6 +30,18 @@ export default function QuestionCard({
         question={question}
         mode={mode}
         initialOrder={initialResponse}
+        stats={stats}
+        onNext={onNext}
+      />
+    );
+  }
+
+  if (question.type === "grid") {
+    return (
+      <GridFlashcard
+        question={question}
+        mode={mode}
+        initialSelected={initialResponse}
         stats={stats}
         onNext={onNext}
       />

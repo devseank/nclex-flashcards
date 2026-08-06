@@ -1,5 +1,7 @@
-import { Question } from "@/services/questions";
-import { Attempt, computeQuestionStats } from "@/services/attempts";
+// `import type` (not a value import) so this stays a pure, dependency-free
+// module at runtime -- see the identical note in src/lib/srs.ts.
+import type { Question } from "@/services/questions";
+import { type Attempt, computeQuestionStats } from "@/services/attempts";
 
 export type SessionMode = "infinite" | "review" | "new";
 
@@ -22,6 +24,15 @@ export function isCorrect(question: Question, response: number[]): boolean {
     return (
       response.length === question.correctOrder.length &&
       response.every((choiceIndex, position) => choiceIndex === question.correctOrder[position])
+    );
+  }
+  if (question.type === "grid") {
+    // response[i] is the column index picked for row i -- same shape as
+    // gridAnswer, so this is a direct positional comparison, not a set
+    // comparison like the plain "choice" branch below.
+    return (
+      response.length === question.gridAnswer.length &&
+      response.every((columnIndex, row) => columnIndex === question.gridAnswer[row])
     );
   }
   return (

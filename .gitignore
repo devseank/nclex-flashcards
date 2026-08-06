@@ -43,6 +43,10 @@ yarn-error.log*
 /data/archive-checkpoint.txt
 !/data/questions.template.csv
 
+# source PDFs/exports the user drops in for transcription -- same privacy
+# reasoning as the CSV/SQL above, never pushed to the public repo
+*.pdf
+
 # local-only /dev-preview fixture harness for exercising the app without a
 # real Google OAuth session (see src/dev/AI_INSTRUCTIONS.md for what it is
 # and how to recreate it -- that one file is the tracked exception)

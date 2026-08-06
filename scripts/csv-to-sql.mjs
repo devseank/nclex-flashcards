@@ -5,7 +5,8 @@
 //
 // Expected CSV columns:
 //   category, tags, image_url, question, choice_1, choice_2, ... (as many as
-//   needed), correct_answer, rationale, question_type, correct_order
+//   needed), correct_answer, rationale, question_type, correct_order,
+//   grid_columns, ai_generated, source
 //
 // - category: exactly one, required -- the bounded "what kind of question"
 //   grouping (Pharmacology, Prioritization, Maternal-Newborn, ...).
@@ -19,14 +20,31 @@
 //   URL across multiple rows when several questions share one image.
 //   Leave blank for questions with no image.
 // - choice_N: as many choice_1, choice_2, ... columns as the question needs.
-//   Leave a cell blank if a given row doesn't use that many choices.
-// - question_type: "choice" (default, leave blank) or "sequence".
+//   Leave a cell blank if a given row doesn't use that many choices. For a
+//   "grid" row, these are the row labels (findings/interventions), not
+//   answer choices.
+// - question_type: "choice" (default, leave blank), "sequence", or "grid".
 // - For a "choice" row: correct_answer is one exact choice's text, or for a
 //   "select all that apply" question, multiple choices joined with " | ".
-//   correct_order is unused/blank.
+//   correct_order/grid_columns are unused/blank.
 // - For a "sequence" row (arrange the choices in the correct order, e.g.
 //   steps of a procedure): correct_order lists the choice texts in their
-//   correct order, joined with " | ". correct_answer is unused/blank.
+//   correct order, joined with " | ". correct_answer/grid_columns are
+//   unused/blank.
+// - For a "grid" row (an NGN-style matrix, e.g. "Indicated"/"Not indicated"
+//   per finding): grid_columns lists the column headers joined with " | "
+//   (e.g. "Indicated | Not indicated"). correct_answer then lists, for each
+//   row/choice_N IN ORDER, which of those column headers is correct for
+//   that row, also joined with " | " -- so correct_answer always has
+//   exactly as many " | "-separated entries as there are choice_N columns
+//   used. correct_order is unused/blank.
+// - ai_generated: "true" if the choices/rationale (or both) were written by
+//   an AI rather than transcribed from the source -- shows a small badge in
+//   the UI. Leave blank (defaults to false) for faithfully-transcribed
+//   content, which is the normal case.
+// - source: required. Which quiz-content batch/export this question came
+//   from (e.g. "nurselabs", "naxlex") -- provenance only, not shown in the
+//   app UI. No default -- every row must set this explicitly.
 //
 // Usage:
 //   node scripts/csv-to-sql.mjs data/questions.csv > data/questions.sql
@@ -89,15 +107,21 @@ function sqlTextArray(pipeDelimited) {
   return `array[${tags.map(sqlString).join(",")}]::text[]`;
 }
 
-function matchChoiceIndices(pipeDelimited, choices, fieldName, row, rowNumber) {
+// Looks up each " | "-separated entry in `pipeDelimited` against `options`
+// (either the row's own choices, for correct_answer/correct_order, or a
+// grid's column headers, for a grid row's correct_answer) and returns the
+// matching indices, in order. Used for all three of correct_answer,
+// correct_order, and a grid's per-row correct_answer -- same shape of
+// problem (human-readable label text -> index) in each case.
+function matchLabelIndices(pipeDelimited, options, fieldName, row, rowNumber) {
   return pipeDelimited
     .split("|")
     .map((a) => a.trim())
     .map((answer) => {
-      const idx = choices.findIndex((c) => c.trim() === answer);
+      const idx = options.findIndex((o) => o.trim() === answer);
       if (idx === -1) {
         throw new Error(
-          `Row ${rowNumber}: ${fieldName} "${answer}" does not exactly match any choice. ` +
+          `Row ${rowNumber}: ${fieldName} "${answer}" does not exactly match any option. ` +
             `Question: "${row.question}"`,
         );
       }
@@ -118,25 +142,51 @@ const values = rows.map((row, i) => {
 
   let correctIndicesSql = "null";
   let correctOrderSql = "null";
+  let gridColumnsSql = "null";
+  let gridAnswerSql = "null";
 
   if (questionType === "sequence") {
-    const order = matchChoiceIndices(row.correct_order, choices, "correct_order", row, rowNumber);
+    const order = matchLabelIndices(row.correct_order, choices, "correct_order", row, rowNumber);
     correctOrderSql = `array[${order.join(",")}]`;
+  } else if (questionType === "grid") {
+    const gridColumns = String(row.grid_columns ?? "")
+      .split("|")
+      .map((c) => c.trim())
+      .filter((c) => c !== "");
+    if (gridColumns.length === 0) {
+      throw new Error(`Row ${rowNumber}: "grid" question is missing grid_columns. Question: "${row.question}"`);
+    }
+    const answerIndices = matchLabelIndices(row.correct_answer, gridColumns, "grid correct_answer", row, rowNumber);
+    if (answerIndices.length !== choices.length) {
+      throw new Error(
+        `Row ${rowNumber}: grid correct_answer has ${answerIndices.length} entries but there are ${choices.length} rows (choice_N columns). ` +
+          `Question: "${row.question}"`,
+      );
+    }
+    gridColumnsSql = sqlTextArray(gridColumns.join(" | "));
+    gridAnswerSql = `array[${answerIndices.join(",")}]`;
   } else {
-    const indices = matchChoiceIndices(row.correct_answer, choices, "correct_answer", row, rowNumber);
+    const indices = matchLabelIndices(row.correct_answer, choices, "correct_answer", row, rowNumber);
     correctIndicesSql = `array[${indices.join(",")}]`;
   }
 
   const imageUrlSql = row.image_url && row.image_url.trim() !== "" ? sqlString(row.image_url.trim()) : "null";
+  const aiGeneratedSql = row.ai_generated?.trim().toLowerCase() === "true" ? "true" : "false";
+
+  const source = row.source?.trim();
+  if (!source) {
+    throw new Error(`Row ${rowNumber}: missing required "source". Question: "${row.question}"`);
+  }
 
   return (
     `(${sqlString(row.category)}, ${sqlTextArray(row.tags)}, ${sqlString(row.question)}, ${sqlString(choicesJson)}::jsonb, ` +
-    `${sqlString(questionType)}, ${correctIndicesSql}, ${correctOrderSql}, ${sqlString(row.rationale)}, ${imageUrlSql})`
+    `${sqlString(questionType)}, ${correctIndicesSql}, ${correctOrderSql}, ${gridColumnsSql}, ${gridAnswerSql}, ` +
+    `${sqlString(row.rationale)}, ${imageUrlSql}, ${aiGeneratedSql}, ${sqlString(source)})`
   );
 });
 
 console.error(`Generated ${values.length} row(s) (CSV rows ${startRow}-${endRow} of ${allRows.length}).`);
 
 console.log(
-  `insert into public.questions (category, tags, question, choices, question_type, correct_indices, correct_order, rationale, image_url)\nvalues\n  ${values.join(",\n  ")}\non conflict (question) do nothing;`,
+  `insert into public.questions (category, tags, question, choices, question_type, correct_indices, correct_order, grid_columns, grid_answer, rationale, image_url, ai_generated, source)\nvalues\n  ${values.join(",\n  ")}\non conflict (question) do nothing;`,
 );

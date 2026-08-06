@@ -45,6 +45,7 @@ const KIND_SHORT_LABELS: Record<QuestionKind, string> = {
   single: "SINGLE",
   sata: "SATA",
   sequence: "SEQUENCE",
+  grid: "GRID",
 };
 
 // Builds the human-readable session/filter label, e.g.

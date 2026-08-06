@@ -1,6 +1,6 @@
 # NCLEX-RN Flashcards
 
-A pixel-art ([nes.css](https://nostalgic-css.github.io/NES.css/)) flashcard app for NCLEX-RN study prep, built with Next.js 15 (App Router), React 19, Tailwind CSS v4, and Supabase. Deployed as a static export to GitHub Pages: **https://devseank.github.io/nclex-flashcards/**
+A pixel-art ([nes.css](https://nostalgic-css.github.io/NES.css/)) flashcard app for NCLEX-RN study prep, built with Next.js 16 (App Router), React 19, Tailwind CSS v4, and Supabase. Deployed as a static export to GitHub Pages: **https://devseank.github.io/nclex-flashcards/**
 
 <table>
   <tr>
@@ -20,8 +20,9 @@ A pixel-art ([nes.css](https://nostalgic-css.github.io/NES.css/)) flashcard app 
 - **Study modes** — PLAY (spaced-repetition practice, see [Spaced repetition](#spaced-repetition) below), REVIEW (most-missed questions — today / this week / all time / least-recently-tried), and NEW (questions you haven't attempted yet — today / this week / all time).
 - **FILTER** — narrow any PLAY/REVIEW session by category, question type, and/or tags in one combined query, with a live-search box for tags and a live count of matching questions before you commit.
 - **Category + freeform tags** — every question has exactly one category plus any number of freeform tags not scoped to that category (e.g. a Pharmacology question and a Prioritization question can share a "Cardiovascular" tag).
-- **Three question types** — single choice, select-all-that-apply (SATA), and drag-and-drop step-ordering (sequence), all sharing one answer-comparison UI so right/wrong reads the same way regardless of type.
+- **Four question types** — single choice, select-all-that-apply (SATA), drag-and-drop step-ordering (sequence), and NGN-style matrix/grid (pick one column per row, e.g. "Indicated"/"Not indicated" per finding), all sharing one answer-comparison UI so right/wrong reads the same way regardless of type.
 - **Per-question memory** — every question shows your attempt count, correct/incorrect split, and last-attempted date; brand-new questions get a golden, shine-swept "NEW" badge and a first-time cheer message instead of the usual encouragement.
+- **AI-generated content badge** — questions reconstructed by AI (e.g. a cloze/fill-in-the-blank restructured into a standalone question) instead of faithfully transcribed from the source show a small "AI" corner ribbon, so they're never confused for the source's own original content.
 - **Brief answer feedback** — a randomized confetti burst on correct answers, a shake + color flash on wrong ones, both short enough to never slow down the next question.
 - **HISTORY** — browse your last 5/20/100 answered questions and reopen any one of them to see exactly what you answered and why it was right or wrong.
 - **ANALYTICS** — attempts-over-time trend chart and per-category accuracy, sorted worst-to-best so you know what to review next.

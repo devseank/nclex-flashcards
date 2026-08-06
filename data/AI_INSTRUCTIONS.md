@@ -93,7 +93,7 @@ Two SQL files, two different jobs — don't blend them:
    question/rationale/choice looks wrong, flag it to the user and ask —
    don't silently rewrite it as a side effect of an unrelated append.
 5. **Match the column format exactly** — see `data/questions.template.csv`:
-   `category,tags,image_url,question,choice_1,choice_2,...,correct_answer,rationale,question_type,correct_order`
+   `category,tags,image_url,question,choice_1,choice_2,...,correct_answer,rationale,question_type,correct_order,grid_columns,ai_generated,source`
    - `category`: exactly one, required — the bounded "what kind of
      question" grouping (`Pharmacology`, `Prioritization`,
      `Maternal-Newborn`, ...). Reuse an existing category exactly (check the
@@ -122,15 +122,35 @@ Two SQL files, two different jobs — don't blend them:
      in the header). Leave a cell blank for rows that use fewer.
    - `question_type`: leave blank for a normal multiple-choice / select-all-
      that-apply question (defaults to `choice`). Set to `sequence` for a
-     "put these steps in the correct order" question.
+     "put these steps in the correct order" question, or `grid` for an
+     NGN-style matrix (e.g. "Indicated"/"Not indicated" per finding).
    - For a `choice` row: `correct_answer` is one exact choice's text, or for
      "select all that apply", multiple choices joined with ` | `
-     (space-pipe-space). `correct_order` is unused/blank.
+     (space-pipe-space). `correct_order`/`grid_columns` are unused/blank.
    - For a `sequence` row: `correct_order` lists the choice texts in their
-     correct order, joined with ` | `. `correct_answer` is unused/blank.
-   - Question types NOT in this list (e.g. matrix/grid, fill-in-the-blank,
-     hot-spot/image-click) still aren't supported — skip those and tell the
-     user which ones were skipped and why, same as before.
+     correct order, joined with ` | `. `correct_answer`/`grid_columns` are
+     unused/blank.
+   - For a `grid` row: `choice_N` columns are the row labels (findings/
+     interventions), not answer choices. `grid_columns` lists the column
+     headers joined with ` | ` (e.g. `Indicated | Not indicated`).
+     `correct_answer` then lists, for each row/`choice_N` **in order**,
+     which of those column headers is correct for that row, also joined
+     with ` | ` — so it always has exactly as many entries as there are
+     `choice_N` columns used. `correct_order` is unused/blank.
+   - `ai_generated`: `true` only for rows built per rule 10 below (choices
+     and/or rationale written by an AI, not transcribed from the source).
+     Leave blank (defaults to false) for the normal case of a faithful
+     transcription — this should be the overwhelming majority of rows.
+   - `source`: required, no default — which quiz-content batch/export this
+     question was transcribed from (e.g. `nurselabs`, `naxlex`). Lowercase,
+     one word per source, reused exactly across every row from that same
+     batch. This is provenance for later spot-checking or removing a given
+     source's content, not something the app UI shows.
+   - Question types NOT in this list (bowtie, hot-spot/image-click) still
+     aren't supported — skip those and tell the user which ones were
+     skipped and why. Fill-in-the-blank/cloze and highlight-passage items
+     aren't their own type either, but rule 10 below covers converting them
+     into a `choice` row instead of skipping them outright.
 6. **After appending, regenerate `questions.sql`**:
    ```
    node scripts/csv-to-sql.mjs data/questions.csv > data/questions.sql
@@ -185,3 +205,39 @@ Two SQL files, two different jobs — don't blend them:
    the user the same way as `questions.sql` normally — each one pastes into
    the Supabase SQL Editor independently, in any order, since they're
    disjoint row ranges with no cross-file dependency.
+10. **Never invent a correct answer, a rationale, or supporting context you
+    aren't sure of.** If a source is ambiguous about which choice is
+    correct, or a question depends on data (a lab table, a vitals panel,
+    an earlier "tab" of a multi-part case) that wasn't actually captured in
+    what you were given, skip that question rather than guessing — a wrong
+    "correct" answer silently teaches the wrong thing, which is worse than
+    a gap. This is a hard line even under time pressure to be thorough.
+
+    Two specific formats are an exception, where the *labels* are known
+    (from the source's own answer key) but the source doesn't give a
+    complete workable item on its own — here, and only here, it's fine to
+    build a usable question by adding what's missing, **provided the row is
+    marked `ai_generated: true`**:
+    - **Highlight-passage items** ("click to highlight the findings that
+      need follow-up" in a paragraph): split the passage into its
+      individual phrases/findings and turn it into an ordinary SATA
+      `choice` row — each highlighted phrase becomes a correct choice, each
+      non-highlighted phrase becomes a distractor. Every choice text still
+      comes straight from the source, so this usually does *not* need
+      `ai_generated: true` unless the rationale also had to be written (see
+      below) — flag it if either is invented.
+    - **Cloze/dropdown-fill-in-the-blank items** (a sentence with one or
+      more blanks, e.g. "The nurse should first address the client's
+      ___."): restructure each blank into its own standalone question,
+      using the source's own correct answer(s), plus AI-invented
+      plausible-but-wrong distractors (since the source only ever shows
+      the already-correct answer sitting in the blank, never the
+      distractor pool the test-taker chose from) and an AI-written
+      rationale. Always mark these `ai_generated: true`.
+
+    Everything else that doesn't fit an existing/supported `question_type`
+    (bowtie diagrams, true hot-spot/image-click items) gets skipped per
+    rule 5, not reconstructed — a bowtie's branches and a cloze's blank
+    both lack a visible distractor pool, but a bowtie's *structure* itself
+    has no home in this schema the way a restructured single-choice
+    question does, so there's no faithful way to convert it at all.

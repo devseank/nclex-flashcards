@@ -38,6 +38,18 @@ export type Notice = { text: string; tone: "info" | "error" };
 // useQuizSession below).
 type NavHistoryState = { nclexView: View };
 
+// Views restorable from history.state alone on a fresh mount -- each only
+// needs `questions` to render correctly. "session"/"finished"/"historyList"/
+// "historyDetail" also depend on companion state (current question, queue,
+// historyEntries, ...) that's never written to history.state, only ever
+// held in memory -- restoring just the view name for one of those would
+// mean e.g. view="session" with mode/current still at their fresh-mount
+// defaults, which every render branch below guards on (`mode && current`),
+// so the screen would just render blank with no way back to menu. Safer to
+// fall back to "menu" for those than restore a view the rest of the state
+// can't actually support.
+const RESTORABLE_VIEWS = new Set<View>(["menu", "filterPick", "reviewPick", "newPick", "historyPick", "analytics"]);
+
 const MODE_LABELS: Record<SessionMode, string> = {
   infinite: "PLAY",
   review: "REVIEW",
@@ -66,8 +78,10 @@ export function useQuizSession(questions: Question[] | null) {
     // Next.js's App Router remounts client components on back/forward (see
     // the mount effect below), so a fresh mount isn't necessarily a fresh
     // load -- read back whatever this history entry was tagged with, if
-    // anything, instead of always defaulting to "menu".
-    return (window.history.state as NavHistoryState | null)?.nclexView ?? "menu";
+    // anything, instead of always defaulting to "menu". Only for views that
+    // don't need restored companion state (see RESTORABLE_VIEWS above).
+    const restored = (window.history.state as NavHistoryState | null)?.nclexView;
+    return restored && RESTORABLE_VIEWS.has(restored) ? restored : "menu";
   });
   const [mode, setMode] = useState<SessionMode | null>(null);
   const [filterLabel, setFilterLabel] = useState<string | null>(null);
@@ -105,12 +119,13 @@ export function useQuizSession(questions: Question[] | null) {
     // part of restoring that cache. Its own replaceState call preserves
     // whatever was already in `history.state` (merging its fields in
     // alongside ours), so only seed "menu" if nothing has tagged this entry
-    // yet (a genuine first load, not a remount); otherwise leave it alone --
-    // the lazy useState initializer above already read the correct,
-    // preserved value for this render. Spreading the existing state (rather
-    // than replacing it outright) keeps Next's own fields intact either way.
+    // yet, or if it's tagged with a view the lazy useState initializer above
+    // just declined to restore (RESTORABLE_VIEWS) -- otherwise leave it
+    // alone, since that initializer already read the correct, preserved
+    // value for this render. Spreading the existing state (rather than
+    // replacing it outright) keeps Next's own fields intact either way.
     const existing = window.history.state as NavHistoryState | null;
-    if (!existing?.nclexView) {
+    if (!existing?.nclexView || !RESTORABLE_VIEWS.has(existing.nclexView)) {
       window.history.replaceState({ ...existing, nclexView: "menu" } satisfies NavHistoryState, "");
     }
 

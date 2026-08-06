@@ -24,6 +24,7 @@ import { QuestionStats } from "@/services/attempts";
 import { categoryVariant } from "@/lib/categoryVariant";
 import { cheerMessage } from "@/lib/cheerMessage";
 import NewBadge from "@/components/ui/NewBadge";
+import AiGeneratedBadge from "@/components/ui/AiGeneratedBadge";
 import ConfettiBurst, { ConfettiConfig, buildConfettiConfig } from "@/components/session/ConfettiBurst";
 import StickyNextBar from "@/components/session/StickyNextBar";
 import { FlashcardMode } from "@/components/session/Flashcard";
@@ -164,6 +165,7 @@ export default function SequenceFlashcard({
       }`}
     >
       {!stats && <NewBadge />}
+      {question.aiGenerated && <AiGeneratedBadge />}
       {confettiConfig && <ConfettiBurst config={confettiConfig} />}
       <button
         type="button"
