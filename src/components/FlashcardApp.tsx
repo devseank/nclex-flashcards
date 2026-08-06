@@ -15,7 +15,7 @@ import Analytics from "@/components/analytics/Analytics";
 import PixelWindow from "@/components/ui/PixelWindow";
 import SessionScreen from "@/components/session/SessionScreen";
 import FinishedScreen from "@/components/session/FinishedScreen";
-import AccountMenu from "@/components/auth/AccountMenu";
+import AppHeader from "@/components/AppHeader";
 import NoticeBanner from "@/components/ui/NoticeBanner";
 
 // A PixelWindow plus its below-the-fold notice banner, for the two picker
@@ -81,103 +81,120 @@ export default function FlashcardApp() {
 
   if (error) {
     return (
-      <div className={pageClassName}>
-        <p className="font-pixel text-sm text-[var(--text-navy)] text-center leading-relaxed">{error}</p>
-      </div>
+      <>
+        <AppHeader />
+        <div className={pageClassName}>
+          <p className="font-pixel text-sm text-[var(--text-navy)] text-center leading-relaxed">
+            {error}
+          </p>
+        </div>
+      </>
     );
   }
 
   return (
-    <div className={pageClassName}>
-      {questions && view === "menu" && (
-        <div className="view-fade-in w-full max-w-sm">
-          <PixelWindow title="MENU.EXE" headerAction={<AccountMenu />}>
-            <Landing
-              onSelectPlay={() => startPlay()}
-              onSelectFilter={goToFilterPick}
-              onSelectReview={goToReviewPick}
-              onSelectNew={goToNewPick}
-              onSelectHistory={goToHistoryPick}
-              onSelectAnalytics={goToAnalytics}
+    <>
+      <AppHeader />
+      <div className={pageClassName}>
+        {questions && view === "menu" && (
+          <div className="view-fade-in w-full max-w-sm">
+            <PixelWindow title="MENU.EXE">
+              <Landing
+                onSelectPlay={() => startPlay()}
+                onSelectFilter={goToFilterPick}
+                onSelectReview={goToReviewPick}
+                onSelectNew={goToNewPick}
+                onSelectHistory={goToHistoryPick}
+                onSelectAnalytics={goToAnalytics}
+              />
+            </PixelWindow>
+          </div>
+        )}
+
+        {view === "filterPick" && questions && (
+          <PickerScreen title="FILTER.EXE" notice={notice}>
+            <FilterMode
+              questions={questions}
+              onPlay={startPlay}
+              onMostWrong={startReviewByFilter}
+              onBack={backToMenu}
             />
-          </PixelWindow>
-        </div>
-      )}
+          </PickerScreen>
+        )}
 
-      {view === "filterPick" && questions && (
-        <PickerScreen title="FILTER.EXE" notice={notice}>
-          <FilterMode questions={questions} onPlay={startPlay} onMostWrong={startReviewByFilter} onBack={backToMenu} />
-        </PickerScreen>
-      )}
+        {view === "reviewPick" && (
+          <PickerScreen title="REVIEW.EXE" notice={notice}>
+            <ReviewMode onSelect={startReviewByRange} onBack={backToMenu} />
+          </PickerScreen>
+        )}
 
-      {view === "reviewPick" && (
-        <PickerScreen title="REVIEW.EXE" notice={notice}>
-          <ReviewMode onSelect={startReviewByRange} onBack={backToMenu} />
-        </PickerScreen>
-      )}
+        {view === "newPick" && (
+          <PickerScreen title="NEW.EXE" notice={notice}>
+            <NewMode onSelect={startNewByRange} onBack={backToMenu} />
+          </PickerScreen>
+        )}
 
-      {view === "newPick" && (
-        <PickerScreen title="NEW.EXE" notice={notice}>
-          <NewMode onSelect={startNewByRange} onBack={backToMenu} />
-        </PickerScreen>
-      )}
+        {view === "historyPick" && (
+          <PickerScreen title="HISTORY.EXE" notice={notice}>
+            <HistoryMode onSelect={startHistoryList} onBack={backToMenu} />
+          </PickerScreen>
+        )}
 
-      {view === "historyPick" && (
-        <PickerScreen title="HISTORY.EXE" notice={notice}>
-          <HistoryMode onSelect={startHistoryList} onBack={backToMenu} />
-        </PickerScreen>
-      )}
+        {view === "historyList" && (
+          <div className="view-fade-in w-full max-w-xl">
+            <HistoryList
+              entries={historyEntries}
+              onSelect={selectHistoryEntry}
+              onBack={goToHistoryPick}
+            />
+          </div>
+        )}
 
-      {view === "historyList" && (
-        <div className="view-fade-in w-full max-w-xl">
-          <HistoryList entries={historyEntries} onSelect={selectHistoryEntry} onBack={goToHistoryPick} />
-        </div>
-      )}
+        {view === "historyDetail" && historyDetailEntry && (
+          <div className="view-fade-in w-full max-w-xl">
+            <HistoryDetail
+              question={historyDetailEntry.question}
+              response={historyDetailEntry.attempt.selectedIndices}
+              stats={questionStats?.get(historyDetailEntry.question.id)}
+              onBack={backToHistoryList}
+            />
+          </div>
+        )}
 
-      {view === "historyDetail" && historyDetailEntry && (
-        <div className="view-fade-in w-full max-w-xl">
-          <HistoryDetail
-            question={historyDetailEntry.question}
-            response={historyDetailEntry.attempt.selectedIndices}
-            stats={questionStats?.get(historyDetailEntry.question.id)}
-            onBack={backToHistoryList}
-          />
-        </div>
-      )}
+        {view === "analytics" && questions && (
+          <div className="view-fade-in w-full max-w-xl">
+            <Analytics questions={questions} onBack={backToMenu} />
+          </div>
+        )}
 
-      {view === "analytics" && questions && (
-        <div className="view-fade-in w-full max-w-xl">
-          <Analytics questions={questions} onBack={backToMenu} />
-        </div>
-      )}
+        {view === "finished" && mode && modeTitle && (
+          <div className="view-fade-in w-full max-w-xl">
+            <FinishedScreen
+              title={modeTitle}
+              score={score}
+              total={queue.length}
+              queue={queue}
+              answers={answers}
+              questionStats={questionStats}
+              onBackToMenu={backToMenu}
+            />
+          </div>
+        )}
 
-      {view === "finished" && mode && modeTitle && (
-        <div className="view-fade-in w-full max-w-xl">
-          <FinishedScreen
-            title={modeTitle}
-            score={score}
-            total={queue.length}
-            queue={queue}
-            answers={answers}
-            questionStats={questionStats}
-            onBackToMenu={backToMenu}
-          />
-        </div>
-      )}
-
-      {view === "session" && mode && current && (
-        <div className="view-fade-in w-full max-w-xl">
-          <SessionScreen
-            mode={mode}
-            current={current}
-            index={index}
-            queueLength={queue.length}
-            stats={questionStats?.get(current.id)}
-            onNext={handleNext}
-            onBack={backToMenu}
-          />
-        </div>
-      )}
-    </div>
+        {view === "session" && mode && current && (
+          <div className="view-fade-in w-full max-w-xl">
+            <SessionScreen
+              mode={mode}
+              current={current}
+              index={index}
+              queueLength={queue.length}
+              stats={questionStats?.get(current.id)}
+              onNext={handleNext}
+              onBack={backToMenu}
+            />
+          </div>
+        )}
+      </div>
+    </>
   );
 }
