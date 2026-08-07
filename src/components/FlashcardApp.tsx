@@ -16,10 +16,16 @@ import PixelWindow from "@/components/ui/PixelWindow";
 import SessionScreen from "@/components/session/SessionScreen";
 import FinishedScreen from "@/components/session/FinishedScreen";
 import AppHeader from "@/components/AppHeader";
+import AccountMenu from "@/components/auth/AccountMenu";
 import NoticeBanner from "@/components/ui/NoticeBanner";
 
-// A PixelWindow plus its below-the-fold notice banner, for the two picker
-// screens (category/review) that share this exact layout.
+// A PixelWindow plus its below-the-fold notice banner, for the picker
+// screens (filter/review/new/history-pick) that share this exact layout.
+// The account/display menu replaces this window's own decorative close
+// button directly -- these screens already have a header bar to put it in,
+// so a second, separate global header strip above would just be wasted
+// whitespace (see the non-windowed views below, which don't have that
+// option and use <AppHeader/> instead).
 function PickerScreen({
   title,
   notice,
@@ -31,7 +37,9 @@ function PickerScreen({
 }) {
   return (
     <div className="view-fade-in w-full max-w-sm flex flex-col items-center gap-3">
-      <PixelWindow title={title}>{children}</PixelWindow>
+      <PixelWindow title={title} headerAction={<AccountMenu />}>
+        {children}
+      </PixelWindow>
       {notice && <NoticeBanner notice={notice} />}
     </div>
   );
@@ -92,13 +100,20 @@ export default function FlashcardApp() {
     );
   }
 
+  const isWindowedView =
+    view === "menu" ||
+    view === "filterPick" ||
+    view === "reviewPick" ||
+    view === "newPick" ||
+    view === "historyPick";
+
   return (
     <>
-      <AppHeader />
+      {!isWindowedView && <AppHeader />}
       <div className={pageClassName}>
         {questions && view === "menu" && (
           <div className="view-fade-in w-full max-w-sm">
-            <PixelWindow title="MENU.EXE">
+            <PixelWindow title="MENU.EXE" headerAction={<AccountMenu />}>
               <Landing
                 onSelectPlay={() => startPlay()}
                 onSelectFilter={goToFilterPick}
