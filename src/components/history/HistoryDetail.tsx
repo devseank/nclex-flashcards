@@ -2,6 +2,7 @@
 
 import { Question } from "@/services/questions";
 import { QuestionStats } from "@/services/attempts";
+import { QuestionResponse } from "@/lib/quizLogic";
 import QuestionCard from "@/components/session/QuestionCard";
 import HeaderActions from "@/components/ui/HeaderActions";
 
@@ -11,7 +12,7 @@ export default function HistoryDetail({
   stats,
 }: {
   question: Question;
-  response: number[];
+  response: QuestionResponse;
   stats?: QuestionStats;
 }) {
   // `stats` must come from the caller (computed once for the whole history

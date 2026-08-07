@@ -4,7 +4,7 @@ import QuestionCard from "@/components/session/QuestionCard";
 import HeaderActions from "@/components/ui/HeaderActions";
 import { Question } from "@/services/questions";
 import { QuestionStats } from "@/services/attempts";
-import { SessionMode } from "@/lib/quizLogic";
+import { SessionMode, QuestionResponse } from "@/lib/quizLogic";
 
 export default function SessionScreen({
   mode,
@@ -19,7 +19,7 @@ export default function SessionScreen({
   index: number;
   queueLength: number;
   stats?: QuestionStats;
-  onNext: (selected: number[]) => void;
+  onNext: (selected: QuestionResponse) => void;
 }) {
   return (
     <div className="w-full max-w-xl flex flex-col items-center">

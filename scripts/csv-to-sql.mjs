@@ -1,7 +1,9 @@
-// Converts a questions CSV into a SQL INSERT block, ready to paste into the
-// Supabase SQL Editor. Rows whose `question` text already exists in the table
-// are skipped via ON CONFLICT DO NOTHING (see supabase/schema.sql for the
-// unique constraint this depends on).
+// Converts a questions CSV into SQL, ready to paste into the Supabase SQL
+// Editor. Rows whose `question` text already exists in the table are
+// skipped via ON CONFLICT DO NOTHING (see supabase/schema.sql for the
+// unique constraint this depends on). See data/AI_INSTRUCTIONS.md rule 5
+// for the full per-question_type authoring reference (this comment block
+// is the mechanical/script-level summary of the same mapping).
 //
 // Expected CSV columns:
 //   category, tags, image_url, question, choice_1, choice_2, ... (as many as
@@ -9,45 +11,76 @@
 //   grid_columns, ai_generated, source
 //
 // - category: exactly one, required -- the bounded "what kind of question"
-//   grouping (Pharmacology, Prioritization, Maternal-Newborn, ...).
+//   grouping (Pharmacology, Prioritization, Maternal-Newborn, ...). ->
+//   questions.category (text).
 // - tags: zero or more freeform tags, NOT scoped to a single category --
 //   the "what's it about" dimension (e.g. "Respiratory" can tag both a
 //   Pharmacology question and a Prioritization question). Joined with " | "
-//   if more than one. Leave blank if the question doesn't need any yet.
+//   if more than one. Leave blank if the question doesn't need any yet. ->
+//   questions.tags (text[]).
 // - image_url: optional. A URL to an illustration for this question (e.g.
 //   an anatomy diagram) -- typically a Supabase Storage public URL (see
 //   supabase/schema.sql's `question-images` bucket). Reuse the exact same
 //   URL across multiple rows when several questions share one image.
-//   Leave blank for questions with no image.
+//   Leave blank for questions with no image. -> questions.image_url (text).
 // - choice_N: as many choice_1, choice_2, ... columns as the question needs.
 //   Leave a cell blank if a given row doesn't use that many choices. For a
 //   "grid" row, these are the row labels (findings/interventions), not
-//   answer choices.
+//   answer choices. -> collected into questions.choices (jsonb array),
+//   choice_N's own column position is NOT stored -- only the resulting
+//   array order matters, which is why gaps must not be left between used
+//   choice_N columns.
 // - question_type: "choice" (default, leave blank), "sequence", or "grid".
-// - For a "choice" row: correct_answer is one exact choice's text, or for a
-//   "select all that apply" question, multiple choices joined with " | ".
-//   correct_order/grid_columns are unused/blank.
-// - For a "sequence" row (arrange the choices in the correct order, e.g.
-//   steps of a procedure): correct_order lists the choice texts in their
-//   correct order, joined with " | ". correct_answer/grid_columns are
-//   unused/blank.
-// - For a "grid" row (an NGN-style matrix, e.g. "Indicated"/"Not indicated"
-//   per finding): grid_columns lists the column headers joined with " | "
-//   (e.g. "Indicated | Not indicated"). correct_answer then lists, for each
+//   -> questions.question_type (text).
+//
+// Per question_type, exactly one of correct_answer/correct_order/
+// grid_columns+grid_row-answer-data is populated -- the others are left
+// unused/blank on that row:
+//
+// - "choice": correct_answer is one exact choice's text, or for a "select
+//   all that apply" question, multiple choices joined with " | ".
+//   -> matched against `choices` and stored as questions.correct_indices
+//   (integer[]). correct_order/grid_columns unused.
+// - "sequence" (arrange the choices in the correct order, e.g. steps of a
+//   procedure): correct_order lists the choice texts in their correct
+//   order, joined with " | ". -> matched against `choices` and stored as
+//   questions.correct_order (integer[], a permutation of choices' indices).
+//   correct_answer/grid_columns unused.
+// - "grid" (an NGN-style matrix, e.g. "Indicated"/"Not indicated" per
+//   finding, single- OR multiple-response): grid_columns lists the column
+//   headers joined with " | " (e.g. "Indicated | Not indicated") ->
+//   questions.grid_columns (text[]). correct_answer then lists, for each
 //   row/choice_N IN ORDER, which of those column headers is correct for
-//   that row, also joined with " | " -- so correct_answer always has
-//   exactly as many " | "-separated entries as there are choice_N columns
-//   used. correct_order is unused/blank.
+//   that row, joined with " | " between rows -- so correct_answer always
+//   has exactly as many " | "-separated entries as there are choice_N rows.
+//   When a single row has MORE THAN ONE correct column (matrix multiple-
+//   response), join that row's own entry with " & " instead, e.g. for two
+//   rows: "Notify provider & Initiate fall precautions | Document only".
+//   Each (row, correct column) pair is matched against grid_columns and
+//   emitted as one row in a SEPARATE insert into the grid_row_answers
+//   child table (not a questions column -- a row's correct-column set is
+//   variable-length, which a plain array column can't hold without being
+//   rectangular), joined back to the just-inserted question by its unique
+//   `question` text. correct_order unused.
 // - ai_generated: "true" if the choices/rationale (or both) were written by
 //   an AI rather than transcribed from the source -- shows a small badge in
 //   the UI. Leave blank (defaults to false) for faithfully-transcribed
-//   content, which is the normal case.
+//   content, which is the normal case. -> questions.ai_generated (boolean).
 // - source: required. Which quiz-content batch/export this question came
 //   from (e.g. "nurselabs", "naxlex") -- provenance only, not shown in the
-//   app UI. No default -- every row must set this explicitly.
+//   app UI. No default -- every row must set this explicitly. ->
+//   questions.source (text).
 //
 // Usage:
 //   node scripts/csv-to-sql.mjs data/questions.csv > data/questions.sql
+//
+// Output: one `insert into public.questions (...) values ...` statement,
+// followed -- only when the batch has at least one grid row -- by a second
+// `insert into public.grid_row_answers (...) select ... from public.
+// questions join (values ...) ...` statement that looks the just-inserted
+// questions back up by their unique `question` text (their numeric `id`
+// isn't known until the first insert has actually run). Paste both
+// statements into the SQL Editor together, in order.
 //
 // Archiving (see data/AI_INSTRUCTIONS.md rule 9): once the bank grows large
 // enough that the full INSERT is too big to paste into the Supabase SQL
@@ -129,6 +162,14 @@ function matchLabelIndices(pipeDelimited, options, fieldName, row, rowNumber) {
     });
 }
 
+// (question text, row_index, column_index) triples for every grid row's
+// correct cell across the whole batch -- collected here (a side effect of
+// the main values.map below) since it's emitted as a second, separate
+// insert into grid_row_answers, joined back by the row's unique `question`
+// text rather than by numeric id (which isn't known until the questions
+// insert below has actually run).
+const gridRowAnswers = [];
+
 const values = rows.map((row, i) => {
   const rowNumber = startRow + i + 1; // +1 for the CSV header line
   const choices = Object.keys(row)
@@ -143,7 +184,6 @@ const values = rows.map((row, i) => {
   let correctIndicesSql = "null";
   let correctOrderSql = "null";
   let gridColumnsSql = "null";
-  let gridAnswerSql = "null";
 
   if (questionType === "sequence") {
     const order = matchLabelIndices(row.correct_order, choices, "correct_order", row, rowNumber);
@@ -156,15 +196,28 @@ const values = rows.map((row, i) => {
     if (gridColumns.length === 0) {
       throw new Error(`Row ${rowNumber}: "grid" question is missing grid_columns. Question: "${row.question}"`);
     }
-    const answerIndices = matchLabelIndices(row.correct_answer, gridColumns, "grid correct_answer", row, rowNumber);
-    if (answerIndices.length !== choices.length) {
+    // One " | "-separated entry per row (same count as choice_N columns),
+    // each entry itself " & "-separated when that row has more than one
+    // correct column (matrix multiple-response) -- e.g. for two rows,
+    // "Notify provider & Initiate fall precautions | Document only".
+    const rowEntries = String(row.correct_answer ?? "").split("|").map((s) => s.trim());
+    if (rowEntries.length !== choices.length) {
       throw new Error(
-        `Row ${rowNumber}: grid correct_answer has ${answerIndices.length} entries but there are ${choices.length} rows (choice_N columns). ` +
+        `Row ${rowNumber}: grid correct_answer has ${rowEntries.length} entries but there are ${choices.length} rows (choice_N columns). ` +
           `Question: "${row.question}"`,
       );
     }
+    rowEntries.forEach((entry, rowIndex) => {
+      const columnIndices = matchLabelIndices(
+        entry.replace(/&/g, "|"),
+        gridColumns,
+        `grid correct_answer (row ${rowIndex + 1})`,
+        row,
+        rowNumber,
+      );
+      columnIndices.forEach((columnIndex) => gridRowAnswers.push([row.question, rowIndex, columnIndex]));
+    });
     gridColumnsSql = sqlTextArray(gridColumns.join(" | "));
-    gridAnswerSql = `array[${answerIndices.join(",")}]`;
   } else {
     const indices = matchLabelIndices(row.correct_answer, choices, "correct_answer", row, rowNumber);
     correctIndicesSql = `array[${indices.join(",")}]`;
@@ -180,13 +233,33 @@ const values = rows.map((row, i) => {
 
   return (
     `(${sqlString(row.category)}, ${sqlTextArray(row.tags)}, ${sqlString(row.question)}, ${sqlString(choicesJson)}::jsonb, ` +
-    `${sqlString(questionType)}, ${correctIndicesSql}, ${correctOrderSql}, ${gridColumnsSql}, ${gridAnswerSql}, ` +
+    `${sqlString(questionType)}, ${correctIndicesSql}, ${correctOrderSql}, ${gridColumnsSql}, ` +
     `${sqlString(row.rationale)}, ${imageUrlSql}, ${aiGeneratedSql}, ${sqlString(source)})`
   );
 });
 
 console.error(`Generated ${values.length} row(s) (CSV rows ${startRow}-${endRow} of ${allRows.length}).`);
+if (gridRowAnswers.length > 0) {
+  console.error(`  ...including ${gridRowAnswers.length} grid_row_answers cell(s) across the grid rows above.`);
+}
 
 console.log(
-  `insert into public.questions (category, tags, question, choices, question_type, correct_indices, correct_order, grid_columns, grid_answer, rationale, image_url, ai_generated, source)\nvalues\n  ${values.join(",\n  ")}\non conflict (question) do nothing;`,
+  `insert into public.questions (category, tags, question, choices, question_type, correct_indices, correct_order, grid_columns, rationale, image_url, ai_generated, source)\nvalues\n  ${values.join(",\n  ")}\non conflict (question) do nothing;`,
 );
+
+// A separate insert, joined back to the row(s) just inserted above by their
+// unique `question` text -- the numeric id isn't known until that insert
+// has actually run, so it can't be embedded directly into the values here.
+if (gridRowAnswers.length > 0) {
+  const gridRowAnswerValues = gridRowAnswers
+    .map(([question, rowIndex, columnIndex]) => `  (${sqlString(question)}, ${rowIndex}, ${columnIndex})`)
+    .join(",\n");
+  console.log(
+    `\ninsert into public.grid_row_answers (question_id, row_index, column_index)\n` +
+      `select q.id, v.row_index, v.column_index\n` +
+      `from public.questions q\n` +
+      `join (values\n${gridRowAnswerValues}\n) as v(question_text, row_index, column_index)\n` +
+      `  on q.question = v.question_text\n` +
+      `on conflict (question_id, row_index, column_index) do nothing;`,
+  );
+}

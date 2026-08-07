@@ -23,14 +23,15 @@ create table if not exists public.questions (
   -- indices), the rest are null.
   -- 'grid': an NGN-style matrix -- `choices` are the row labels (e.g.
   -- findings/interventions), `grid_columns` are the column headers (e.g.
-  -- ["Indicated", "Not indicated"]), and `grid_answer` gives, for each row
-  -- (same order as `choices`), the index into `grid_columns` that's
-  -- correct for that row. correct_indices/correct_order are null.
+  -- ["Indicated", "Not indicated"]). Which column(s) are correct per row
+  -- lives in the `grid_row_answers` child table below, not a column here --
+  -- a row can have more than one correct column (matrix multiple-response),
+  -- which a plain array column can't hold without being rectangular.
+  -- correct_indices/correct_order are null.
   question_type text not null default 'choice',
   correct_indices integer[],
   correct_order integer[],
   grid_columns text[],
-  grid_answer integer[],
   rationale text not null,
   -- Optional -- a URL to an illustration for this question (e.g. an
   -- anatomy diagram). When several questions share one image, reuse the
@@ -54,7 +55,6 @@ create table if not exists public.questions (
 -- content flag to a table created before this feature existed. Safe/
 -- idempotent to re-run.
 alter table public.questions add column if not exists grid_columns text[];
-alter table public.questions add column if not exists grid_answer integer[];
 alter table public.questions add column if not exists ai_generated boolean not null default false;
 
 -- Migrating an existing project: backfills `source` for every question
@@ -108,6 +108,56 @@ create policy "Authenticated users can read questions"
   to authenticated
   using (true);
 
+-- A grid question's answer key: one row per correct cell. `row_index`/
+-- `column_index` are 0-based positions into that question's own `choices`/
+-- `grid_columns` arrays. A row having more than one correct column here is
+-- exactly matrix multiple-response -- single-select is just the case where
+-- a given (question_id, row_index) appears once. Not a jsonb column: this
+-- is a genuinely tabular shape (rows x correct columns), and a plain array
+-- column can't hold a variable number of correct columns per row without
+-- being rectangular.
+create table if not exists public.grid_row_answers (
+  id bigint generated always as identity primary key,
+  question_id bigint not null references public.questions (id) on delete cascade,
+  row_index integer not null,
+  column_index integer not null,
+  unique (question_id, row_index, column_index)
+);
+
+alter table public.grid_row_answers enable row level security;
+
+-- Mirrors `questions`' own read policy exactly -- this table carries no
+-- per-user data, just more of the shared question bank.
+create policy "Authenticated users can read grid_row_answers"
+  on public.grid_row_answers
+  for select
+  to authenticated
+  using (true);
+
+-- Migrating an existing project: `grid` questions used to store exactly
+-- one correct column per row in `questions.grid_answer` (a flat
+-- integer[]). Matrix multiple-response needs a variable number of correct
+-- columns per row, which that column can't represent -- this backfills
+-- the old data into grid_row_answers above, then drops it. Guarded on the
+-- column still existing, so this is a no-op both on a project created
+-- fresh from this file (which never had `grid_answer`) and on a re-paste
+-- after this has already run once (the column will already be gone).
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'questions' and column_name = 'grid_answer'
+  ) then
+    insert into public.grid_row_answers (question_id, row_index, column_index)
+    select q.id, t.row_index - 1, t.v
+    from public.questions q, unnest(q.grid_answer) with ordinality as t(v, row_index)
+    where q.question_type = 'grid' and q.grid_answer is not null
+    on conflict (question_id, row_index, column_index) do nothing;
+
+    alter table public.questions drop column grid_answer;
+  end if;
+end $$;
+
 -- One row per answered question, used for the "questions got wrong" review
 -- mode and the analytics dashboard. `user_id` defaults to the caller's own
 -- id, so the client never needs to pass it explicitly.
@@ -138,6 +188,39 @@ create policy "Users can read their own attempts"
   for select
   to authenticated
   using (user_id = auth.uid());
+
+-- A submitted grid-multi-response answer: one row per column the user
+-- selected, per row of the question. Mirrors grid_row_answers' own shape
+-- for the same reason (variable number of selections per row, per
+-- attempt). `attempts.selected_indices` stays not-null for every attempt
+-- (choice/sequence/cloze all still use it directly) -- a grid attempt
+-- simply records an empty array there and its real selections here
+-- instead (see recordAttempt in src/services/attempts.ts).
+create table if not exists public.attempt_grid_selections (
+  id bigint generated always as identity primary key,
+  attempt_id bigint not null references public.attempts (id) on delete cascade,
+  row_index integer not null,
+  column_index integer not null,
+  unique (attempt_id, row_index, column_index)
+);
+
+create index if not exists attempt_grid_selections_attempt_id_idx on public.attempt_grid_selections (attempt_id);
+
+alter table public.attempt_grid_selections enable row level security;
+
+-- Same per-user isolation as `attempts` itself, via a join back to it
+-- (this table has no user_id column of its own).
+create policy "Users can insert their own attempt_grid_selections"
+  on public.attempt_grid_selections
+  for insert
+  to authenticated
+  with check (exists (select 1 from public.attempts a where a.id = attempt_id and a.user_id = auth.uid()));
+
+create policy "Users can read their own attempt_grid_selections"
+  on public.attempt_grid_selections
+  for select
+  to authenticated
+  using (exists (select 1 from public.attempts a where a.id = attempt_id and a.user_id = auth.uid()));
 
 -- One row per user, upserted whenever a preference changes (currently just
 -- the theme). `user_id` is both the primary key and defaults to the

@@ -1,9 +1,39 @@
 // `import type` (not a value import) so this stays a pure, dependency-free
-// module at runtime -- see the identical note in src/lib/srs.ts.
+// module at runtime -- see the identical note in src/lib/srs.ts. This used
+// to also value-import computeQuestionStats from @/services/attempts,
+// which pulled the Supabase client (and its Realtime/WebSocket setup) in
+// transitively -- broke the very first attempt at a quizLogic.test.ts,
+// which is why that function now lives here instead (re-exported from
+// @/services/attempts for existing import sites).
 import type { Question } from "@/services/questions";
-import { type Attempt, computeQuestionStats } from "@/services/attempts";
+import type { Attempt } from "@/services/attempts";
 
 export type SessionMode = "infinite" | "review" | "new";
+
+export type QuestionStats = {
+  totalAttempts: number;
+  correctCount: number;
+  incorrectCount: number;
+  lastAttemptedAt: string;
+};
+
+export function computeQuestionStats(attempts: Attempt[]): Map<number, QuestionStats> {
+  const map = new Map<number, QuestionStats>();
+  for (const a of attempts) {
+    const s: QuestionStats = map.get(a.questionId) ?? {
+      totalAttempts: 0,
+      correctCount: 0,
+      incorrectCount: 0,
+      lastAttemptedAt: a.attemptedAt,
+    };
+    s.totalAttempts += 1;
+    if (a.isCorrect) s.correctCount += 1;
+    else s.incorrectCount += 1;
+    if (a.attemptedAt > s.lastAttemptedAt) s.lastAttemptedAt = a.attemptedAt;
+    map.set(a.questionId, s);
+  }
+  return map;
+}
 
 export function shuffle<T>(items: T[]): T[] {
   const copy = [...items];
@@ -19,25 +49,38 @@ export function pickRandom(pool: Question[], excludeId?: number): Question {
   return filtered[Math.floor(Math.random() * filtered.length)];
 }
 
-export function isCorrect(question: Question, response: number[]): boolean {
+// Every type's response fits one of these two flat shapes -- a plain
+// number[] (choice/sequence/cloze: a set of indices, a permutation, one
+// index per blank) or grid's number[][] (one array of selected column
+// indices per row, since a row can have more than one correct column).
+// Extend this union, not the shape of either member, as future types add
+// their own natural response shape (see the NGN roadmap plan).
+export type QuestionResponse = number[] | number[][];
+
+function sameSet(a: number[], b: number[]): boolean {
+  return a.length === b.length && a.every((v) => b.includes(v));
+}
+
+export function isCorrect(question: Question, response: QuestionResponse): boolean {
   if (question.type === "sequence") {
+    const r = response as number[];
     return (
-      response.length === question.correctOrder.length &&
-      response.every((choiceIndex, position) => choiceIndex === question.correctOrder[position])
+      r.length === question.correctOrder.length &&
+      r.every((choiceIndex, position) => choiceIndex === question.correctOrder[position])
     );
   }
   if (question.type === "grid") {
-    // response[i] is the column index picked for row i -- same shape as
-    // gridAnswer, so this is a direct positional comparison, not a set
-    // comparison like the plain "choice" branch below.
-    return (
-      response.length === question.gridAnswer.length &&
-      response.every((columnIndex, row) => columnIndex === question.gridAnswer[row])
-    );
+    // response[row] is the *set* of column indices selected for that row --
+    // compared as a set (order picked doesn't matter), not positionally
+    // like sequence above. Single-select is just the every-set-length-1
+    // case.
+    const r = response as number[][];
+    return r.length === question.gridAnswers.length && r.every((sel, row) => sameSet(sel, question.gridAnswers[row]));
   }
+  const r = response as number[];
   return (
-    response.length === question.correctIndices.length &&
-    response.every((i) => question.correctIndices.includes(i))
+    r.length === question.correctIndices.length &&
+    r.every((i) => question.correctIndices.includes(i))
   );
 }
 

@@ -12,7 +12,7 @@ import {
 import { getErrorMessage } from "@/lib/errorMessage";
 import { startOfToday, startOfWeek } from "@/lib/dateRanges";
 import { QuestionFilter, EMPTY_FILTER, queryQuestions, describeFilter } from "@/lib/questionFilter";
-import { SessionMode, isCorrect, selectMostWrong, selectUnattempted, selectLeastRecentlyTried } from "@/lib/quizLogic";
+import { SessionMode, QuestionResponse, isCorrect, selectMostWrong, selectUnattempted, selectLeastRecentlyTried } from "@/lib/quizLogic";
 import { pickNextForReview } from "@/lib/srs";
 import { ReviewRange } from "@/components/picker/ReviewMode";
 import { NewRange } from "@/components/picker/NewMode";
@@ -89,7 +89,7 @@ export function useQuizSession(questions: Question[] | null) {
   const [queue, setQueue] = useState<Question[]>([]);
   const [index, setIndex] = useState(0);
   const [current, setCurrent] = useState<Question | null>(null);
-  const [answers, setAnswers] = useState<number[][]>([]);
+  const [answers, setAnswers] = useState<QuestionResponse[]>([]);
   const [questionStats, setQuestionStats] = useState<Map<number, QuestionStats> | null>(null);
   // Raw attempt history (not just the derived `questionStats` map above) --
   // feeds `pickNextForReview`'s spaced-repetition scheduling. Empty until
@@ -378,7 +378,7 @@ export function useQuizSession(questions: Question[] | null) {
     setView("analytics");
   }
 
-  function handleNext(selected: number[]) {
+  function handleNext(selected: QuestionResponse) {
     // Built locally (not read back from state) so the very next pick sees
     // this answer immediately -- React's state update wouldn't be visible
     // within this same function call otherwise.
@@ -389,9 +389,20 @@ export function useQuizSession(questions: Question[] | null) {
       recordAttempt(current.id, selected, wasCorrect).catch((err) =>
         console.error("Failed to record attempt:", err),
       );
+      // A grid response (number[][]) has no flat selectedIndices of its own
+      // -- mirrors how recordAttempt/the DB split it above, so the locally-
+      // built optimistic Attempt matches what fetchAttempts would return.
+      const isGridResponse = Array.isArray(selected[0]);
       updatedAttempts = [
         ...attempts,
-        { id: -1, questionId: current.id, selectedIndices: selected, isCorrect: wasCorrect, attemptedAt: new Date().toISOString() },
+        {
+          id: -1,
+          questionId: current.id,
+          selectedIndices: isGridResponse ? [] : (selected as number[]),
+          gridSelections: isGridResponse ? (selected as number[][]) : undefined,
+          isCorrect: wasCorrect,
+          attemptedAt: new Date().toISOString(),
+        },
       ];
       setAttempts(updatedAttempts);
     }

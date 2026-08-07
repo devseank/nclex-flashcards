@@ -9,12 +9,14 @@ import type { Attempt } from "@/services/attempts";
 
 const HOUR_MS = 60 * 60 * 1000;
 
-// Deliberately not imported from `@/lib/quizLogic` (which has the identical
-// helper) -- quizLogic.ts has a real value-level import of
-// `@/services/attempts` for `computeQuestionStats`, which would pull the
-// Supabase client (and its Realtime/WebSocket setup) into this otherwise
-// dependency-free module transitively, breaking under plain Node (e.g. in
-// tests) for reasons that have nothing to do with this file's own logic.
+// Deliberately not imported from `@/lib/quizLogic` (which has a similar
+// helper, `pickRandom(pool: Question[], excludeId?)`) -- kept as its own
+// generic version here since this file's callers don't need the
+// Question-specific exclude-by-id behavior. (quizLogic.ts used to also be
+// unsafe to import from at all -- a value-level import of
+// `computeQuestionStats` pulled the Supabase client in transitively -- but
+// that's been fixed; computeQuestionStats now lives in quizLogic.ts itself
+// as a real, pure function, not imported from @/services/attempts.)
 function pickRandom<T>(pool: T[]): T {
   return pool[Math.floor(Math.random() * pool.length)];
 }

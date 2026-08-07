@@ -5,6 +5,7 @@ import PixelWindow from "@/components/ui/PixelWindow";
 import HeaderActions from "@/components/ui/HeaderActions";
 import { Question } from "@/services/questions";
 import { QuestionStats } from "@/services/attempts";
+import { QuestionResponse } from "@/lib/quizLogic";
 
 export default function FinishedScreen({
   title,
@@ -18,7 +19,7 @@ export default function FinishedScreen({
   score: number;
   total: number;
   queue: Question[];
-  answers: number[][];
+  answers: QuestionResponse[];
   questionStats: Map<number, QuestionStats> | null;
 }) {
   return (

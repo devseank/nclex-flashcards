@@ -127,16 +127,38 @@ Two SQL files, two different jobs — don't blend them:
    - For a `choice` row: `correct_answer` is one exact choice's text, or for
      "select all that apply", multiple choices joined with ` | `
      (space-pipe-space). `correct_order`/`grid_columns` are unused/blank.
+     Lands in SQL as `questions.correct_indices` (integer[], matched
+     against `choices`).
    - For a `sequence` row: `correct_order` lists the choice texts in their
      correct order, joined with ` | `. `correct_answer`/`grid_columns` are
-     unused/blank.
-   - For a `grid` row: `choice_N` columns are the row labels (findings/
-     interventions), not answer choices. `grid_columns` lists the column
-     headers joined with ` | ` (e.g. `Indicated | Not indicated`).
-     `correct_answer` then lists, for each row/`choice_N` **in order**,
-     which of those column headers is correct for that row, also joined
-     with ` | ` — so it always has exactly as many entries as there are
-     `choice_N` columns used. `correct_order` is unused/blank.
+     unused/blank. Lands in SQL as `questions.correct_order` (integer[], a
+     permutation of `choices`' indices).
+   - For a `grid` row (an NGN-style matrix — single- **or** multiple-
+     response, e.g. "Indicated"/"Not indicated" per finding): `choice_N`
+     columns are the row labels (findings/interventions), not answer
+     choices. `grid_columns` lists the column headers joined with ` | `
+     (e.g. `Indicated | Not indicated`). `correct_answer` then lists, for
+     each row/`choice_N` **in order**, which of those column headers is
+     correct for that row, joined with ` | ` between rows — so it always
+     has exactly as many ` | `-separated entries as there are `choice_N`
+     columns used. **When a single row has more than one correct column**
+     (matrix multiple-response), join that row's own entry with ` & `
+     instead of leaving it as one label, e.g. for two rows: `Notify
+     provider & Initiate fall precautions | Document only`. `correct_order`
+     is unused/blank.
+     - **How this lands in SQL** (`scripts/csv-to-sql.mjs`): `choices` →
+       `questions.choices`, `grid_columns` → `questions.grid_columns`,
+       both stored directly on the row exactly as today. Each row's
+       correct column(s) do **not** go into a `questions` column at all —
+       they're matched against `grid_columns` and written to the
+       `grid_row_answers` child table (one row per correct cell: `question_id,
+       row_index, column_index`), via a second `insert ... select ... join`
+       statement the script emits right after the main `questions` insert,
+       looked up by the row's own unique `question` text (its numeric `id`
+       doesn't exist yet at script-generation time). Paste **both**
+       statements into the SQL Editor together, in that order — the second
+       one depends on the first having already run. See `supabase/
+       schema.sql`'s `grid_row_answers` table for the exact shape.
    - `ai_generated`: `true` only for rows built per rule 10 below (choices
      and/or rationale written by an AI, not transcribed from the source).
      Leave blank (defaults to false) for the normal case of a faithful

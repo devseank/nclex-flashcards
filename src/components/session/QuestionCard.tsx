@@ -2,6 +2,7 @@
 
 import { Question } from "@/services/questions";
 import { QuestionStats } from "@/services/attempts";
+import { QuestionResponse } from "@/lib/quizLogic";
 import Flashcard, { FlashcardMode } from "@/components/session/Flashcard";
 import SequenceFlashcard from "@/components/session/SequenceFlashcard";
 import GridFlashcard from "@/components/session/GridFlashcard";
@@ -24,9 +25,9 @@ export default function QuestionCard({
   headerAction?: React.ReactNode;
   question: Question;
   mode?: FlashcardMode;
-  initialResponse?: number[];
+  initialResponse?: QuestionResponse;
   stats?: QuestionStats;
-  onNext?: (response: number[]) => void;
+  onNext?: (response: QuestionResponse) => void;
 }) {
   if (question.type === "sequence") {
     return (
@@ -35,7 +36,7 @@ export default function QuestionCard({
         headerAction={headerAction}
         question={question}
         mode={mode}
-        initialOrder={initialResponse}
+        initialOrder={initialResponse as number[]}
         stats={stats}
         onNext={onNext}
       />
@@ -49,7 +50,7 @@ export default function QuestionCard({
         headerAction={headerAction}
         question={question}
         mode={mode}
-        initialSelected={initialResponse}
+        initialSelected={initialResponse as number[][]}
         stats={stats}
         onNext={onNext}
       />
@@ -62,7 +63,7 @@ export default function QuestionCard({
       headerAction={headerAction}
       question={question}
       mode={mode}
-      initialSelected={initialResponse}
+      initialSelected={initialResponse as number[]}
       stats={stats}
       onNext={onNext}
     />

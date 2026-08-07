@@ -9,6 +9,12 @@ export type Attempt = {
   id: number;
   questionId: number;
   selectedIndices: number[];
+  // Only present for a grid-multi-response attempt (see recordAttempt) --
+  // selectedIndices is an empty placeholder array in that case, since the
+  // DB column stays not-null for every attempt but a grid answer's real
+  // shape (a variable number of selected columns per row) lives in the
+  // attempt_grid_selections child table instead.
+  gridSelections?: number[][];
   isCorrect: boolean;
   attemptedAt: string;
 };
@@ -21,27 +27,63 @@ type AttemptRow = {
   attempted_at: string;
 };
 
-function toAttempt(row: AttemptRow): Attempt {
+type AttemptGridSelectionRow = {
+  attempt_id: number;
+  row_index: number;
+  column_index: number;
+};
+
+function groupGridSelections(rows: AttemptGridSelectionRow[]): Map<number, number[][]> {
+  const byAttempt = new Map<number, number[][]>();
+  for (const r of rows) {
+    const rowSelections = byAttempt.get(r.attempt_id) ?? [];
+    rowSelections[r.row_index] = [...(rowSelections[r.row_index] ?? []), r.column_index];
+    byAttempt.set(r.attempt_id, rowSelections);
+  }
+  return byAttempt;
+}
+
+function toAttempt(row: AttemptRow, gridSelectionsByAttemptId: Map<number, number[][]>): Attempt {
   return {
     id: row.id,
     questionId: row.question_id,
     selectedIndices: row.selected_indices,
+    gridSelections: gridSelectionsByAttemptId.get(row.id),
     isCorrect: row.is_correct,
     attemptedAt: row.attempted_at,
   };
 }
 
+// `response` is either a flat number[] (choice/sequence/cloze -- stored
+// directly in selected_indices) or a grid's number[][] (one array of
+// selected column indices per row -- stored in attempt_grid_selections
+// instead, keyed by the newly-inserted attempt's own id).
 export async function recordAttempt(
   questionId: number,
-  selectedIndices: number[],
+  response: number[] | number[][],
   isCorrect: boolean,
 ): Promise<void> {
-  const { error } = await supabase.from("attempts").insert({
-    question_id: questionId,
-    selected_indices: selectedIndices,
-    is_correct: isCorrect,
-  });
+  const isGridResponse = Array.isArray(response[0]);
+  const { data, error } = await supabase
+    .from("attempts")
+    .insert({
+      question_id: questionId,
+      selected_indices: isGridResponse ? [] : response,
+      is_correct: isCorrect,
+    })
+    .select("id")
+    .single();
   if (error) throw error;
+
+  if (isGridResponse) {
+    const rows = (response as number[][]).flatMap((columns, rowIndex) =>
+      columns.map((columnIndex) => ({ attempt_id: data.id, row_index: rowIndex, column_index: columnIndex })),
+    );
+    if (rows.length > 0) {
+      const { error: gridError } = await supabase.from("attempt_grid_selections").insert(rows);
+      if (gridError) throw gridError;
+    }
+  }
 }
 
 export async function fetchAttempts(): Promise<Attempt[]> {
@@ -49,32 +91,24 @@ export async function fetchAttempts(): Promise<Attempt[]> {
     .from("attempts")
     .select("id, question_id, selected_indices, is_correct, attempted_at")
     .order("attempted_at", { ascending: true });
-
   if (error) throw error;
-  return (data ?? []).map(toAttempt);
+
+  const attemptIds = (data ?? []).map((r) => r.id);
+  const { data: gridSelectionData, error: gridError } =
+    attemptIds.length > 0
+      ? await supabase.from("attempt_grid_selections").select("attempt_id, row_index, column_index").in("attempt_id", attemptIds)
+      : { data: [], error: null };
+  if (gridError) throw gridError;
+
+  const gridSelectionsByAttemptId = groupGridSelections(gridSelectionData ?? []);
+  return (data ?? []).map((row) => toAttempt(row, gridSelectionsByAttemptId));
 }
 
-export type QuestionStats = {
-  totalAttempts: number;
-  correctCount: number;
-  incorrectCount: number;
-  lastAttemptedAt: string;
-};
-
-export function computeQuestionStats(attempts: Attempt[]): Map<number, QuestionStats> {
-  const map = new Map<number, QuestionStats>();
-  for (const a of attempts) {
-    const s: QuestionStats = map.get(a.questionId) ?? {
-      totalAttempts: 0,
-      correctCount: 0,
-      incorrectCount: 0,
-      lastAttemptedAt: a.attemptedAt,
-    };
-    s.totalAttempts += 1;
-    if (a.isCorrect) s.correctCount += 1;
-    else s.incorrectCount += 1;
-    if (a.attemptedAt > s.lastAttemptedAt) s.lastAttemptedAt = a.attemptedAt;
-    map.set(a.questionId, s);
-  }
-  return map;
-}
+// QuestionStats + computeQuestionStats both live in @/lib/quizLogic, not
+// here -- it's pure attempt-log math with no Supabase dependency of its
+// own, and having it in this file would pull the Supabase client into
+// quizLogic.ts (and anything testing it) transitively. Re-exported from
+// their real home so existing "from @/services/attempts" imports still
+// resolve.
+export type { QuestionStats } from "@/lib/quizLogic";
+export { computeQuestionStats } from "@/lib/quizLogic";
