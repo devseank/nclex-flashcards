@@ -38,11 +38,24 @@ create table if not exists public.questions (
   -- satisfies the not-null constraint below) since there's no single
   -- question-level choice list, each blank has its own.
   -- correct_indices/correct_order/grid_columns are null.
+  -- 'bowtie': one shared stem (`question`) branches into three independent
+  -- sections -- condition (pick exactly 1), actions (pick exactly 2),
+  -- monitor (pick exactly 2). Each section's own choice list/answer(s) are
+  -- fixed-shape (a plain text[] + integer/integer[]), so -- unlike grid/
+  -- cloze above -- these are just plain columns, not a child table.
+  -- `choices` is unused (stored as '[]'::jsonb, same as cloze).
+  -- correct_indices/correct_order/grid_columns/cloze_* are null.
   question_type text not null default 'choice',
   correct_indices integer[],
   correct_order integer[],
   grid_columns text[],
   cloze_template text,
+  bowtie_condition_choices text[],
+  bowtie_condition_answer integer,
+  bowtie_action_choices text[],
+  bowtie_action_answer integer[],
+  bowtie_monitor_choices text[],
+  bowtie_monitor_answer integer[],
   rationale text not null,
   -- Optional -- a URL to an illustration for this question (e.g. an
   -- anatomy diagram). When several questions share one image, reuse the
@@ -71,6 +84,15 @@ alter table public.questions add column if not exists ai_generated boolean not n
 -- Migrating an existing project: adds cloze support. Safe/idempotent to
 -- re-run.
 alter table public.questions add column if not exists cloze_template text;
+
+-- Migrating an existing project: adds bowtie support. Safe/idempotent to
+-- re-run.
+alter table public.questions add column if not exists bowtie_condition_choices text[];
+alter table public.questions add column if not exists bowtie_condition_answer integer;
+alter table public.questions add column if not exists bowtie_action_choices text[];
+alter table public.questions add column if not exists bowtie_action_answer integer[];
+alter table public.questions add column if not exists bowtie_monitor_choices text[];
+alter table public.questions add column if not exists bowtie_monitor_answer integer[];
 
 -- Migrating an existing project: backfills `source` for every question
 -- imported before this column existed. Backfilled to '' (unknown) rather
@@ -218,12 +240,24 @@ create table if not exists public.attempts (
   user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
   question_id bigint not null references public.questions (id) on delete cascade,
   selected_indices integer[] not null,
+  -- Only set for a bowtie attempt (selected_indices is '{}' in that case)
+  -- -- fixed-shape, so plain columns mirroring the answer key's own
+  -- bowtie_* columns above, same reasoning as those.
+  bowtie_condition integer,
+  bowtie_actions integer[],
+  bowtie_monitor integer[],
   is_correct boolean not null,
   attempted_at timestamptz not null default now()
 );
 
 create index if not exists attempts_user_id_attempted_at_idx on public.attempts (user_id, attempted_at);
 create index if not exists attempts_user_id_question_id_idx on public.attempts (user_id, question_id);
+
+-- Migrating an existing project: adds bowtie response columns. Safe/
+-- idempotent to re-run.
+alter table public.attempts add column if not exists bowtie_condition integer;
+alter table public.attempts add column if not exists bowtie_actions integer[];
+alter table public.attempts add column if not exists bowtie_monitor integer[];
 
 alter table public.attempts enable row level security;
 

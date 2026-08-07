@@ -93,7 +93,7 @@ Two SQL files, two different jobs — don't blend them:
    question/rationale/choice looks wrong, flag it to the user and ask —
    don't silently rewrite it as a side effect of an unrelated append.
 5. **Match the column format exactly** — see `data/questions.template.csv`:
-   `category,tags,image_url,question,choice_1,choice_2,...,correct_answer,rationale,question_type,correct_order,grid_columns,cloze_template,blank_1_options,blank_1_correct,...,ai_generated,source`
+   `category,tags,image_url,question,choice_1,choice_2,...,correct_answer,rationale,question_type,correct_order,grid_columns,cloze_template,blank_1_options,blank_1_correct,...,bowtie_condition_choices,bowtie_condition_answer,bowtie_action_choices,bowtie_action_answer,bowtie_monitor_choices,bowtie_monitor_answer,ai_generated,source`
    - `category`: exactly one, required — the bounded "what kind of
      question" grouping (`Pharmacology`, `Prioritization`,
      `Maternal-Newborn`, ...). Reuse an existing category exactly (check the
@@ -123,8 +123,10 @@ Two SQL files, two different jobs — don't blend them:
    - `question_type`: leave blank for a normal multiple-choice / select-all-
      that-apply question (defaults to `choice`). Set to `sequence` for a
      "put these steps in the correct order" question, `grid` for an
-     NGN-style matrix (e.g. "Indicated"/"Not indicated" per finding), or
-     `cloze` for a sentence with one or more dropdown blanks.
+     NGN-style matrix (e.g. "Indicated"/"Not indicated" per finding),
+     `cloze` for a sentence with one or more dropdown blanks, or `bowtie`
+     for an NGN bowtie item (one stem branching into a condition + actions
+     + monitoring parameters).
    - For a `choice` row: `correct_answer` is one exact choice's text, or for
      "select all that apply", multiple choices joined with ` | `
      (space-pipe-space). `correct_order`/`grid_columns` are unused/blank.
@@ -190,6 +192,23 @@ Two SQL files, two different jobs — don't blend them:
        run either). Paste **all three** statements into the SQL Editor
        together, in the order printed. See `supabase/schema.sql`'s
        `cloze_blanks`/`cloze_blank_options` tables for the exact shape.
+   - For a `bowtie` row (one shared stem — `question` — branching into 3
+     independent sections): `bowtie_condition_choices`/
+     `bowtie_action_choices`/`bowtie_monitor_choices` each list that
+     section's own options, pipe-delimited. `bowtie_condition_answer` is
+     the one exact correct choice's text (condition is single-pick).
+     `bowtie_action_answer`/`bowtie_monitor_answer` are each **exactly
+     two** correct choices joined with ` | ` (both sections are pick-2 —
+     `scripts/csv-to-sql.mjs` throws if either doesn't resolve to exactly
+     2). `choice_N`/`correct_answer`/`correct_order`/`grid_columns`/
+     `cloze_*` are unused/blank.
+     - **How this lands in SQL**: all six columns are plain, fixed-shape
+       columns directly on `questions` (`bowtie_condition_choices`/
+       `bowtie_action_choices`/`bowtie_monitor_choices` as `text[]`,
+       `bowtie_condition_answer` as `integer`, `bowtie_action_answer`/
+       `bowtie_monitor_answer` as `integer[]`) — no child table needed
+       here, unlike grid/cloze, since each section's shape is fixed (not a
+       variable count per question).
    - `ai_generated`: `true` only for rows built per rule 10 below (choices
      and/or rationale written by an AI, not transcribed from the source).
      Leave blank (defaults to false) for the normal case of a faithful
@@ -199,7 +218,7 @@ Two SQL files, two different jobs — don't blend them:
      one word per source, reused exactly across every row from that same
      batch. This is provenance for later spot-checking or removing a given
      source's content, not something the app UI shows.
-   - Question types NOT in this list (bowtie, hot-spot/image-click) still
+   - Question types NOT in this list (true hot-spot/image-click) still
      aren't supported — skip those and tell the user which ones were
      skipped and why. Highlight-passage items aren't their own type either,
      but rule 10 below covers converting them into a `choice` row instead
@@ -292,8 +311,17 @@ Two SQL files, two different jobs — don't blend them:
       answer itself is faithfully transcribed — flag it whenever that's
       true, same as the rationale-only case elsewhere in this rule.
 
+    `bowtie` items are now first-class (rule 5) too, but **don't extend
+    the invented-distractor carve-out above to them** the way it applies
+    to cloze — a bowtie source missing a real distractor pool for any of
+    its three sections (condition/actions/monitor) means inventing three
+    separate fabricated option lists, which is meaningfully more invented
+    content than a single cloze blank's distractors. Skip a bowtie like
+    that per the general rule at the top of this section, don't
+    reconstruct it.
+
     Everything else that doesn't fit an existing/supported `question_type`
-    (bowtie diagrams, true hot-spot/image-click items) gets skipped per
-    rule 5, not reconstructed — their *structure* itself has no home in
-    this schema the way a restructured single-choice question or a native
-    cloze row does, so there's no faithful way to convert them at all.
+    (true hot-spot/image-click items) gets skipped per rule 5, not
+    reconstructed — their *structure* itself has no home in this schema
+    the way a restructured single-choice question or a native cloze/
+    bowtie row does, so there's no faithful way to convert them at all.

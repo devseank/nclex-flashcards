@@ -9,6 +9,8 @@
 //   category, tags, image_url, question, choice_1, choice_2, ... (as many as
 //   needed), correct_answer, rationale, question_type, correct_order,
 //   grid_columns, cloze_template, blank_1_options, blank_1_correct, ...,
+//   bowtie_condition_choices, bowtie_condition_answer, bowtie_action_choices,
+//   bowtie_action_answer, bowtie_monitor_choices, bowtie_monitor_answer,
 //   ai_generated, source
 //
 // - category: exactly one, required -- the bounded "what kind of question"
@@ -31,15 +33,17 @@
 //   into questions.choices (jsonb array), choice_N's own column position is
 //   NOT stored -- only the resulting array order matters, which is why
 //   gaps must not be left between used choice_N columns.
-// - question_type: "choice" (default, leave blank), "sequence", "grid", or
-//   "cloze". -> questions.question_type (text).
+// - question_type: "choice" (default, leave blank), "sequence", "grid",
+//   "cloze", or "bowtie". -> questions.question_type (text).
 // - question: required for every type EXCEPT "cloze", where it's left
 //   blank -- it's derived instead (see below) so the sentence is only ever
-//   maintained in one place.
+//   maintained in one place. For "bowtie", `question` is the one shared
+//   stem all three sections branch off of -- authored normally.
 //
 // Per question_type, exactly one of correct_answer/correct_order/
-// grid_columns+grid-row-answer-data/cloze_template+blank_N-data is
-// populated -- the others are left unused/blank on that row:
+// grid_columns+grid-row-answer-data/cloze_template+blank_N-data/
+// bowtie_*-data is populated -- the others are left unused/blank on that
+// row:
 //
 // - "choice": correct_answer is one exact choice's text, or for a "select
 //   all that apply" question, multiple choices joined with " | ".
@@ -80,6 +84,18 @@
 //   is DERIVED from cloze_template (each {{n}} replaced with "_____") --
 //   leave the CSV's own `question` cell blank for cloze rows.
 //   choice_N/correct_answer/correct_order/grid_columns unused.
+// - "bowtie" (one shared stem branching into 3 independent sections --
+//   condition, actions, monitor): bowtie_condition_choices/
+//   bowtie_action_choices/bowtie_monitor_choices each list that section's
+//   own options, pipe-delimited -> questions.bowtie_{condition,action,
+//   monitor}_choices (text[]). bowtie_condition_answer is the ONE exact
+//   correct choice's text (condition is single-pick) ->
+//   questions.bowtie_condition_answer (integer). bowtie_action_answer/
+//   bowtie_monitor_answer are each EXACTLY TWO correct choices joined with
+//   " | " (both sections are pick-2) -> questions.bowtie_{action,monitor}_
+//   answer (integer[]) -- csv-to-sql.mjs throws if either doesn't resolve
+//   to exactly 2. choice_N/correct_answer/correct_order/grid_columns/
+//   cloze_* unused.
 // - ai_generated: "true" if the choices/rationale (or both) were written by
 //   an AI rather than transcribed from the source -- shows a small badge in
 //   the UI. Leave blank (defaults to false) for faithfully-transcribed
@@ -186,6 +202,33 @@ function matchLabelIndices(pipeDelimited, options, fieldName, row, rowNumber) {
     });
 }
 
+// Parses one bowtie section's own choices + correct answer(s) -- shared by
+// condition (expectedCount=1)/actions/monitor (expectedCount=2), since all
+// three sections are otherwise identical in shape.
+function parseBowtieSection(row, rowNumber, questionText, prefix, expectedCount) {
+  const choices = String(row[`bowtie_${prefix}_choices`] ?? "")
+    .split("|")
+    .map((c) => c.trim())
+    .filter((c) => c !== "");
+  if (choices.length === 0) {
+    throw new Error(`Row ${rowNumber}: "bowtie" question is missing bowtie_${prefix}_choices. Question: "${questionText}"`);
+  }
+  const answerIndices = matchLabelIndices(
+    row[`bowtie_${prefix}_answer`],
+    choices,
+    `bowtie_${prefix}_answer`,
+    { question: questionText },
+    rowNumber,
+  );
+  if (answerIndices.length !== expectedCount) {
+    throw new Error(
+      `Row ${rowNumber}: bowtie_${prefix}_answer has ${answerIndices.length} pick(s), expected exactly ${expectedCount}. ` +
+        `Question: "${questionText}"`,
+    );
+  }
+  return { choicesSql: sqlTextArray(choices.join(" | ")), answerIndices };
+}
+
 // (question text, row_index, column_index) triples for every grid row's
 // correct cell across the whole batch -- collected here (a side effect of
 // the main values.map below) since it's emitted as a second, separate
@@ -223,6 +266,12 @@ const values = rows.map((row, i) => {
   let correctOrderSql = "null";
   let gridColumnsSql = "null";
   let clozeTemplateSql = "null";
+  let bowtieConditionChoicesSql = "null";
+  let bowtieConditionAnswerSql = "null";
+  let bowtieActionChoicesSql = "null";
+  let bowtieActionAnswerSql = "null";
+  let bowtieMonitorChoicesSql = "null";
+  let bowtieMonitorAnswerSql = "null";
 
   if (questionType === "sequence") {
     const order = matchLabelIndices(row.correct_order, choices, "correct_order", row, rowNumber);
@@ -302,6 +351,17 @@ const values = rows.map((row, i) => {
     });
 
     clozeTemplateSql = sqlString(clozeTemplate);
+  } else if (questionType === "bowtie") {
+    const condition = parseBowtieSection(row, rowNumber, questionText, "condition", 1);
+    const actions = parseBowtieSection(row, rowNumber, questionText, "action", 2);
+    const monitor = parseBowtieSection(row, rowNumber, questionText, "monitor", 2);
+
+    bowtieConditionChoicesSql = condition.choicesSql;
+    bowtieConditionAnswerSql = String(condition.answerIndices[0]);
+    bowtieActionChoicesSql = actions.choicesSql;
+    bowtieActionAnswerSql = `array[${actions.answerIndices.join(",")}]`;
+    bowtieMonitorChoicesSql = monitor.choicesSql;
+    bowtieMonitorAnswerSql = `array[${monitor.answerIndices.join(",")}]`;
   } else {
     const indices = matchLabelIndices(row.correct_answer, choices, "correct_answer", row, rowNumber);
     correctIndicesSql = `array[${indices.join(",")}]`;
@@ -318,6 +378,8 @@ const values = rows.map((row, i) => {
   return (
     `(${sqlString(row.category)}, ${sqlTextArray(row.tags)}, ${sqlString(questionText)}, ${sqlString(choicesJson)}::jsonb, ` +
     `${sqlString(questionType)}, ${correctIndicesSql}, ${correctOrderSql}, ${gridColumnsSql}, ${clozeTemplateSql}, ` +
+    `${bowtieConditionChoicesSql}, ${bowtieConditionAnswerSql}, ${bowtieActionChoicesSql}, ${bowtieActionAnswerSql}, ` +
+    `${bowtieMonitorChoicesSql}, ${bowtieMonitorAnswerSql}, ` +
     `${sqlString(row.rationale)}, ${imageUrlSql}, ${aiGeneratedSql}, ${sqlString(source)})`
   );
 });
@@ -331,7 +393,7 @@ if (clozeBlanks.length > 0) {
 }
 
 console.log(
-  `insert into public.questions (category, tags, question, choices, question_type, correct_indices, correct_order, grid_columns, cloze_template, rationale, image_url, ai_generated, source)\nvalues\n  ${values.join(",\n  ")}\non conflict (question) do nothing;`,
+  `insert into public.questions (category, tags, question, choices, question_type, correct_indices, correct_order, grid_columns, cloze_template, bowtie_condition_choices, bowtie_condition_answer, bowtie_action_choices, bowtie_action_answer, bowtie_monitor_choices, bowtie_monitor_answer, rationale, image_url, ai_generated, source)\nvalues\n  ${values.join(",\n  ")}\non conflict (question) do nothing;`,
 );
 
 // A separate insert, joined back to the row(s) just inserted above by their

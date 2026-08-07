@@ -1,0 +1,190 @@
+"use client";
+
+import { useState } from "react";
+import { BowtieQuestion } from "@/services/questions";
+import { BowtieResponse } from "@/lib/quizLogic";
+import { QuestionStats } from "@/services/attempts";
+import { ConfettiConfig, buildConfettiConfig } from "@/components/session/ConfettiBurst";
+import FlashcardShell, { FlashcardMode } from "@/components/session/FlashcardShell";
+
+type Selection = { condition: number | null; actions: number[]; monitor: number[] };
+
+const EMPTY_SELECTION: Selection = { condition: null, actions: [], monitor: [] };
+
+function sameSet(a: number[], b: number[]): boolean {
+  return a.length === b.length && a.every((v) => b.includes(v));
+}
+
+// One section's own choice-button list -- condition (pick exactly 1,
+// single-select) and actions/monitor (pick exactly 2, capped multi-select)
+// all render through this, differing only in cap and current picks.
+function SectionButtons({
+  choices,
+  picked,
+  correctAnswer,
+  cap,
+  showAnswer,
+  onToggle,
+}: {
+  choices: string[];
+  picked: number[];
+  correctAnswer: number[];
+  cap: number;
+  showAnswer: boolean;
+  onToggle: (i: number) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      {choices.map((choice, i) => {
+        const isPicked = picked.includes(i);
+        const isCorrectChoice = correctAnswer.includes(i);
+
+        let variant = "";
+        if (showAnswer) {
+          if (isCorrectChoice) variant = "is-success";
+          else if (isPicked) variant = "is-error";
+          else variant = "is-disabled";
+        } else if (isPicked) {
+          variant = "is-primary";
+        }
+
+        return (
+          <button
+            key={i}
+            type="button"
+            aria-pressed={isPicked}
+            disabled={showAnswer || (!isPicked && picked.length >= cap)}
+            onClick={() => onToggle(i)}
+            className={`nes-btn w-full text-left text-sm ${variant}`}
+          >
+            {choice}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+export default function BowtieFlashcard({
+  headerLeft,
+  headerAction,
+  question,
+  onNext,
+  mode = "immediate",
+  initialSelected,
+  stats,
+}: {
+  headerLeft?: React.ReactNode;
+  headerAction?: React.ReactNode;
+  question: BowtieQuestion;
+  onNext?: (selected: BowtieResponse) => void;
+  mode?: FlashcardMode;
+  initialSelected?: BowtieResponse;
+  stats?: QuestionStats;
+}) {
+  const [selected, setSelected] = useState<Selection>(initialSelected ?? EMPTY_SELECTION);
+  const [revealed, setRevealed] = useState(mode === "review");
+  const [confettiConfig, setConfettiConfig] = useState<ConfettiConfig | null>(null);
+
+  const showAnswer = mode === "review" || revealed;
+
+  function isCorrectSelection(sel: Selection): boolean {
+    return (
+      sel.condition === question.condition.answer &&
+      sameSet(sel.actions, question.actions.answer) &&
+      sameSet(sel.monitor, question.monitor.answer)
+    );
+  }
+
+  const allSectionsAnswered = selected.condition !== null && selected.actions.length === 2 && selected.monitor.length === 2;
+  const isFullyCorrect = showAnswer && isCorrectSelection(selected);
+
+  function reveal() {
+    // Math.random() (inside buildConfettiConfig) must not run during render,
+    // so it's built here in the event handler, not derived from state later.
+    if (isCorrectSelection(selected)) setConfettiConfig(buildConfettiConfig());
+    setRevealed(true);
+  }
+
+  function toggleCondition(i: number) {
+    if (showAnswer) return;
+    setSelected((prev) => ({ ...prev, condition: i }));
+  }
+
+  function toggleActions(i: number) {
+    if (showAnswer) return;
+    setSelected((prev) => ({
+      ...prev,
+      actions: prev.actions.includes(i) ? prev.actions.filter((x) => x !== i) : [...prev.actions, i],
+    }));
+  }
+
+  function toggleMonitor(i: number) {
+    if (showAnswer) return;
+    setSelected((prev) => ({
+      ...prev,
+      monitor: prev.monitor.includes(i) ? prev.monitor.filter((x) => x !== i) : [...prev.monitor, i],
+    }));
+  }
+
+  return (
+    <FlashcardShell
+      headerLeft={headerLeft}
+      headerAction={headerAction}
+      question={question}
+      stats={stats}
+      mode={mode}
+      showAnswer={showAnswer}
+      isFullyCorrect={isFullyCorrect}
+      confettiConfig={confettiConfig}
+      instruction={!showAnswer ? "Pick the most likely condition, then exactly 2 actions and 2 parameters to monitor." : undefined}
+      onNextClick={() => onNext?.({ condition: selected.condition ?? -1, actions: selected.actions, monitor: selected.monitor })}
+      nextDisabled={!showAnswer}
+      check={!showAnswer ? { label: "CHECK ANSWER", onClick: reveal, disabled: !allSectionsAnswered } : undefined}
+    >
+      <div className="space-y-5 text-left">
+        <div className="space-y-2">
+          <p className="font-pixel text-[10px] text-gray-500">MOST LIKELY CONDITION</p>
+          <SectionButtons
+            choices={question.condition.choices}
+            picked={selected.condition !== null ? [selected.condition] : []}
+            correctAnswer={[question.condition.answer]}
+            cap={1}
+            showAnswer={showAnswer}
+            onToggle={toggleCondition}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <p className="font-pixel text-[10px] text-gray-500">ACTIONS TO TAKE (pick 2)</p>
+          <SectionButtons
+            choices={question.actions.choices}
+            picked={selected.actions}
+            correctAnswer={question.actions.answer}
+            cap={2}
+            showAnswer={showAnswer}
+            onToggle={toggleActions}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <p className="font-pixel text-[10px] text-gray-500">PARAMETERS TO MONITOR (pick 2)</p>
+          <SectionButtons
+            choices={question.monitor.choices}
+            picked={selected.monitor}
+            correctAnswer={question.monitor.answer}
+            cap={2}
+            showAnswer={showAnswer}
+            onToggle={toggleMonitor}
+          />
+        </div>
+      </div>
+
+      {showAnswer && question.rationale && (
+        <div className="nes-container is-rounded space-y-2">
+          <p className="text-lg leading-snug">{question.rationale}</p>
+        </div>
+      )}
+    </FlashcardShell>
+  );
+}

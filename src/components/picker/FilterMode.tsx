@@ -7,7 +7,7 @@ import { QuestionKind, KIND_LABELS } from "@/lib/questionKind";
 import { QuestionFilter, queryQuestions } from "@/lib/questionFilter";
 import { categoryVariant } from "@/lib/categoryVariant";
 
-const KIND_OPTIONS: QuestionKind[] = ["single", "sata", "sequence", "grid", "cloze"];
+const KIND_OPTIONS: QuestionKind[] = ["single", "sata", "sequence", "grid", "cloze", "bowtie"];
 
 // One toggle button shared by all three facets below -- only the selected
 // color varies per facet (see callers), so a selected category/kind/tag

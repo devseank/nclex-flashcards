@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import type { QuestionResponse, BowtieResponse } from "@/lib/quizLogic";
 
 // `user_id` is never passed from the client on insert (see recordAttempt
 // below) -- the column defaults to auth.uid() and RLS scopes every select
@@ -15,6 +16,11 @@ export type Attempt = {
   // shape (a variable number of selected columns per row) lives in the
   // attempt_grid_selections child table instead.
   gridSelections?: number[][];
+  // Only present for a bowtie attempt (selectedIndices is also an empty
+  // placeholder array in that case) -- fixed-shape, so plain columns
+  // rather than a child table, same reasoning as the answer key's own
+  // bowtie_* columns.
+  bowtieResponse?: BowtieResponse;
   isCorrect: boolean;
   attemptedAt: string;
 };
@@ -23,6 +29,9 @@ type AttemptRow = {
   id: number;
   question_id: number;
   selected_indices: number[];
+  bowtie_condition: number | null;
+  bowtie_actions: number[] | null;
+  bowtie_monitor: number[] | null;
   is_correct: boolean;
   attempted_at: string;
 };
@@ -49,33 +58,51 @@ function toAttempt(row: AttemptRow, gridSelectionsByAttemptId: Map<number, numbe
     questionId: row.question_id,
     selectedIndices: row.selected_indices,
     gridSelections: gridSelectionsByAttemptId.get(row.id),
+    bowtieResponse:
+      row.bowtie_condition !== null
+        ? { condition: row.bowtie_condition, actions: row.bowtie_actions ?? [], monitor: row.bowtie_monitor ?? [] }
+        : undefined,
     isCorrect: row.is_correct,
     attemptedAt: row.attempted_at,
   };
 }
 
-// `response` is either a flat number[] (choice/sequence/cloze -- stored
-// directly in selected_indices) or a grid's number[][] (one array of
-// selected column indices per row -- stored in attempt_grid_selections
-// instead, keyed by the newly-inserted attempt's own id).
+function isGridResponse(response: QuestionResponse): response is number[][] {
+  return Array.isArray(response) && Array.isArray(response[0]);
+}
+
+function isBowtieResponse(response: QuestionResponse): response is BowtieResponse {
+  return !Array.isArray(response);
+}
+
+// `response` is a flat number[] (choice/sequence/cloze -- stored directly
+// in selected_indices), a grid's number[][] (one array of selected column
+// indices per row -- stored in attempt_grid_selections instead, keyed by
+// the newly-inserted attempt's own id), or bowtie's 3-part object (stored
+// in its own plain bowtie_* columns, fixed-shape like the answer key).
 export async function recordAttempt(
   questionId: number,
-  response: number[] | number[][],
+  response: QuestionResponse,
   isCorrect: boolean,
 ): Promise<void> {
-  const isGridResponse = Array.isArray(response[0]);
+  const grid = isGridResponse(response);
+  const bowtie = isBowtieResponse(response) ? response : null;
+
   const { data, error } = await supabase
     .from("attempts")
     .insert({
       question_id: questionId,
-      selected_indices: isGridResponse ? [] : response,
+      selected_indices: grid || bowtie ? [] : response,
+      bowtie_condition: bowtie?.condition ?? null,
+      bowtie_actions: bowtie?.actions ?? null,
+      bowtie_monitor: bowtie?.monitor ?? null,
       is_correct: isCorrect,
     })
     .select("id")
     .single();
   if (error) throw error;
 
-  if (isGridResponse) {
+  if (grid) {
     const rows = (response as number[][]).flatMap((columns, rowIndex) =>
       columns.map((columnIndex) => ({ attempt_id: data.id, row_index: rowIndex, column_index: columnIndex })),
     );
@@ -89,7 +116,7 @@ export async function recordAttempt(
 export async function fetchAttempts(): Promise<Attempt[]> {
   const { data, error } = await supabase
     .from("attempts")
-    .select("id, question_id, selected_indices, is_correct, attempted_at")
+    .select("id, question_id, selected_indices, bowtie_condition, bowtie_actions, bowtie_monitor, is_correct, attempted_at")
     .order("attempted_at", { ascending: true });
   if (error) throw error;
 

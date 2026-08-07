@@ -384,22 +384,31 @@ export function useQuizSession(questions: Question[] | null) {
     // within this same function call otherwise.
     let updatedAttempts = attempts;
 
-    if (current && selected.length > 0) {
+    // Bowtie's response is a plain object, not an array -- BowtieFlashcard
+    // only ever calls onNext once all 3 sections are answered, so unlike
+    // the array types (where an empty array means "nothing picked yet"),
+    // a bowtie response reaching here is always already complete.
+    const hasResponse = Array.isArray(selected) ? selected.length > 0 : true;
+
+    if (current && hasResponse) {
       const wasCorrect = isCorrect(current, selected);
       recordAttempt(current.id, selected, wasCorrect).catch((err) =>
         console.error("Failed to record attempt:", err),
       );
-      // A grid response (number[][]) has no flat selectedIndices of its own
-      // -- mirrors how recordAttempt/the DB split it above, so the locally-
-      // built optimistic Attempt matches what fetchAttempts would return.
-      const isGridResponse = Array.isArray(selected[0]);
+      // A grid response (number[][]) has no flat selectedIndices of its own,
+      // and a bowtie response (a plain object) has neither -- mirrors how
+      // recordAttempt/the DB split both above, so the locally-built
+      // optimistic Attempt matches what fetchAttempts would return.
+      const isGridResponse = Array.isArray(selected) && Array.isArray(selected[0]);
+      const isBowtieResponse = !Array.isArray(selected);
       updatedAttempts = [
         ...attempts,
         {
           id: -1,
           questionId: current.id,
-          selectedIndices: isGridResponse ? [] : (selected as number[]),
+          selectedIndices: isGridResponse || isBowtieResponse ? [] : (selected as number[]),
           gridSelections: isGridResponse ? (selected as number[][]) : undefined,
+          bowtieResponse: isBowtieResponse ? selected : undefined,
           isCorrect: wasCorrect,
           attemptedAt: new Date().toISOString(),
         },

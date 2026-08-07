@@ -1,6 +1,6 @@
 import { Question } from "@/services/questions";
 
-export type QuestionKind = "single" | "sata" | "sequence" | "grid" | "cloze";
+export type QuestionKind = "single" | "sata" | "sequence" | "grid" | "cloze" | "bowtie";
 
 export const KIND_LABELS: Record<QuestionKind, string> = {
   single: "SINGLE CHOICE",
@@ -8,6 +8,7 @@ export const KIND_LABELS: Record<QuestionKind, string> = {
   sequence: "SEQUENCE",
   grid: "GRID",
   cloze: "CLOZE",
+  bowtie: "BOWTIE",
 };
 
 // SATA ("select all that apply") and single-choice are both question_type
@@ -17,6 +18,7 @@ export function matchesKind(question: Question, kind: QuestionKind): boolean {
   if (kind === "sequence") return question.type === "sequence";
   if (kind === "grid") return question.type === "grid";
   if (kind === "cloze") return question.type === "cloze";
+  if (kind === "bowtie") return question.type === "bowtie";
   if (question.type !== "choice") return false;
   return kind === "sata" ? question.correctIndices.length > 1 : question.correctIndices.length === 1;
 }

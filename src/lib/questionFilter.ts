@@ -47,6 +47,7 @@ const KIND_SHORT_LABELS: Record<QuestionKind, string> = {
   sequence: "SEQUENCE",
   grid: "GRID",
   cloze: "CLOZE",
+  bowtie: "BOWTIE",
 };
 
 // Builds the human-readable session/filter label, e.g.

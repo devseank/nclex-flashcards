@@ -116,4 +116,33 @@ describe("isCorrect", () => {
       expect(isCorrect(question(blanks), [0])).toBe(false);
     });
   });
+
+  describe("bowtie", () => {
+    function question(): Question {
+      return {
+        ...baseFields(5),
+        type: "bowtie",
+        condition: { choices: ["Sepsis", "Hypovolemia", "Anaphylaxis"], answer: 0 },
+        actions: { choices: ["Administer antibiotics", "Draw blood cultures", "Give a diuretic", "Apply a warm blanket"], answer: [0, 1] },
+        monitor: { choices: ["Lactate", "Blood pressure", "Urine output", "Temperature"], answer: [0, 1] },
+      };
+    }
+
+    it("exact match on all three sections is correct", () => {
+      expect(isCorrect(question(), { condition: 0, actions: [0, 1], monitor: [0, 1] })).toBe(true);
+    });
+
+    it("actions/monitor compare as sets, order-independent", () => {
+      expect(isCorrect(question(), { condition: 0, actions: [1, 0], monitor: [1, 0] })).toBe(true);
+    });
+
+    it("a wrong condition is incorrect even if actions/monitor are right", () => {
+      expect(isCorrect(question(), { condition: 1, actions: [0, 1], monitor: [0, 1] })).toBe(false);
+    });
+
+    it("a wrong action or monitor pick is incorrect", () => {
+      expect(isCorrect(question(), { condition: 0, actions: [0, 2], monitor: [0, 1] })).toBe(false);
+      expect(isCorrect(question(), { condition: 0, actions: [0, 1], monitor: [0, 2] })).toBe(false);
+    });
+  });
 });

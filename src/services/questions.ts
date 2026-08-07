@@ -70,7 +70,25 @@ export type ClozeQuestion = QuestionBase & {
   clozeBlanks: ClozeBlank[];
 };
 
-export type Question = ChoiceQuestion | SequenceQuestion | GridQuestion | ClozeQuestion;
+// One bowtie section's own choice list + correct answer(s) -- condition
+// picks exactly 1 (answer: number), actions/monitor pick exactly 2
+// (answer: number[]), but the shape is otherwise identical, so one type
+// covers all three sections.
+export type BowtieSection<Answer> = {
+  choices: string[];
+  answer: Answer;
+};
+
+export type BowtieQuestion = QuestionBase & {
+  type: "bowtie";
+  // Three independent sections sharing the one stem (`question`) -- no
+  // top-level `choices` here, each section has its own.
+  condition: BowtieSection<number>;
+  actions: BowtieSection<number[]>;
+  monitor: BowtieSection<number[]>;
+};
+
+export type Question = ChoiceQuestion | SequenceQuestion | GridQuestion | ClozeQuestion | BowtieQuestion;
 
 type QuestionRow = {
   id: number;
@@ -79,12 +97,18 @@ type QuestionRow = {
   question: string;
   choices: string[];
   rationale: string;
-  question_type: "choice" | "sequence" | "grid" | "cloze";
+  question_type: "choice" | "sequence" | "grid" | "cloze" | "bowtie";
   correct_indices: number[] | null;
   correct_order: number[] | null;
   grid_columns: string[] | null;
   cloze_template: string | null;
   cloze_blanks: ClozeBlankRow[] | null;
+  bowtie_condition_choices: string[] | null;
+  bowtie_condition_answer: number | null;
+  bowtie_action_choices: string[] | null;
+  bowtie_action_answer: number[] | null;
+  bowtie_monitor_choices: string[] | null;
+  bowtie_monitor_answer: number[] | null;
   created_at: string;
   image_url: string | null;
   ai_generated: boolean;
@@ -153,6 +177,15 @@ function toQuestion(row: QuestionRow, gridAnswersByQuestionId: Map<number, numbe
       clozeBlanks: toClozeBlanks(row.cloze_blanks),
     };
   }
+  if (row.question_type === "bowtie") {
+    return {
+      ...base,
+      type: "bowtie",
+      condition: { choices: row.bowtie_condition_choices ?? [], answer: row.bowtie_condition_answer ?? -1 },
+      actions: { choices: row.bowtie_action_choices ?? [], answer: row.bowtie_action_answer ?? [] },
+      monitor: { choices: row.bowtie_monitor_choices ?? [], answer: row.bowtie_monitor_answer ?? [] },
+    };
+  }
   return { ...base, type: "choice", choices: row.choices, correctIndices: row.correct_indices ?? [] };
 }
 
@@ -176,6 +209,8 @@ export async function fetchAllQuestions(): Promise<Question[]> {
       .select(
         "id, category, tags, question, choices, rationale, question_type, correct_indices, correct_order, grid_columns, " +
           "cloze_template, cloze_blanks(blank_index, cloze_blank_options(option_index, label, is_correct)), " +
+          "bowtie_condition_choices, bowtie_condition_answer, bowtie_action_choices, bowtie_action_answer, " +
+          "bowtie_monitor_choices, bowtie_monitor_answer, " +
           "created_at, image_url, ai_generated",
       ),
     supabase.from("grid_row_answers").select("question_id, row_index, column_index"),

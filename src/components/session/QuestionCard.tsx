@@ -2,11 +2,12 @@
 
 import { Question } from "@/services/questions";
 import { QuestionStats } from "@/services/attempts";
-import { QuestionResponse } from "@/lib/quizLogic";
+import { QuestionResponse, BowtieResponse } from "@/lib/quizLogic";
 import Flashcard, { FlashcardMode } from "@/components/session/Flashcard";
 import SequenceFlashcard from "@/components/session/SequenceFlashcard";
 import GridFlashcard from "@/components/session/GridFlashcard";
 import ClozeFlashcard from "@/components/session/ClozeFlashcard";
+import BowtieFlashcard from "@/components/session/BowtieFlashcard";
 
 // Thin dispatcher by question.type, not a shared visual component -- each
 // question type keeps its own answer-comparison rendering (colored
@@ -66,6 +67,24 @@ export default function QuestionCard({
         question={question}
         mode={mode}
         initialSelected={initialResponse as number[]}
+        stats={stats}
+        onNext={onNext}
+      />
+    );
+  }
+
+  if (question.type === "bowtie") {
+    return (
+      <BowtieFlashcard
+        headerLeft={headerLeft}
+        headerAction={headerAction}
+        question={question}
+        mode={mode}
+        // The default initialResponse=[] sentinel (no real response yet)
+        // is an array -- never a valid BowtieResponse, which is always an
+        // object -- so it's treated the same as "no initial response" here
+        // rather than cast into a shape it can't actually be.
+        initialSelected={Array.isArray(initialResponse) ? undefined : (initialResponse as BowtieResponse)}
         stats={stats}
         onNext={onNext}
       />

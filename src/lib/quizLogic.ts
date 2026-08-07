@@ -49,13 +49,16 @@ export function pickRandom(pool: Question[], excludeId?: number): Question {
   return filtered[Math.floor(Math.random() * filtered.length)];
 }
 
-// Every type's response fits one of these two flat shapes -- a plain
-// number[] (choice/sequence/cloze: a set of indices, a permutation, one
-// index per blank) or grid's number[][] (one array of selected column
-// indices per row, since a row can have more than one correct column).
-// Extend this union, not the shape of either member, as future types add
-// their own natural response shape (see the NGN roadmap plan).
-export type QuestionResponse = number[] | number[][];
+export type BowtieResponse = { condition: number; actions: number[]; monitor: number[] };
+
+// Every type's response fits one of these shapes -- a plain number[]
+// (choice/sequence/cloze: a set of indices, a permutation, one index per
+// blank), grid's number[][] (one array of selected column indices per row,
+// since a row can have more than one correct column), or bowtie's 3-part
+// object (its sections are independent, not a flat list). Extend this
+// union, not the shape of an existing member, as future types add their
+// own natural response shape (see the NGN roadmap plan).
+export type QuestionResponse = number[] | number[][] | BowtieResponse;
 
 function sameSet(a: number[], b: number[]): boolean {
   return a.length === b.length && a.every((v) => b.includes(v));
@@ -85,6 +88,18 @@ export function isCorrect(question: Question, response: QuestionResponse): boole
     return (
       r.length === question.clozeBlanks.length &&
       r.every((optionIndex, blank) => optionIndex === question.clozeBlanks[blank].correctIndex)
+    );
+  }
+  if (question.type === "bowtie") {
+    // condition is a single exact pick; actions/monitor each compare as a
+    // set (order picked doesn't matter), independently of one another --
+    // there's no cross-section comparison, each of the 3 is scored on its
+    // own terms.
+    const r = response as BowtieResponse;
+    return (
+      r.condition === question.condition.answer &&
+      sameSet(r.actions, question.actions.answer) &&
+      sameSet(r.monitor, question.monitor.answer)
     );
   }
   const r = response as number[];

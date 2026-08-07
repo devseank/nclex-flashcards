@@ -164,7 +164,11 @@ export default function FlashcardApp() {
           <div className="view-fade-in w-full max-w-xl">
             <HistoryDetail
               question={historyDetailEntry.question}
-              response={historyDetailEntry.attempt.gridSelections ?? historyDetailEntry.attempt.selectedIndices}
+              response={
+                historyDetailEntry.attempt.gridSelections ??
+                historyDetailEntry.attempt.bowtieResponse ??
+                historyDetailEntry.attempt.selectedIndices
+              }
               stats={questionStats?.get(historyDetailEntry.question.id)}
             />
           </div>
