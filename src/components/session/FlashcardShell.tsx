@@ -21,6 +21,8 @@ export type FlashcardMode = "immediate" | "review";
 // (and rationale rendering, since those genuinely differ in shape/order per
 // type) as `children`.
 export default function FlashcardShell({
+  headerLeft,
+  headerAction,
   question,
   stats,
   mode,
@@ -34,6 +36,13 @@ export default function FlashcardShell({
   check,
   children,
 }: {
+  // Attaches a navy title-bar row (same look as PixelWindow's) to the TOP of
+  // this same card -- one bordered box, not a separate bar floating above it
+  // -- for the live session and history-detail screens, which aren't
+  // otherwise wrapped in a PixelWindow of their own. Omitted (the common
+  // case: FinishedScreen's read-only review list) renders exactly as before.
+  headerLeft?: React.ReactNode;
+  headerAction?: React.ReactNode;
   question: Question;
   stats?: QuestionStats;
   mode: FlashcardMode;
@@ -53,21 +62,28 @@ export default function FlashcardShell({
   children: React.ReactNode;
 }) {
   const cheer = !showAnswer ? cheerMessage(stats, question.id) : null;
+  const hasHeader = !!headerAction || !!headerLeft;
 
   // Only the live moment of answering gets feedback -- not a read-only
   // replay (mode === "review"), which renders already revealed from the
   // start with no actual reveal transition happening.
   const justAnswered = mode !== "review" && showAnswer;
 
-  return (
-    <div
-      className={`nes-container is-rounded w-full max-w-xl bg-white space-y-5 relative pb-24 ${
-        justAnswered ? (isFullyCorrect ? "flash-correct" : "shake flash-wrong") : ""
-      }`}
-    >
-      {!stats && <NewBadge />}
-      {question.aiGenerated && <AiGeneratedBadge />}
-      {confettiConfig && <ConfettiBurst config={confettiConfig} />}
+  // Without a header, the badges poke out above the card's own top corner
+  // as they always have. With one, that same poke-out position would land
+  // right on top of the header bar's account-menu hamburger (top-right) or
+  // left-side label (top-left) -- so they move inside the body wrapper's
+  // own top corner instead (see NewBadge/AiGeneratedBadge's `inset` prop).
+  const badges = (
+    <>
+      {!stats && <NewBadge inset={hasHeader} />}
+      {question.aiGenerated && <AiGeneratedBadge inset={hasHeader} />}
+    </>
+  );
+
+  const body = (
+    <>
+      {hasHeader && badges}
       <button
         type="button"
         tabIndex={-1}
@@ -107,6 +123,26 @@ export default function FlashcardShell({
       {children}
 
       {mode !== "review" && <StickyNextBar onClick={onNextClick} disabled={nextDisabled} check={check} />}
+    </>
+  );
+
+  return (
+    <div
+      className={`nes-container is-rounded w-full max-w-xl bg-white relative ${
+        hasHeader ? "p-0" : "space-y-5 pb-24"
+      } ${justAnswered ? (isFullyCorrect ? "flash-correct" : "shake flash-wrong") : ""}`}
+    >
+      {!hasHeader && badges}
+      {confettiConfig && <ConfettiBurst config={confettiConfig} />}
+
+      {hasHeader && (
+        <div className="bg-[#12314a] flex items-center justify-between px-3 py-2">
+          <span className="font-pixel text-[10px] text-white">{headerLeft}</span>
+          {headerAction}
+        </div>
+      )}
+
+      {hasHeader ? <div className="relative p-6 space-y-5 pb-24">{body}</div> : body}
     </div>
   );
 }

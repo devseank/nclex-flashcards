@@ -44,12 +44,16 @@ function mapRationaleByChoice(
 }
 
 export default function Flashcard({
+  headerLeft,
+  headerAction,
   question,
   onNext,
   mode = "immediate",
   initialSelected = [],
   stats,
 }: {
+  headerLeft?: React.ReactNode;
+  headerAction?: React.ReactNode;
   question: ChoiceQuestion;
   onNext?: (selected: number[]) => void;
   mode?: FlashcardMode;
@@ -91,6 +95,8 @@ export default function Flashcard({
 
   return (
     <FlashcardShell
+      headerLeft={headerLeft}
+      headerAction={headerAction}
       question={question}
       stats={stats}
       mode={mode}

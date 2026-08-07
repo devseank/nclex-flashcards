@@ -95,12 +95,16 @@ function StaticStepRow({ letter, label, variant }: { letter: string; label: stri
 }
 
 export default function SequenceFlashcard({
+  headerLeft,
+  headerAction,
   question,
   onNext,
   mode = "immediate",
   initialOrder = [],
   stats,
 }: {
+  headerLeft?: React.ReactNode;
+  headerAction?: React.ReactNode;
   question: SequenceQuestion;
   onNext?: (order: number[]) => void;
   mode?: FlashcardMode;
@@ -149,6 +153,8 @@ export default function SequenceFlashcard({
 
   return (
     <FlashcardShell
+      headerLeft={headerLeft}
+      headerAction={headerAction}
       question={question}
       stats={stats}
       mode={mode}

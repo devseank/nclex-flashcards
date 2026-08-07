@@ -12,12 +12,16 @@ import GridFlashcard from "@/components/session/GridFlashcard";
 // blocks) since showing the same rows twice with different colors was
 // found to be higher cognitive load than one list, differently colored.
 export default function QuestionCard({
+  headerLeft,
+  headerAction,
   question,
   mode = "immediate",
   initialResponse = [],
   stats,
   onNext,
 }: {
+  headerLeft?: React.ReactNode;
+  headerAction?: React.ReactNode;
   question: Question;
   mode?: FlashcardMode;
   initialResponse?: number[];
@@ -27,6 +31,8 @@ export default function QuestionCard({
   if (question.type === "sequence") {
     return (
       <SequenceFlashcard
+        headerLeft={headerLeft}
+        headerAction={headerAction}
         question={question}
         mode={mode}
         initialOrder={initialResponse}
@@ -39,6 +45,8 @@ export default function QuestionCard({
   if (question.type === "grid") {
     return (
       <GridFlashcard
+        headerLeft={headerLeft}
+        headerAction={headerAction}
         question={question}
         mode={mode}
         initialSelected={initialResponse}
@@ -50,6 +58,8 @@ export default function QuestionCard({
 
   return (
     <Flashcard
+      headerLeft={headerLeft}
+      headerAction={headerAction}
       question={question}
       mode={mode}
       initialSelected={initialResponse}

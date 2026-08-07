@@ -3,7 +3,6 @@
 import { Question } from "@/services/questions";
 import { QuestionStats } from "@/services/attempts";
 import QuestionCard from "@/components/session/QuestionCard";
-import TitleBar from "@/components/ui/TitleBar";
 import AccountMenu from "@/components/auth/AccountMenu";
 
 export default function HistoryDetail({
@@ -21,9 +20,15 @@ export default function HistoryDetail({
   // QuestionCard/Flashcard has no way to know that and renders the
   // never-attempted "NEW" badge instead.
   return (
-    <div className="w-full max-w-xl flex flex-col items-center gap-3">
-      <TitleBar left="HISTORY" action={<AccountMenu />} />
-      <QuestionCard question={question} mode="review" initialResponse={response} stats={stats} />
+    <div className="w-full max-w-xl flex flex-col items-center">
+      <QuestionCard
+        headerLeft="HISTORY"
+        headerAction={<AccountMenu />}
+        question={question}
+        mode="review"
+        initialResponse={response}
+        stats={stats}
+      />
     </div>
   );
 }

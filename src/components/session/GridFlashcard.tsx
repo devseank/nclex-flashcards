@@ -13,12 +13,16 @@ import FlashcardShell, { FlashcardMode } from "@/components/session/FlashcardShe
 type RowSelection = (number | null)[];
 
 export default function GridFlashcard({
+  headerLeft,
+  headerAction,
   question,
   onNext,
   mode = "immediate",
   initialSelected = [],
   stats,
 }: {
+  headerLeft?: React.ReactNode;
+  headerAction?: React.ReactNode;
   question: GridQuestion;
   onNext?: (selected: number[]) => void;
   mode?: FlashcardMode;
@@ -54,6 +58,8 @@ export default function GridFlashcard({
 
   return (
     <FlashcardShell
+      headerLeft={headerLeft}
+      headerAction={headerAction}
       question={question}
       stats={stats}
       mode={mode}

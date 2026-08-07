@@ -1,7 +1,6 @@
 "use client";
 
 import QuestionCard from "@/components/session/QuestionCard";
-import TitleBar from "@/components/ui/TitleBar";
 import AccountMenu from "@/components/auth/AccountMenu";
 import { Question } from "@/services/questions";
 import { QuestionStats } from "@/services/attempts";
@@ -23,13 +22,15 @@ export default function SessionScreen({
   onNext: (selected: number[]) => void;
 }) {
   return (
-    <div className="w-full max-w-xl flex flex-col items-center gap-3">
-      <TitleBar
-        left={mode !== "infinite" ? `${index + 1} / ${queueLength}` : null}
-        action={<AccountMenu />}
-      />
+    <div className="w-full max-w-xl flex flex-col items-center">
       <div key={current.id} className="view-fade-in w-full">
-        <QuestionCard question={current} onNext={onNext} stats={stats} />
+        <QuestionCard
+          headerLeft={mode !== "infinite" ? `${index + 1} / ${queueLength}` : null}
+          headerAction={<AccountMenu />}
+          question={current}
+          onNext={onNext}
+          stats={stats}
+        />
       </div>
     </div>
   );
