@@ -8,7 +8,8 @@
 // Expected CSV columns:
 //   category, tags, image_url, question, choice_1, choice_2, ... (as many as
 //   needed), correct_answer, rationale, question_type, correct_order,
-//   grid_columns, ai_generated, source
+//   grid_columns, cloze_template, blank_1_options, blank_1_correct, ...,
+//   ai_generated, source
 //
 // - category: exactly one, required -- the bounded "what kind of question"
 //   grouping (Pharmacology, Prioritization, Maternal-Newborn, ...). ->
@@ -26,26 +27,29 @@
 // - choice_N: as many choice_1, choice_2, ... columns as the question needs.
 //   Leave a cell blank if a given row doesn't use that many choices. For a
 //   "grid" row, these are the row labels (findings/interventions), not
-//   answer choices. -> collected into questions.choices (jsonb array),
-//   choice_N's own column position is NOT stored -- only the resulting
-//   array order matters, which is why gaps must not be left between used
-//   choice_N columns.
-// - question_type: "choice" (default, leave blank), "sequence", or "grid".
-//   -> questions.question_type (text).
+//   answer choices. Unused/blank for "cloze" (see below). -> collected
+//   into questions.choices (jsonb array), choice_N's own column position is
+//   NOT stored -- only the resulting array order matters, which is why
+//   gaps must not be left between used choice_N columns.
+// - question_type: "choice" (default, leave blank), "sequence", "grid", or
+//   "cloze". -> questions.question_type (text).
+// - question: required for every type EXCEPT "cloze", where it's left
+//   blank -- it's derived instead (see below) so the sentence is only ever
+//   maintained in one place.
 //
 // Per question_type, exactly one of correct_answer/correct_order/
-// grid_columns+grid_row-answer-data is populated -- the others are left
-// unused/blank on that row:
+// grid_columns+grid-row-answer-data/cloze_template+blank_N-data is
+// populated -- the others are left unused/blank on that row:
 //
 // - "choice": correct_answer is one exact choice's text, or for a "select
 //   all that apply" question, multiple choices joined with " | ".
 //   -> matched against `choices` and stored as questions.correct_indices
-//   (integer[]). correct_order/grid_columns unused.
+//   (integer[]). correct_order/grid_columns/cloze_* unused.
 // - "sequence" (arrange the choices in the correct order, e.g. steps of a
 //   procedure): correct_order lists the choice texts in their correct
 //   order, joined with " | ". -> matched against `choices` and stored as
 //   questions.correct_order (integer[], a permutation of choices' indices).
-//   correct_answer/grid_columns unused.
+//   correct_answer/grid_columns/cloze_* unused.
 // - "grid" (an NGN-style matrix, e.g. "Indicated"/"Not indicated" per
 //   finding, single- OR multiple-response): grid_columns lists the column
 //   headers joined with " | " (e.g. "Indicated | Not indicated") ->
@@ -61,7 +65,21 @@
 //   child table (not a questions column -- a row's correct-column set is
 //   variable-length, which a plain array column can't hold without being
 //   rectangular), joined back to the just-inserted question by its unique
-//   `question` text. correct_order unused.
+//   `question` text. correct_order/cloze_* unused.
+// - "cloze" (a sentence with one or more dropdown blanks): cloze_template
+//   is the sentence itself, blanks marked {{1}}, {{2}}, ... in reading
+//   order -> questions.cloze_template (text). Each {{n}} marker needs a
+//   matching pair of columns, 1-indexed: blank_N_options (that blank's own
+//   dropdown choices, joined with " | ") and blank_N_correct (the exact
+//   text of the correct one, must appear verbatim in blank_N_options).
+//   Each blank is matched against its own options and emitted as rows in
+//   two SEPARATE inserts into the cloze_blanks/cloze_blank_options child
+//   tables (not questions columns -- a variable number of blanks, each
+//   with a variable number of options, same reasoning as grid_row_answers
+//   above), joined back by the derived `question` text. `question` itself
+//   is DERIVED from cloze_template (each {{n}} replaced with "_____") --
+//   leave the CSV's own `question` cell blank for cloze rows.
+//   choice_N/correct_answer/correct_order/grid_columns unused.
 // - ai_generated: "true" if the choices/rationale (or both) were written by
 //   an AI rather than transcribed from the source -- shows a small badge in
 //   the UI. Leave blank (defaults to false) for faithfully-transcribed
@@ -75,12 +93,18 @@
 //   node scripts/csv-to-sql.mjs data/questions.csv > data/questions.sql
 //
 // Output: one `insert into public.questions (...) values ...` statement,
-// followed -- only when the batch has at least one grid row -- by a second
-// `insert into public.grid_row_answers (...) select ... from public.
-// questions join (values ...) ...` statement that looks the just-inserted
-// questions back up by their unique `question` text (their numeric `id`
-// isn't known until the first insert has actually run). Paste both
-// statements into the SQL Editor together, in order.
+// followed by however many of these apply to the batch (in this order,
+// each only emitted if at least one row of that type is present):
+//   - `insert into public.grid_row_answers (...) select ... from public.
+//     questions join (values ...) ...` for grid rows
+//   - `insert into public.cloze_blanks (...) select ...` then
+//     `insert into public.cloze_blank_options (...) select ...` for cloze
+//     rows (the second joins through the first, since a blank's own id
+//     isn't known until its own insert has run either)
+// All of these look the just-inserted questions (or blanks) back up by
+// their unique text, since no numeric id is known until the row it belongs
+// to has actually been inserted. Paste every statement into the SQL Editor
+// together, in the order printed.
 //
 // Archiving (see data/AI_INSTRUCTIONS.md rule 9): once the bank grows large
 // enough that the full INSERT is too big to paste into the Supabase SQL
@@ -170,6 +194,14 @@ function matchLabelIndices(pipeDelimited, options, fieldName, row, rowNumber) {
 // insert below has actually run).
 const gridRowAnswers = [];
 
+// (question text, blank_index) pairs and (question text, blank_index,
+// option_index, label, is_correct) rows for every cloze question's blanks
+// -- same join-back-by-question-text idiom as gridRowAnswers above, just
+// one level deeper (cloze_blank_options joins through cloze_blanks, which
+// itself joins through questions).
+const clozeBlanks = [];
+const clozeBlankOptions = [];
+
 const values = rows.map((row, i) => {
   const rowNumber = startRow + i + 1; // +1 for the CSV header line
   const choices = Object.keys(row)
@@ -179,11 +211,18 @@ const values = rows.map((row, i) => {
     .filter((c) => c && c.trim() !== "");
 
   const questionType = row.question_type?.trim() || "choice";
+
+  // The unique `question` text is normally authored directly -- except for
+  // "cloze", where it's derived from cloze_template (blanks replaced with
+  // "_____") so the sentence is only ever maintained in one place.
+  let questionText = row.question;
+
   const choicesJson = JSON.stringify(choices);
 
   let correctIndicesSql = "null";
   let correctOrderSql = "null";
   let gridColumnsSql = "null";
+  let clozeTemplateSql = "null";
 
   if (questionType === "sequence") {
     const order = matchLabelIndices(row.correct_order, choices, "correct_order", row, rowNumber);
@@ -215,9 +254,54 @@ const values = rows.map((row, i) => {
         row,
         rowNumber,
       );
-      columnIndices.forEach((columnIndex) => gridRowAnswers.push([row.question, rowIndex, columnIndex]));
+      columnIndices.forEach((columnIndex) => gridRowAnswers.push([questionText, rowIndex, columnIndex]));
     });
     gridColumnsSql = sqlTextArray(gridColumns.join(" | "));
+  } else if (questionType === "cloze") {
+    const clozeTemplate = row.cloze_template?.trim();
+    if (!clozeTemplate) {
+      throw new Error(`Row ${rowNumber}: "cloze" question is missing cloze_template.`);
+    }
+
+    const markerCount = (clozeTemplate.match(/\{\{\d+\}\}/g) ?? []).length;
+    const blankKeys = Object.keys(row)
+      .filter((key) => /^blank_\d+_options$/.test(key))
+      .sort((a, b) => Number(a.split("_")[1]) - Number(b.split("_")[1]));
+    if (blankKeys.length !== markerCount) {
+      throw new Error(
+        `Row ${rowNumber}: cloze_template has ${markerCount} {{n}} marker(s) but ${blankKeys.length} blank_N_options column(s) were found. ` +
+          `Template: "${clozeTemplate}"`,
+      );
+    }
+
+    // `question` (the unique dedup column) is derived from the template,
+    // not hand-authored -- authors only maintain the sentence once.
+    questionText = clozeTemplate.replace(/\{\{\d+\}\}/g, "_____");
+
+    blankKeys.forEach((optionsKey, blankIndex) => {
+      const n = optionsKey.split("_")[1];
+      const options = String(row[optionsKey] ?? "")
+        .split("|")
+        .map((o) => o.trim())
+        .filter((o) => o !== "");
+      if (options.length === 0) {
+        throw new Error(`Row ${rowNumber}: blank_${n}_options is empty. Question: "${questionText}"`);
+      }
+      const correctIndex = matchLabelIndices(
+        row[`blank_${n}_correct`],
+        options,
+        `blank_${n}_correct`,
+        { question: questionText },
+        rowNumber,
+      )[0];
+
+      clozeBlanks.push([questionText, blankIndex]);
+      options.forEach((label, optionIndex) => {
+        clozeBlankOptions.push([questionText, blankIndex, optionIndex, label, optionIndex === correctIndex]);
+      });
+    });
+
+    clozeTemplateSql = sqlString(clozeTemplate);
   } else {
     const indices = matchLabelIndices(row.correct_answer, choices, "correct_answer", row, rowNumber);
     correctIndicesSql = `array[${indices.join(",")}]`;
@@ -228,12 +312,12 @@ const values = rows.map((row, i) => {
 
   const source = row.source?.trim();
   if (!source) {
-    throw new Error(`Row ${rowNumber}: missing required "source". Question: "${row.question}"`);
+    throw new Error(`Row ${rowNumber}: missing required "source". Question: "${questionText}"`);
   }
 
   return (
-    `(${sqlString(row.category)}, ${sqlTextArray(row.tags)}, ${sqlString(row.question)}, ${sqlString(choicesJson)}::jsonb, ` +
-    `${sqlString(questionType)}, ${correctIndicesSql}, ${correctOrderSql}, ${gridColumnsSql}, ` +
+    `(${sqlString(row.category)}, ${sqlTextArray(row.tags)}, ${sqlString(questionText)}, ${sqlString(choicesJson)}::jsonb, ` +
+    `${sqlString(questionType)}, ${correctIndicesSql}, ${correctOrderSql}, ${gridColumnsSql}, ${clozeTemplateSql}, ` +
     `${sqlString(row.rationale)}, ${imageUrlSql}, ${aiGeneratedSql}, ${sqlString(source)})`
   );
 });
@@ -242,9 +326,12 @@ console.error(`Generated ${values.length} row(s) (CSV rows ${startRow}-${endRow}
 if (gridRowAnswers.length > 0) {
   console.error(`  ...including ${gridRowAnswers.length} grid_row_answers cell(s) across the grid rows above.`);
 }
+if (clozeBlanks.length > 0) {
+  console.error(`  ...including ${clozeBlanks.length} cloze blank(s) (${clozeBlankOptions.length} option(s)) across the cloze rows above.`);
+}
 
 console.log(
-  `insert into public.questions (category, tags, question, choices, question_type, correct_indices, correct_order, grid_columns, rationale, image_url, ai_generated, source)\nvalues\n  ${values.join(",\n  ")}\non conflict (question) do nothing;`,
+  `insert into public.questions (category, tags, question, choices, question_type, correct_indices, correct_order, grid_columns, cloze_template, rationale, image_url, ai_generated, source)\nvalues\n  ${values.join(",\n  ")}\non conflict (question) do nothing;`,
 );
 
 // A separate insert, joined back to the row(s) just inserted above by their
@@ -261,5 +348,40 @@ if (gridRowAnswers.length > 0) {
       `join (values\n${gridRowAnswerValues}\n) as v(question_text, row_index, column_index)\n` +
       `  on q.question = v.question_text\n` +
       `on conflict (question_id, row_index, column_index) do nothing;`,
+  );
+}
+
+// Two more separate inserts for cloze rows -- cloze_blanks joins back to
+// questions by unique question text (like grid_row_answers above);
+// cloze_blank_options joins one level deeper still, through cloze_blanks,
+// since a blank's own numeric id isn't known until ITS insert has run
+// either. Both must be pasted in order, after the questions insert above.
+if (clozeBlanks.length > 0) {
+  const clozeBlankValues = clozeBlanks
+    .map(([question, blankIndex]) => `  (${sqlString(question)}, ${blankIndex})`)
+    .join(",\n");
+  console.log(
+    `\ninsert into public.cloze_blanks (question_id, blank_index)\n` +
+      `select q.id, v.blank_index\n` +
+      `from public.questions q\n` +
+      `join (values\n${clozeBlankValues}\n) as v(question_text, blank_index)\n` +
+      `  on q.question = v.question_text\n` +
+      `on conflict (question_id, blank_index) do nothing;`,
+  );
+
+  const clozeBlankOptionValues = clozeBlankOptions
+    .map(
+      ([question, blankIndex, optionIndex, label, isCorrect]) =>
+        `  (${sqlString(question)}, ${blankIndex}, ${optionIndex}, ${sqlString(label)}, ${isCorrect})`,
+    )
+    .join(",\n");
+  console.log(
+    `\ninsert into public.cloze_blank_options (blank_id, option_index, label, is_correct)\n` +
+      `select cb.id, v.option_index, v.label, v.is_correct\n` +
+      `from public.cloze_blanks cb\n` +
+      `join public.questions q on q.id = cb.question_id\n` +
+      `join (values\n${clozeBlankOptionValues}\n) as v(question_text, blank_index, option_index, label, is_correct)\n` +
+      `  on q.question = v.question_text and cb.blank_index = v.blank_index\n` +
+      `on conflict (blank_id, option_index) do nothing;`,
   );
 }

@@ -1,12 +1,13 @@
 import { Question } from "@/services/questions";
 
-export type QuestionKind = "single" | "sata" | "sequence" | "grid";
+export type QuestionKind = "single" | "sata" | "sequence" | "grid" | "cloze";
 
 export const KIND_LABELS: Record<QuestionKind, string> = {
   single: "SINGLE CHOICE",
   sata: "SATA",
   sequence: "SEQUENCE",
   grid: "GRID",
+  cloze: "CLOZE",
 };
 
 // SATA ("select all that apply") and single-choice are both question_type
@@ -15,6 +16,7 @@ export const KIND_LABELS: Record<QuestionKind, string> = {
 export function matchesKind(question: Question, kind: QuestionKind): boolean {
   if (kind === "sequence") return question.type === "sequence";
   if (kind === "grid") return question.type === "grid";
+  if (kind === "cloze") return question.type === "cloze";
   if (question.type !== "choice") return false;
   return kind === "sata" ? question.correctIndices.length > 1 : question.correctIndices.length === 1;
 }

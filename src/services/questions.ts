@@ -12,7 +12,6 @@ type QuestionBase = {
   // tag list (see src/lib/tags.ts).
   tags: string[];
   question: string;
-  choices: string[];
   rationale: string;
   createdAt: string;
   // A URL to an illustration for this question (e.g. an anatomy diagram),
@@ -28,28 +27,50 @@ type QuestionBase = {
 
 export type ChoiceQuestion = QuestionBase & {
   type: "choice";
+  choices: string[];
   correctIndices: number[];
 };
 
 export type SequenceQuestion = QuestionBase & {
   type: "sequence";
+  choices: string[];
   // a permutation of indices into `choices`, in the correct order
   correctOrder: number[];
 };
 
 export type GridQuestion = QuestionBase & {
   type: "grid";
-  // `choices` (from QuestionBase) are the row labels. `gridColumns` are the
-  // column headers (e.g. ["Indicated", "Not indicated"]). `gridAnswers[i]`
-  // is the set of `gridColumns` indices correct for row i of `choices` --
-  // single-select is just the every-row-length-1 case (matrix multiple-
-  // response is more than one). Comes from the grid_row_answers child
-  // table, not a column on this row (see fetchAllQuestions below).
+  // `choices` are the row labels. `gridColumns` are the column headers
+  // (e.g. ["Indicated", "Not indicated"]). `gridAnswers[i]` is the set of
+  // `gridColumns` indices correct for row i of `choices` -- single-select
+  // is just the every-row-length-1 case (matrix multiple-response is more
+  // than one). Comes from the grid_row_answers child table, not a column
+  // on this row (see fetchAllQuestions below).
+  choices: string[];
   gridColumns: string[];
   gridAnswers: number[][];
 };
 
-export type Question = ChoiceQuestion | SequenceQuestion | GridQuestion;
+export type ClozeBlank = {
+  // This blank's own dropdown options, in display order.
+  options: string[];
+  // Index into `options` above -- scoped to this blank alone, never
+  // compared across blanks.
+  correctIndex: number;
+};
+
+export type ClozeQuestion = QuestionBase & {
+  type: "cloze";
+  // The sentence/paragraph, blanks marked {{1}}, {{2}}, ... in reading
+  // order -- clozeBlanks[0] corresponds to {{1}}, clozeBlanks[1] to {{2}},
+  // and so on. No `choices` here -- each blank has its own option list,
+  // there's no single question-level list the way choice/sequence/grid
+  // have.
+  clozeTemplate: string;
+  clozeBlanks: ClozeBlank[];
+};
+
+export type Question = ChoiceQuestion | SequenceQuestion | GridQuestion | ClozeQuestion;
 
 type QuestionRow = {
   id: number;
@@ -58,10 +79,12 @@ type QuestionRow = {
   question: string;
   choices: string[];
   rationale: string;
-  question_type: "choice" | "sequence" | "grid";
+  question_type: "choice" | "sequence" | "grid" | "cloze";
   correct_indices: number[] | null;
   correct_order: number[] | null;
   grid_columns: string[] | null;
+  cloze_template: string | null;
+  cloze_blanks: ClozeBlankRow[] | null;
   created_at: string;
   image_url: string | null;
   ai_generated: boolean;
@@ -73,13 +96,37 @@ type GridRowAnswerRow = {
   column_index: number;
 };
 
+type ClozeBlankOptionRow = {
+  option_index: number;
+  label: string;
+  is_correct: boolean;
+};
+
+type ClozeBlankRow = {
+  blank_index: number;
+  cloze_blank_options: ClozeBlankOptionRow[];
+};
+
+// Sorts the nested cloze_blanks(cloze_blank_options(...)) rows Supabase
+// returns (embedded resource order isn't guaranteed) into the ordered
+// ClozeBlank[] shape ClozeQuestion expects, and turns each option's own
+// `is_correct` flag into a single correctIndex.
+function toClozeBlanks(rows: ClozeBlankRow[] | null): ClozeBlank[] {
+  return (rows ?? [])
+    .slice()
+    .sort((a, b) => a.blank_index - b.blank_index)
+    .map((blank) => {
+      const options = blank.cloze_blank_options.slice().sort((a, b) => a.option_index - b.option_index);
+      return { options: options.map((o) => o.label), correctIndex: options.findIndex((o) => o.is_correct) };
+    });
+}
+
 function toQuestion(row: QuestionRow, gridAnswersByQuestionId: Map<number, number[][]>): Question {
-  const base: QuestionBase = {
+  const base = {
     id: row.id,
     category: row.category,
     tags: row.tags,
     question: row.question,
-    choices: row.choices,
     rationale: row.rationale,
     createdAt: row.created_at,
     imageUrl: row.image_url ?? undefined,
@@ -87,17 +134,26 @@ function toQuestion(row: QuestionRow, gridAnswersByQuestionId: Map<number, numbe
   };
 
   if (row.question_type === "sequence") {
-    return { ...base, type: "sequence", correctOrder: row.correct_order ?? [] };
+    return { ...base, type: "sequence", choices: row.choices, correctOrder: row.correct_order ?? [] };
   }
   if (row.question_type === "grid") {
     return {
       ...base,
       type: "grid",
+      choices: row.choices,
       gridColumns: row.grid_columns ?? [],
       gridAnswers: gridAnswersByQuestionId.get(row.id) ?? [],
     };
   }
-  return { ...base, type: "choice", correctIndices: row.correct_indices ?? [] };
+  if (row.question_type === "cloze") {
+    return {
+      ...base,
+      type: "cloze",
+      clozeTemplate: row.cloze_template ?? "",
+      clozeBlanks: toClozeBlanks(row.cloze_blanks),
+    };
+  }
+  return { ...base, type: "choice", choices: row.choices, correctIndices: row.correct_indices ?? [] };
 }
 
 // Builds { questionId -> [rowIndex -> [columnIndex, ...]] } from the flat
@@ -118,7 +174,9 @@ export async function fetchAllQuestions(): Promise<Question[]> {
     supabase
       .from("questions")
       .select(
-        "id, category, tags, question, choices, rationale, question_type, correct_indices, correct_order, grid_columns, created_at, image_url, ai_generated",
+        "id, category, tags, question, choices, rationale, question_type, correct_indices, correct_order, grid_columns, " +
+          "cloze_template, cloze_blanks(blank_index, cloze_blank_options(option_index, label, is_correct)), " +
+          "created_at, image_url, ai_generated",
       ),
     supabase.from("grid_row_answers").select("question_id, row_index, column_index"),
   ]);
@@ -127,5 +185,5 @@ export async function fetchAllQuestions(): Promise<Question[]> {
   if (gridError) throw gridError;
 
   const gridAnswersByQuestionId = groupGridRowAnswers(gridRowAnswerData ?? []);
-  return (data ?? []).map((row) => toQuestion(row, gridAnswersByQuestionId));
+  return (data ?? []).map((row) => toQuestion(row as unknown as QuestionRow, gridAnswersByQuestionId));
 }

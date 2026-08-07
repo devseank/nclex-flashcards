@@ -93,7 +93,7 @@ Two SQL files, two different jobs — don't blend them:
    question/rationale/choice looks wrong, flag it to the user and ask —
    don't silently rewrite it as a side effect of an unrelated append.
 5. **Match the column format exactly** — see `data/questions.template.csv`:
-   `category,tags,image_url,question,choice_1,choice_2,...,correct_answer,rationale,question_type,correct_order,grid_columns,ai_generated,source`
+   `category,tags,image_url,question,choice_1,choice_2,...,correct_answer,rationale,question_type,correct_order,grid_columns,cloze_template,blank_1_options,blank_1_correct,...,ai_generated,source`
    - `category`: exactly one, required — the bounded "what kind of
      question" grouping (`Pharmacology`, `Prioritization`,
      `Maternal-Newborn`, ...). Reuse an existing category exactly (check the
@@ -122,8 +122,9 @@ Two SQL files, two different jobs — don't blend them:
      in the header). Leave a cell blank for rows that use fewer.
    - `question_type`: leave blank for a normal multiple-choice / select-all-
      that-apply question (defaults to `choice`). Set to `sequence` for a
-     "put these steps in the correct order" question, or `grid` for an
-     NGN-style matrix (e.g. "Indicated"/"Not indicated" per finding).
+     "put these steps in the correct order" question, `grid` for an
+     NGN-style matrix (e.g. "Indicated"/"Not indicated" per finding), or
+     `cloze` for a sentence with one or more dropdown blanks.
    - For a `choice` row: `correct_answer` is one exact choice's text, or for
      "select all that apply", multiple choices joined with ` | `
      (space-pipe-space). `correct_order`/`grid_columns` are unused/blank.
@@ -159,6 +160,36 @@ Two SQL files, two different jobs — don't blend them:
        statements into the SQL Editor together, in that order — the second
        one depends on the first having already run. See `supabase/
        schema.sql`'s `grid_row_answers` table for the exact shape.
+   - For a `cloze` row (a sentence/paragraph with one or more dropdown
+     blanks): `question` is left **blank** — it's derived instead from
+     `cloze_template`, so leave `choice_N`/`correct_answer`/`correct_order`/
+     `grid_columns` unused/blank too. `cloze_template` is the sentence
+     itself, with each blank marked `{{1}}`, `{{2}}`, ... in reading order
+     (e.g. `The nurse should first address the client's {{1}} because
+     {{2}}.`). Each `{{n}}` marker needs a matching pair of columns,
+     1-indexed to match: `blank_N_options` (that blank's own dropdown
+     choices, pipe-delimited, e.g. `airway | hydration status | pain
+     level`) and `blank_N_correct` (the exact text of the correct one,
+     must appear verbatim in `blank_N_options`, e.g. `airway`). Add as many
+     `blank_N_options`/`blank_N_correct` column pairs as the template has
+     `{{n}}` markers — leave the row's unused higher-numbered pairs blank
+     if a different cloze row in the same file needs more blanks than this
+     one does.
+     - **How this lands in SQL**: `cloze_template` → `questions.
+       cloze_template` (text) directly. `question` (the unique dedup
+       column) is *derived* by `scripts/csv-to-sql.mjs` from
+       `cloze_template` (each `{{n}}` replaced with `_____`) — authors
+       never write it themselves, so the sentence is only maintained once.
+       Each blank's options/correct answer do **not** go into a `questions`
+       column at all (a variable number of blanks, each with a variable
+       number of options, can't fit fixed columns) — they're written to the
+       `cloze_blanks`/`cloze_blank_options` child tables via two more
+       separate `insert ... select ... join` statements the script emits
+       after the main `questions` insert (the second joins through the
+       first, since a blank's own id isn't known until its own insert has
+       run either). Paste **all three** statements into the SQL Editor
+       together, in the order printed. See `supabase/schema.sql`'s
+       `cloze_blanks`/`cloze_blank_options` tables for the exact shape.
    - `ai_generated`: `true` only for rows built per rule 10 below (choices
      and/or rationale written by an AI, not transcribed from the source).
      Leave blank (defaults to false) for the normal case of a faithful
@@ -170,9 +201,9 @@ Two SQL files, two different jobs — don't blend them:
      source's content, not something the app UI shows.
    - Question types NOT in this list (bowtie, hot-spot/image-click) still
      aren't supported — skip those and tell the user which ones were
-     skipped and why. Fill-in-the-blank/cloze and highlight-passage items
-     aren't their own type either, but rule 10 below covers converting them
-     into a `choice` row instead of skipping them outright.
+     skipped and why. Highlight-passage items aren't their own type either,
+     but rule 10 below covers converting them into a `choice` row instead
+     of skipping them outright.
 6. **After appending, regenerate `questions.sql`**:
    ```
    node scripts/csv-to-sql.mjs data/questions.csv > data/questions.sql
@@ -250,16 +281,19 @@ Two SQL files, two different jobs — don't blend them:
       below) — flag it if either is invented.
     - **Cloze/dropdown-fill-in-the-blank items** (a sentence with one or
       more blanks, e.g. "The nurse should first address the client's
-      ___."): restructure each blank into its own standalone question,
-      using the source's own correct answer(s), plus AI-invented
-      plausible-but-wrong distractors (since the source only ever shows
-      the already-correct answer sitting in the blank, never the
-      distractor pool the test-taker chose from) and an AI-written
-      rationale. Always mark these `ai_generated: true`.
+      ___."): author these natively as `question_type: cloze` (rule 5) now
+      — do **not** restructure into a fake `choice` row, that workaround is
+      retired now that cloze is a first-class type. Use the source's own
+      correct answer for each blank's `blank_N_correct`. The
+      `ai_generated: true` reasoning still applies, usually *more* than
+      before: a cloze source almost always shows only the answer sitting in
+      the blank, never the full dropdown option list, so `blank_N_options`'
+      distractors are typically still AI-invented even when the correct
+      answer itself is faithfully transcribed — flag it whenever that's
+      true, same as the rationale-only case elsewhere in this rule.
 
     Everything else that doesn't fit an existing/supported `question_type`
     (bowtie diagrams, true hot-spot/image-click items) gets skipped per
-    rule 5, not reconstructed — a bowtie's branches and a cloze's blank
-    both lack a visible distractor pool, but a bowtie's *structure* itself
-    has no home in this schema the way a restructured single-choice
-    question does, so there's no faithful way to convert it at all.
+    rule 5, not reconstructed — their *structure* itself has no home in
+    this schema the way a restructured single-choice question or a native
+    cloze row does, so there's no faithful way to convert them at all.

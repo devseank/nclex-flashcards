@@ -6,6 +6,7 @@ import { QuestionResponse } from "@/lib/quizLogic";
 import Flashcard, { FlashcardMode } from "@/components/session/Flashcard";
 import SequenceFlashcard from "@/components/session/SequenceFlashcard";
 import GridFlashcard from "@/components/session/GridFlashcard";
+import ClozeFlashcard from "@/components/session/ClozeFlashcard";
 
 // Thin dispatcher by question.type, not a shared visual component -- each
 // question type keeps its own answer-comparison rendering (colored
@@ -51,6 +52,20 @@ export default function QuestionCard({
         question={question}
         mode={mode}
         initialSelected={initialResponse as number[][]}
+        stats={stats}
+        onNext={onNext}
+      />
+    );
+  }
+
+  if (question.type === "cloze") {
+    return (
+      <ClozeFlashcard
+        headerLeft={headerLeft}
+        headerAction={headerAction}
+        question={question}
+        mode={mode}
+        initialSelected={initialResponse as number[]}
         stats={stats}
         onNext={onNext}
       />

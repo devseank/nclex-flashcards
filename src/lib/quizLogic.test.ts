@@ -87,4 +87,33 @@ describe("isCorrect", () => {
       expect(isCorrect(question([[0], [1], [0]]), [[0], [1]])).toBe(false);
     });
   });
+
+  describe("cloze", () => {
+    function question(clozeBlanks: { options: string[]; correctIndex: number }[]): Question {
+      return {
+        ...baseFields(4),
+        type: "cloze",
+        clozeTemplate: "The nurse should first address the client's {{1}} because {{2}}.",
+        clozeBlanks,
+      };
+    }
+
+    const blanks = [
+      { options: ["airway", "hydration status", "pain level"], correctIndex: 0 },
+      { options: ["it is the immediate life threat", "it improves comfort", "it is documented first"], correctIndex: 0 },
+    ];
+
+    it("correct pick for every blank is correct", () => {
+      expect(isCorrect(question(blanks), [0, 0])).toBe(true);
+    });
+
+    it("a wrong pick on any one blank is incorrect (positional, not a set)", () => {
+      expect(isCorrect(question(blanks), [0, 1])).toBe(false);
+      expect(isCorrect(question(blanks), [1, 0])).toBe(false);
+    });
+
+    it("wrong blank count is incorrect", () => {
+      expect(isCorrect(question(blanks), [0])).toBe(false);
+    });
+  });
 });

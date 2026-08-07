@@ -31,6 +31,7 @@ export default function FlashcardShell({
   confettiConfig,
   instruction,
   showCorrectIndicator = true,
+  hideQuestionText = false,
   onNextClick,
   nextDisabled,
   check,
@@ -56,6 +57,11 @@ export default function FlashcardShell({
   // rationale box (a different spot than Flashcard/Grid), so it opts out
   // here rather than getting a second copy from the shell.
   showCorrectIndicator?: boolean;
+  // Cloze renders its own interactive sentence (with embedded dropdowns
+  // replacing each blank) as its first child instead -- `question.question`
+  // there is just the plain, derived, underscore-blanked text used for the
+  // DB's unique dedup key, not something worth showing verbatim as well.
+  hideQuestionText?: boolean;
   onNextClick: () => void;
   nextDisabled: boolean;
   check?: StickyActionBarCheck;
@@ -102,10 +108,15 @@ export default function FlashcardShell({
 
       {cheer && <p className="font-pixel text-[11px] leading-relaxed text-emerald-600 -mt-2">{cheer}</p>}
 
-      <p className="text-xl leading-snug">
-        {question.question}
-        {!showAnswer && instruction && <span className="block text-sm text-gray-500 mt-1">{instruction}</span>}
-      </p>
+      {!hideQuestionText && (
+        <p className="text-xl leading-snug">
+          {question.question}
+          {!showAnswer && instruction && <span className="block text-sm text-gray-500 mt-1">{instruction}</span>}
+        </p>
+      )}
+      {hideQuestionText && !showAnswer && instruction && (
+        <p className="text-sm text-gray-500">{instruction}</p>
+      )}
 
       {question.imageUrl && (
         // eslint-disable-next-line @next/next/no-img-element -- static export (next/image needs no server either way, this app already sets images.unoptimized)

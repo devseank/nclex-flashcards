@@ -28,10 +28,21 @@ create table if not exists public.questions (
   -- a row can have more than one correct column (matrix multiple-response),
   -- which a plain array column can't hold without being rectangular.
   -- correct_indices/correct_order are null.
+  -- 'cloze': a sentence/paragraph with one or more dropdown blanks --
+  -- `cloze_template` holds the sentence itself (blanks marked {{1}},
+  -- {{2}}, ... in reading order); each blank's own option list and correct
+  -- answer live in the `cloze_blanks`/`cloze_blank_options` child tables
+  -- below, not a column here (a variable number of blanks, each with a
+  -- variable number of options, same reasoning as grid_row_answers above).
+  -- `choices` is unused for this type -- stored as '[]'::jsonb (still
+  -- satisfies the not-null constraint below) since there's no single
+  -- question-level choice list, each blank has its own.
+  -- correct_indices/correct_order/grid_columns are null.
   question_type text not null default 'choice',
   correct_indices integer[],
   correct_order integer[],
   grid_columns text[],
+  cloze_template text,
   rationale text not null,
   -- Optional -- a URL to an illustration for this question (e.g. an
   -- anatomy diagram). When several questions share one image, reuse the
@@ -56,6 +67,10 @@ create table if not exists public.questions (
 -- idempotent to re-run.
 alter table public.questions add column if not exists grid_columns text[];
 alter table public.questions add column if not exists ai_generated boolean not null default false;
+
+-- Migrating an existing project: adds cloze support. Safe/idempotent to
+-- re-run.
+alter table public.questions add column if not exists cloze_template text;
 
 -- Migrating an existing project: backfills `source` for every question
 -- imported before this column existed. Backfilled to '' (unknown) rather
@@ -157,6 +172,43 @@ begin
     alter table public.questions drop column grid_answer;
   end if;
 end $$;
+
+-- A cloze question's blanks, one row per {{n}} marker in cloze_template,
+-- in reading order.
+create table if not exists public.cloze_blanks (
+  id bigint generated always as identity primary key,
+  question_id bigint not null references public.questions (id) on delete cascade,
+  blank_index integer not null,
+  unique (question_id, blank_index)
+);
+
+alter table public.cloze_blanks enable row level security;
+
+create policy "Authenticated users can read cloze_blanks"
+  on public.cloze_blanks
+  for select
+  to authenticated
+  using (true);
+
+-- Each blank's own dropdown option list -- a variable number of options
+-- per blank, same "can't be a plain array column" reasoning as
+-- grid_row_answers. `is_correct` marks exactly one option per blank_id.
+create table if not exists public.cloze_blank_options (
+  id bigint generated always as identity primary key,
+  blank_id bigint not null references public.cloze_blanks (id) on delete cascade,
+  option_index integer not null,
+  label text not null,
+  is_correct boolean not null default false,
+  unique (blank_id, option_index)
+);
+
+alter table public.cloze_blank_options enable row level security;
+
+create policy "Authenticated users can read cloze_blank_options"
+  on public.cloze_blank_options
+  for select
+  to authenticated
+  using (true);
 
 -- One row per answered question, used for the "questions got wrong" review
 -- mode and the analytics dashboard. `user_id` defaults to the caller's own

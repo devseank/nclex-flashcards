@@ -77,6 +77,16 @@ export function isCorrect(question: Question, response: QuestionResponse): boole
     const r = response as number[][];
     return r.length === question.gridAnswers.length && r.every((sel, row) => sameSet(sel, question.gridAnswers[row]));
   }
+  if (question.type === "cloze") {
+    // response[i] is the option index picked for blank i -- positional
+    // like sequence above, not a set: each blank's correctness is scoped
+    // to that blank alone, never compared across blanks.
+    const r = response as number[];
+    return (
+      r.length === question.clozeBlanks.length &&
+      r.every((optionIndex, blank) => optionIndex === question.clozeBlanks[blank].correctIndex)
+    );
+  }
   const r = response as number[];
   return (
     r.length === question.correctIndices.length &&
