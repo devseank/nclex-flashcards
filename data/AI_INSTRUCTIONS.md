@@ -93,7 +93,7 @@ Two SQL files, two different jobs — don't blend them:
    question/rationale/choice looks wrong, flag it to the user and ask —
    don't silently rewrite it as a side effect of an unrelated append.
 5. **Match the column format exactly** — see `data/questions.template.csv`:
-   `category,tags,image_url,question,choice_1,choice_2,...,correct_answer,rationale,question_type,correct_order,grid_columns,cloze_template,blank_1_options,blank_1_correct,...,bowtie_condition_choices,bowtie_condition_answer,bowtie_action_choices,bowtie_action_answer,bowtie_monitor_choices,bowtie_monitor_answer,ai_generated,source`
+   `category,tags,image_url,question,choice_1,choice_2,...,correct_answer,rationale,question_type,correct_order,grid_columns,cloze_template,blank_1_options,blank_1_correct,...,bowtie_condition_choices,bowtie_condition_answer,bowtie_action_choices,bowtie_action_answer,bowtie_monitor_choices,bowtie_monitor_answer,hotspot_region,ai_generated,source`
    - `category`: exactly one, required — the bounded "what kind of
      question" grouping (`Pharmacology`, `Prioritization`,
      `Maternal-Newborn`, ...). Reuse an existing category exactly (check the
@@ -124,9 +124,10 @@ Two SQL files, two different jobs — don't blend them:
      that-apply question (defaults to `choice`). Set to `sequence` for a
      "put these steps in the correct order" question, `grid` for an
      NGN-style matrix (e.g. "Indicated"/"Not indicated" per finding),
-     `cloze` for a sentence with one or more dropdown blanks, or `bowtie`
-     for an NGN bowtie item (one stem branching into a condition + actions
-     + monitoring parameters).
+     `cloze` for a sentence with one or more dropdown blanks, `bowtie` for
+     an NGN bowtie item (one stem branching into a condition + actions +
+     monitoring parameters), or `hotspot` for tap-the-correct-location-
+     on-an-image.
    - For a `choice` row: `correct_answer` is one exact choice's text, or for
      "select all that apply", multiple choices joined with ` | `
      (space-pipe-space). `correct_order`/`grid_columns` are unused/blank.
@@ -209,6 +210,27 @@ Two SQL files, two different jobs — don't blend them:
        `bowtie_monitor_answer` as `integer[]`) — no child table needed
        here, unlike grid/cloze, since each section's shape is fixed (not a
        variable count per question).
+   - For a `hotspot` row (tap the correct location on an image):
+     `image_url` is **required** for this type (unlike every other type,
+     where it's an occasional illustration — a hot-spot with no image is
+     meaningless). `hotspot_region` is the one correct rectangle, written
+     as `x=..|y=..|width=..|height=..`, each a fraction between 0 and 1 of
+     the image's own natural pixel width/height (not the on-screen
+     rendered size). **This is the one column you cannot fill in from
+     pasted quiz text at all** — there's no way to derive pixel
+     coordinates from a transcript. You (the AI agent) cannot determine
+     this either without actually looking at the image; ask the user for
+     the four fractions directly, or use a small local tool that overlays
+     a draggable rectangle on the uploaded image and reads its position as
+     fractions of `naturalWidth`/`naturalHeight` (there's no such tool
+     shipped in this repo yet — build a throwaway one under `src/dev/` if
+     you need it; that directory is already gitignored except its own
+     `AI_INSTRUCTIONS.md`). `choice_N`/`correct_answer`/`correct_order`/
+     `grid_columns`/`cloze_*`/`bowtie_*` are unused/blank.
+     - **How this lands in SQL**: `hotspot_region` is split into four
+       plain `real` columns directly on `questions`
+       (`hotspot_x`/`hotspot_y`/`hotspot_width`/`hotspot_height`) — always
+       exactly 4 numbers, so no child table needed, unlike grid/cloze.
    - `ai_generated`: `true` only for rows built per rule 10 below (choices
      and/or rationale written by an AI, not transcribed from the source).
      Leave blank (defaults to false) for the normal case of a faithful
@@ -218,11 +240,13 @@ Two SQL files, two different jobs — don't blend them:
      one word per source, reused exactly across every row from that same
      batch. This is provenance for later spot-checking or removing a given
      source's content, not something the app UI shows.
-   - Question types NOT in this list (true hot-spot/image-click) still
-     aren't supported — skip those and tell the user which ones were
-     skipped and why. Highlight-passage items aren't their own type either,
-     but rule 10 below covers converting them into a `choice` row instead
-     of skipping them outright.
+   - The one NGN format still without a home here is the multi-question
+     "unfolding case study" (one shared evolving scenario with several
+     linked questions, each its own type) — skip these and tell the user,
+     rather than trying to force them into a standalone row. Highlight-
+     passage items aren't their own type either, but rule 10 below covers
+     converting them into a `choice` row instead of skipping them
+     outright.
 6. **After appending, regenerate `questions.sql`**:
    ```
    node scripts/csv-to-sql.mjs data/questions.csv > data/questions.sql

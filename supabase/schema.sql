@@ -45,6 +45,14 @@ create table if not exists public.questions (
   -- cloze above -- these are just plain columns, not a child table.
   -- `choices` is unused (stored as '[]'::jsonb, same as cloze).
   -- correct_indices/correct_order/grid_columns/cloze_* are null.
+  -- 'hotspot': `image_url` (required for this type -- otherwise
+  -- meaningless) plus the one correct clickable rectangle, as fractions
+  -- (0-1) of the IMAGE'S OWN natural pixel width/height (not the on-screen
+  -- rendered box, so it survives responsive resizing and object-fit
+  -- letterboxing). Fixed-shape (always exactly 4 numbers), so plain
+  -- columns, not a child table or nested type. `choices` is unused (same
+  -- as cloze/bowtie). correct_indices/correct_order/grid_columns/cloze_*/
+  -- bowtie_* are null.
   question_type text not null default 'choice',
   correct_indices integer[],
   correct_order integer[],
@@ -56,6 +64,10 @@ create table if not exists public.questions (
   bowtie_action_answer integer[],
   bowtie_monitor_choices text[],
   bowtie_monitor_answer integer[],
+  hotspot_x real,
+  hotspot_y real,
+  hotspot_width real,
+  hotspot_height real,
   rationale text not null,
   -- Optional -- a URL to an illustration for this question (e.g. an
   -- anatomy diagram). When several questions share one image, reuse the
@@ -93,6 +105,13 @@ alter table public.questions add column if not exists bowtie_action_choices text
 alter table public.questions add column if not exists bowtie_action_answer integer[];
 alter table public.questions add column if not exists bowtie_monitor_choices text[];
 alter table public.questions add column if not exists bowtie_monitor_answer integer[];
+
+-- Migrating an existing project: adds hot-spot support. Safe/idempotent to
+-- re-run.
+alter table public.questions add column if not exists hotspot_x real;
+alter table public.questions add column if not exists hotspot_y real;
+alter table public.questions add column if not exists hotspot_width real;
+alter table public.questions add column if not exists hotspot_height real;
 
 -- Migrating an existing project: backfills `source` for every question
 -- imported before this column existed. Backfilled to '' (unknown) rather
@@ -246,6 +265,13 @@ create table if not exists public.attempts (
   bowtie_condition integer,
   bowtie_actions integer[],
   bowtie_monitor integer[],
+  -- Only set for a hot-spot attempt -- the clicked point, as fractions of
+  -- the image's own natural width/height (same convention as the answer
+  -- key's hotspot_x/y above). Plain real columns, not scaled integers:
+  -- unlike selected_indices (a Postgres integer[], which can't hold
+  -- floats), a dedicated column can just store the fraction directly.
+  hotspot_x real,
+  hotspot_y real,
   is_correct boolean not null,
   attempted_at timestamptz not null default now()
 );
@@ -258,6 +284,11 @@ create index if not exists attempts_user_id_question_id_idx on public.attempts (
 alter table public.attempts add column if not exists bowtie_condition integer;
 alter table public.attempts add column if not exists bowtie_actions integer[];
 alter table public.attempts add column if not exists bowtie_monitor integer[];
+
+-- Migrating an existing project: adds hot-spot response columns. Safe/
+-- idempotent to re-run.
+alter table public.attempts add column if not exists hotspot_x real;
+alter table public.attempts add column if not exists hotspot_y real;
 
 alter table public.attempts enable row level security;
 

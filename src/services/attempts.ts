@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
-import type { QuestionResponse, BowtieResponse } from "@/lib/quizLogic";
+import { isGridResponse, isBowtieResponse, isHotspotResponse } from "@/lib/quizLogic";
+import type { QuestionResponse, BowtieResponse, HotspotResponse } from "@/lib/quizLogic";
 
 // `user_id` is never passed from the client on insert (see recordAttempt
 // below) -- the column defaults to auth.uid() and RLS scopes every select
@@ -21,6 +22,9 @@ export type Attempt = {
   // rather than a child table, same reasoning as the answer key's own
   // bowtie_* columns.
   bowtieResponse?: BowtieResponse;
+  // Only present for a hot-spot attempt (selectedIndices also empty) --
+  // the clicked point, plain columns since it's a fixed shape too.
+  hotspotResponse?: HotspotResponse;
   isCorrect: boolean;
   attemptedAt: string;
 };
@@ -32,6 +36,8 @@ type AttemptRow = {
   bowtie_condition: number | null;
   bowtie_actions: number[] | null;
   bowtie_monitor: number[] | null;
+  hotspot_x: number | null;
+  hotspot_y: number | null;
   is_correct: boolean;
   attempted_at: string;
 };
@@ -62,24 +68,18 @@ function toAttempt(row: AttemptRow, gridSelectionsByAttemptId: Map<number, numbe
       row.bowtie_condition !== null
         ? { condition: row.bowtie_condition, actions: row.bowtie_actions ?? [], monitor: row.bowtie_monitor ?? [] }
         : undefined,
+    hotspotResponse: row.hotspot_x !== null && row.hotspot_y !== null ? { x: row.hotspot_x, y: row.hotspot_y } : undefined,
     isCorrect: row.is_correct,
     attemptedAt: row.attempted_at,
   };
 }
 
-function isGridResponse(response: QuestionResponse): response is number[][] {
-  return Array.isArray(response) && Array.isArray(response[0]);
-}
-
-function isBowtieResponse(response: QuestionResponse): response is BowtieResponse {
-  return !Array.isArray(response);
-}
-
 // `response` is a flat number[] (choice/sequence/cloze -- stored directly
 // in selected_indices), a grid's number[][] (one array of selected column
 // indices per row -- stored in attempt_grid_selections instead, keyed by
-// the newly-inserted attempt's own id), or bowtie's 3-part object (stored
-// in its own plain bowtie_* columns, fixed-shape like the answer key).
+// the newly-inserted attempt's own id), bowtie's 3-part object, or hot-
+// spot's click point (both of the latter two stored in their own plain
+// columns, fixed-shape like their answer keys).
 export async function recordAttempt(
   questionId: number,
   response: QuestionResponse,
@@ -87,15 +87,18 @@ export async function recordAttempt(
 ): Promise<void> {
   const grid = isGridResponse(response);
   const bowtie = isBowtieResponse(response) ? response : null;
+  const hotspot = isHotspotResponse(response) ? response : null;
 
   const { data, error } = await supabase
     .from("attempts")
     .insert({
       question_id: questionId,
-      selected_indices: grid || bowtie ? [] : response,
+      selected_indices: grid || bowtie || hotspot ? [] : response,
       bowtie_condition: bowtie?.condition ?? null,
       bowtie_actions: bowtie?.actions ?? null,
       bowtie_monitor: bowtie?.monitor ?? null,
+      hotspot_x: hotspot?.x ?? null,
+      hotspot_y: hotspot?.y ?? null,
       is_correct: isCorrect,
     })
     .select("id")
@@ -116,7 +119,9 @@ export async function recordAttempt(
 export async function fetchAttempts(): Promise<Attempt[]> {
   const { data, error } = await supabase
     .from("attempts")
-    .select("id, question_id, selected_indices, bowtie_condition, bowtie_actions, bowtie_monitor, is_correct, attempted_at")
+    .select(
+      "id, question_id, selected_indices, bowtie_condition, bowtie_actions, bowtie_monitor, hotspot_x, hotspot_y, is_correct, attempted_at",
+    )
     .order("attempted_at", { ascending: true });
   if (error) throw error;
 

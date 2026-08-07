@@ -88,7 +88,25 @@ export type BowtieQuestion = QuestionBase & {
   monitor: BowtieSection<number[]>;
 };
 
-export type Question = ChoiceQuestion | SequenceQuestion | GridQuestion | ClozeQuestion | BowtieQuestion;
+export type HotspotRegion = { x: number; y: number; width: number; height: number };
+
+export type HotspotQuestion = QuestionBase & {
+  type: "hotspot";
+  // The one correct clickable rectangle, as fractions (0-1) of the
+  // image's own natural pixel width/height -- see `imageUrl` above, which
+  // is semantically required for this type (a hot-spot with no image is
+  // meaningless). No `choices` here -- there's no candidate list at all,
+  // the whole image is the interaction surface.
+  hotspotRegion: HotspotRegion;
+};
+
+export type Question =
+  | ChoiceQuestion
+  | SequenceQuestion
+  | GridQuestion
+  | ClozeQuestion
+  | BowtieQuestion
+  | HotspotQuestion;
 
 type QuestionRow = {
   id: number;
@@ -97,7 +115,7 @@ type QuestionRow = {
   question: string;
   choices: string[];
   rationale: string;
-  question_type: "choice" | "sequence" | "grid" | "cloze" | "bowtie";
+  question_type: "choice" | "sequence" | "grid" | "cloze" | "bowtie" | "hotspot";
   correct_indices: number[] | null;
   correct_order: number[] | null;
   grid_columns: string[] | null;
@@ -109,6 +127,10 @@ type QuestionRow = {
   bowtie_action_answer: number[] | null;
   bowtie_monitor_choices: string[] | null;
   bowtie_monitor_answer: number[] | null;
+  hotspot_x: number | null;
+  hotspot_y: number | null;
+  hotspot_width: number | null;
+  hotspot_height: number | null;
   created_at: string;
   image_url: string | null;
   ai_generated: boolean;
@@ -186,6 +208,18 @@ function toQuestion(row: QuestionRow, gridAnswersByQuestionId: Map<number, numbe
       monitor: { choices: row.bowtie_monitor_choices ?? [], answer: row.bowtie_monitor_answer ?? [] },
     };
   }
+  if (row.question_type === "hotspot") {
+    return {
+      ...base,
+      type: "hotspot",
+      hotspotRegion: {
+        x: row.hotspot_x ?? 0,
+        y: row.hotspot_y ?? 0,
+        width: row.hotspot_width ?? 0,
+        height: row.hotspot_height ?? 0,
+      },
+    };
+  }
   return { ...base, type: "choice", choices: row.choices, correctIndices: row.correct_indices ?? [] };
 }
 
@@ -211,6 +245,7 @@ export async function fetchAllQuestions(): Promise<Question[]> {
           "cloze_template, cloze_blanks(blank_index, cloze_blank_options(option_index, label, is_correct)), " +
           "bowtie_condition_choices, bowtie_condition_answer, bowtie_action_choices, bowtie_action_answer, " +
           "bowtie_monitor_choices, bowtie_monitor_answer, " +
+          "hotspot_x, hotspot_y, hotspot_width, hotspot_height, " +
           "created_at, image_url, ai_generated",
       ),
     supabase.from("grid_row_answers").select("question_id, row_index, column_index"),

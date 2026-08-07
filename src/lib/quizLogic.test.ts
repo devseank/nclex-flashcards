@@ -145,4 +145,29 @@ describe("isCorrect", () => {
       expect(isCorrect(question(), { condition: 0, actions: [0, 1], monitor: [0, 2] })).toBe(false);
     });
   });
+
+  describe("hotspot", () => {
+    function question(): Question {
+      return {
+        ...baseFields(6),
+        type: "hotspot",
+        imageUrl: "https://example.com/diagram.png",
+        hotspotRegion: { x: 0.4, y: 0.3, width: 0.2, height: 0.15 },
+      };
+    }
+
+    it("a click inside the region is correct", () => {
+      expect(isCorrect(question(), { x: 0.5, y: 0.35 })).toBe(true);
+    });
+
+    it("a click exactly on the region's edge is correct (inclusive bounds)", () => {
+      expect(isCorrect(question(), { x: 0.4, y: 0.3 })).toBe(true);
+      expect(isCorrect(question(), { x: 0.4 + 0.2, y: 0.3 + 0.15 })).toBe(true);
+    });
+
+    it("a click outside the region is incorrect", () => {
+      expect(isCorrect(question(), { x: 0.1, y: 0.1 })).toBe(false);
+      expect(isCorrect(question(), { x: 0.61, y: 0.35 })).toBe(false);
+    });
+  });
 });

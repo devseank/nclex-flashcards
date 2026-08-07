@@ -11,7 +11,7 @@
 //   grid_columns, cloze_template, blank_1_options, blank_1_correct, ...,
 //   bowtie_condition_choices, bowtie_condition_answer, bowtie_action_choices,
 //   bowtie_action_answer, bowtie_monitor_choices, bowtie_monitor_answer,
-//   ai_generated, source
+//   hotspot_region, ai_generated, source
 //
 // - category: exactly one, required -- the bounded "what kind of question"
 //   grouping (Pharmacology, Prioritization, Maternal-Newborn, ...). ->
@@ -96,6 +96,16 @@
 //   answer (integer[]) -- csv-to-sql.mjs throws if either doesn't resolve
 //   to exactly 2. choice_N/correct_answer/correct_order/grid_columns/
 //   cloze_* unused.
+// - "hotspot" (tap the correct location on an image): image_url is
+//   REQUIRED for this type (a hot-spot with no image is meaningless).
+//   hotspot_region is the one correct rectangle, as `x=..|y=..|width=..
+//   |height=..`, each a fraction (0-1) of the image's own natural pixel
+//   width/height -- NOT something derivable from pasted text, a human has
+//   to look directly at the image (see rule 5 in AI_INSTRUCTIONS.md) ->
+//   split into questions.hotspot_{x,y,width,height} (four separate `real`
+//   columns -- always exactly 4 numbers, so no child table needed).
+//   choice_N/correct_answer/correct_order/grid_columns/cloze_*/bowtie_*
+//   unused.
 // - ai_generated: "true" if the choices/rationale (or both) were written by
 //   an AI rather than transcribed from the source -- shows a small badge in
 //   the UI. Leave blank (defaults to false) for faithfully-transcribed
@@ -229,6 +239,40 @@ function parseBowtieSection(row, rowNumber, questionText, prefix, expectedCount)
   return { choicesSql: sqlTextArray(choices.join(" | ")), answerIndices };
 }
 
+// Parses `hotspot_region`'s "x=..|y=..|width=..|height=.." format into the
+// four fractions (each required, each must be in [0,1]) -- fails loudly on
+// a missing key or an out-of-range value rather than silently clamping,
+// same "wrong data should error, not succeed silently" convention as the
+// rest of this script.
+function parseHotspotRegion(row, rowNumber, questionText) {
+  const raw = String(row.hotspot_region ?? "").trim();
+  if (!raw) {
+    throw new Error(`Row ${rowNumber}: "hotspot" question is missing hotspot_region. Question: "${questionText}"`);
+  }
+  const parts = Object.fromEntries(
+    raw
+      .split("|")
+      .map((p) => p.trim())
+      .filter((p) => p !== "")
+      .map((p) => p.split("=").map((s) => s.trim())),
+  );
+  const region = {};
+  for (const key of ["x", "y", "width", "height"]) {
+    const value = Number(parts[key]);
+    if (parts[key] === undefined || Number.isNaN(value) || value < 0 || value > 1) {
+      throw new Error(
+        `Row ${rowNumber}: hotspot_region's "${key}" is missing or not a fraction between 0 and 1 (got ${JSON.stringify(parts[key])}). ` +
+          `Question: "${questionText}"`,
+      );
+    }
+    region[key] = value;
+  }
+  if (!row.image_url || row.image_url.trim() === "") {
+    throw new Error(`Row ${rowNumber}: "hotspot" question is missing image_url. Question: "${questionText}"`);
+  }
+  return region;
+}
+
 // (question text, row_index, column_index) triples for every grid row's
 // correct cell across the whole batch -- collected here (a side effect of
 // the main values.map below) since it's emitted as a second, separate
@@ -272,6 +316,10 @@ const values = rows.map((row, i) => {
   let bowtieActionAnswerSql = "null";
   let bowtieMonitorChoicesSql = "null";
   let bowtieMonitorAnswerSql = "null";
+  let hotspotXSql = "null";
+  let hotspotYSql = "null";
+  let hotspotWidthSql = "null";
+  let hotspotHeightSql = "null";
 
   if (questionType === "sequence") {
     const order = matchLabelIndices(row.correct_order, choices, "correct_order", row, rowNumber);
@@ -362,6 +410,12 @@ const values = rows.map((row, i) => {
     bowtieActionAnswerSql = `array[${actions.answerIndices.join(",")}]`;
     bowtieMonitorChoicesSql = monitor.choicesSql;
     bowtieMonitorAnswerSql = `array[${monitor.answerIndices.join(",")}]`;
+  } else if (questionType === "hotspot") {
+    const region = parseHotspotRegion(row, rowNumber, questionText);
+    hotspotXSql = String(region.x);
+    hotspotYSql = String(region.y);
+    hotspotWidthSql = String(region.width);
+    hotspotHeightSql = String(region.height);
   } else {
     const indices = matchLabelIndices(row.correct_answer, choices, "correct_answer", row, rowNumber);
     correctIndicesSql = `array[${indices.join(",")}]`;
@@ -380,6 +434,7 @@ const values = rows.map((row, i) => {
     `${sqlString(questionType)}, ${correctIndicesSql}, ${correctOrderSql}, ${gridColumnsSql}, ${clozeTemplateSql}, ` +
     `${bowtieConditionChoicesSql}, ${bowtieConditionAnswerSql}, ${bowtieActionChoicesSql}, ${bowtieActionAnswerSql}, ` +
     `${bowtieMonitorChoicesSql}, ${bowtieMonitorAnswerSql}, ` +
+    `${hotspotXSql}, ${hotspotYSql}, ${hotspotWidthSql}, ${hotspotHeightSql}, ` +
     `${sqlString(row.rationale)}, ${imageUrlSql}, ${aiGeneratedSql}, ${sqlString(source)})`
   );
 });
@@ -393,7 +448,7 @@ if (clozeBlanks.length > 0) {
 }
 
 console.log(
-  `insert into public.questions (category, tags, question, choices, question_type, correct_indices, correct_order, grid_columns, cloze_template, bowtie_condition_choices, bowtie_condition_answer, bowtie_action_choices, bowtie_action_answer, bowtie_monitor_choices, bowtie_monitor_answer, rationale, image_url, ai_generated, source)\nvalues\n  ${values.join(",\n  ")}\non conflict (question) do nothing;`,
+  `insert into public.questions (category, tags, question, choices, question_type, correct_indices, correct_order, grid_columns, cloze_template, bowtie_condition_choices, bowtie_condition_answer, bowtie_action_choices, bowtie_action_answer, bowtie_monitor_choices, bowtie_monitor_answer, hotspot_x, hotspot_y, hotspot_width, hotspot_height, rationale, image_url, ai_generated, source)\nvalues\n  ${values.join(",\n  ")}\non conflict (question) do nothing;`,
 );
 
 // A separate insert, joined back to the row(s) just inserted above by their

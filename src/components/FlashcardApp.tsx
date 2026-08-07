@@ -167,6 +167,7 @@ export default function FlashcardApp() {
               response={
                 historyDetailEntry.attempt.gridSelections ??
                 historyDetailEntry.attempt.bowtieResponse ??
+                historyDetailEntry.attempt.hotspotResponse ??
                 historyDetailEntry.attempt.selectedIndices
               }
               stats={questionStats?.get(historyDetailEntry.question.id)}

@@ -50,15 +50,41 @@ export function pickRandom(pool: Question[], excludeId?: number): Question {
 }
 
 export type BowtieResponse = { condition: number; actions: number[]; monitor: number[] };
+// A click point, as fractions (0-1) of the image's own natural width/
+// height -- same convention as HotspotQuestion.hotspotRegion.
+export type HotspotResponse = { x: number; y: number };
 
 // Every type's response fits one of these shapes -- a plain number[]
 // (choice/sequence/cloze: a set of indices, a permutation, one index per
 // blank), grid's number[][] (one array of selected column indices per row,
-// since a row can have more than one correct column), or bowtie's 3-part
-// object (its sections are independent, not a flat list). Extend this
-// union, not the shape of an existing member, as future types add their
-// own natural response shape (see the NGN roadmap plan).
-export type QuestionResponse = number[] | number[][] | BowtieResponse;
+// since a row can have more than one correct column), bowtie's 3-part
+// object (its sections are independent, not a flat list), or hot-spot's
+// click point. Extend this union, not the shape of an existing member, as
+// future types add their own natural response shape (see the NGN roadmap
+// plan). Bowtie and hot-spot are both plain (non-array) objects but have
+// disjoint keys, so callers that need to tell them apart (attempts.ts,
+// useQuizSession.ts) check for a distinguishing property (e.g. "condition"
+// in response), not just Array.isArray.
+export type QuestionResponse = number[] | number[][] | BowtieResponse | HotspotResponse;
+
+// Shared shape-detection for QuestionResponse -- used anywhere that needs
+// to route a response by its own shape without already knowing the
+// question's type (attempts.ts' DB read/write split, useQuizSession's
+// optimistic Attempt construction). Centralized here rather than
+// duplicated ad hoc per call site, since bowtie/hot-spot are both plain
+// (non-array) objects and mixing up which-is-which silently writes the
+// wrong columns.
+export function isGridResponse(response: QuestionResponse): response is number[][] {
+  return Array.isArray(response) && Array.isArray(response[0]);
+}
+
+export function isBowtieResponse(response: QuestionResponse): response is BowtieResponse {
+  return !Array.isArray(response) && "condition" in response;
+}
+
+export function isHotspotResponse(response: QuestionResponse): response is HotspotResponse {
+  return !Array.isArray(response) && "x" in response;
+}
 
 function sameSet(a: number[], b: number[]): boolean {
   return a.length === b.length && a.every((v) => b.includes(v));
@@ -101,6 +127,16 @@ export function isCorrect(question: Question, response: QuestionResponse): boole
       sameSet(r.actions, question.actions.answer) &&
       sameSet(r.monitor, question.monitor.answer)
     );
+  }
+  if (question.type === "hotspot") {
+    // Plain rectangle-containment check -- both the click and the region
+    // are fractions of the image's own natural width/height, so no
+    // rendered-pixel math belongs here at all (that's all in
+    // HotspotFlashcard, converting a real click into this same fraction
+    // space).
+    const r = response as HotspotResponse;
+    const region = question.hotspotRegion;
+    return r.x >= region.x && r.x <= region.x + region.width && r.y >= region.y && r.y <= region.y + region.height;
   }
   const r = response as number[];
   return (

@@ -12,7 +12,17 @@ import {
 import { getErrorMessage } from "@/lib/errorMessage";
 import { startOfToday, startOfWeek } from "@/lib/dateRanges";
 import { QuestionFilter, EMPTY_FILTER, queryQuestions, describeFilter } from "@/lib/questionFilter";
-import { SessionMode, QuestionResponse, isCorrect, selectMostWrong, selectUnattempted, selectLeastRecentlyTried } from "@/lib/quizLogic";
+import {
+  SessionMode,
+  QuestionResponse,
+  isCorrect,
+  isGridResponse,
+  isBowtieResponse,
+  isHotspotResponse,
+  selectMostWrong,
+  selectUnattempted,
+  selectLeastRecentlyTried,
+} from "@/lib/quizLogic";
 import { pickNextForReview } from "@/lib/srs";
 import { ReviewRange } from "@/components/picker/ReviewMode";
 import { NewRange } from "@/components/picker/NewMode";
@@ -384,10 +394,11 @@ export function useQuizSession(questions: Question[] | null) {
     // within this same function call otherwise.
     let updatedAttempts = attempts;
 
-    // Bowtie's response is a plain object, not an array -- BowtieFlashcard
-    // only ever calls onNext once all 3 sections are answered, so unlike
-    // the array types (where an empty array means "nothing picked yet"),
-    // a bowtie response reaching here is always already complete.
+    // Bowtie/hot-spot's response is a plain object, not an array --
+    // BowtieFlashcard/HotspotFlashcard only ever call onNext once fully
+    // answered, so unlike the array types (where an empty array means
+    // "nothing picked yet"), a response reaching here in object form is
+    // always already complete.
     const hasResponse = Array.isArray(selected) ? selected.length > 0 : true;
 
     if (current && hasResponse) {
@@ -396,19 +407,21 @@ export function useQuizSession(questions: Question[] | null) {
         console.error("Failed to record attempt:", err),
       );
       // A grid response (number[][]) has no flat selectedIndices of its own,
-      // and a bowtie response (a plain object) has neither -- mirrors how
-      // recordAttempt/the DB split both above, so the locally-built
+      // and neither does bowtie/hot-spot (both plain objects) -- mirrors how
+      // recordAttempt/the DB split all three above, so the locally-built
       // optimistic Attempt matches what fetchAttempts would return.
-      const isGridResponse = Array.isArray(selected) && Array.isArray(selected[0]);
-      const isBowtieResponse = !Array.isArray(selected);
+      const grid = isGridResponse(selected);
+      const bowtie = isBowtieResponse(selected) ? selected : undefined;
+      const hotspot = isHotspotResponse(selected) ? selected : undefined;
       updatedAttempts = [
         ...attempts,
         {
           id: -1,
           questionId: current.id,
-          selectedIndices: isGridResponse || isBowtieResponse ? [] : (selected as number[]),
-          gridSelections: isGridResponse ? (selected as number[][]) : undefined,
-          bowtieResponse: isBowtieResponse ? selected : undefined,
+          selectedIndices: grid || bowtie || hotspot ? [] : (selected as number[]),
+          gridSelections: grid ? (selected as number[][]) : undefined,
+          bowtieResponse: bowtie,
+          hotspotResponse: hotspot,
           isCorrect: wasCorrect,
           attemptedAt: new Date().toISOString(),
         },
