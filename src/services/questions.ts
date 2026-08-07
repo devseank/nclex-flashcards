@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { supabase, fetchAllRows } from "@/lib/supabase";
 
 type QuestionBase = {
   id: number;
@@ -243,23 +243,36 @@ function groupGridRowAnswers(rows: GridRowAnswerRow[]): Map<number, number[][]> 
 }
 
 export async function fetchAllQuestions(): Promise<Question[]> {
-  const [{ data, error }, { data: gridRowAnswerData, error: gridError }] = await Promise.all([
-    supabase
-      .from("questions")
-      .select(
-        "id, category, tags, question, choices, rationale, question_type, correct_indices, correct_order, grid_columns, " +
-          "cloze_template, cloze_blanks(blank_index, cloze_blank_options(option_index, label, is_correct)), " +
-          "bowtie_condition_choices, bowtie_condition_answer, bowtie_action_choices, bowtie_action_answer, " +
-          "bowtie_monitor_choices, bowtie_monitor_answer, " +
-          "hotspot_x, hotspot_y, hotspot_width, hotspot_height, " +
-          "created_at, image_url, ai_generated, source",
-      ),
-    supabase.from("grid_row_answers").select("question_id, row_index, column_index"),
+  // Both paginated via fetchAllRows (see src/lib/supabase.ts) -- a bare
+  // .select() silently truncates at Supabase's default max-rows (1000)
+  // once either table grows past it, with no error, so PLAY/FILTER would
+  // just quietly stop seeing anything beyond whatever the cap happens to
+  // be. Ordered by `id` (each table's own primary key) so the pagination
+  // itself is stable across requests.
+  const [data, gridRowAnswerData] = await Promise.all([
+    fetchAllRows<QuestionRow>((from, to) =>
+      supabase
+        .from("questions")
+        .select(
+          "id, category, tags, question, choices, rationale, question_type, correct_indices, correct_order, grid_columns, " +
+            "cloze_template, cloze_blanks(blank_index, cloze_blank_options(option_index, label, is_correct)), " +
+            "bowtie_condition_choices, bowtie_condition_answer, bowtie_action_choices, bowtie_action_answer, " +
+            "bowtie_monitor_choices, bowtie_monitor_answer, " +
+            "hotspot_x, hotspot_y, hotspot_width, hotspot_height, " +
+            "created_at, image_url, ai_generated, source",
+        )
+        .order("id", { ascending: true })
+        .range(from, to),
+    ),
+    fetchAllRows<GridRowAnswerRow>((from, to) =>
+      supabase
+        .from("grid_row_answers")
+        .select("question_id, row_index, column_index")
+        .order("id", { ascending: true })
+        .range(from, to),
+    ),
   ]);
 
-  if (error) throw error;
-  if (gridError) throw gridError;
-
-  const gridAnswersByQuestionId = groupGridRowAnswers(gridRowAnswerData ?? []);
-  return (data ?? []).map((row) => toQuestion(row as unknown as QuestionRow, gridAnswersByQuestionId));
+  const gridAnswersByQuestionId = groupGridRowAnswers(gridRowAnswerData);
+  return data.map((row) => toQuestion(row, gridAnswersByQuestionId));
 }

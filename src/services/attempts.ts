@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { supabase, fetchAllRows } from "@/lib/supabase";
 import { isGridResponse, isBowtieResponse, isHotspotResponse } from "@/lib/quizLogic";
 import type { QuestionResponse, BowtieResponse, HotspotResponse } from "@/lib/quizLogic";
 
@@ -117,23 +117,38 @@ export async function recordAttempt(
 }
 
 export async function fetchAttempts(): Promise<Attempt[]> {
-  const { data, error } = await supabase
-    .from("attempts")
-    .select(
-      "id, question_id, selected_indices, bowtie_condition, bowtie_actions, bowtie_monitor, hotspot_x, hotspot_y, is_correct, attempted_at",
-    )
-    .order("attempted_at", { ascending: true });
-  if (error) throw error;
+  // Paginated via fetchAllRows (see src/lib/supabase.ts) -- same silent
+  // 1000-row truncation risk as fetchAllQuestions once attempt history
+  // grows past it, which HISTORY/Analytics/REVIEW's "most wrong" would
+  // otherwise just quietly stop reflecting. `attempted_at` alone isn't a
+  // guaranteed-unique order (two attempts could share a timestamp), so
+  // `id` is a tiebreaker to keep pagination itself stable.
+  const data = await fetchAllRows<AttemptRow>((from, to) =>
+    supabase
+      .from("attempts")
+      .select(
+        "id, question_id, selected_indices, bowtie_condition, bowtie_actions, bowtie_monitor, hotspot_x, hotspot_y, is_correct, attempted_at",
+      )
+      .order("attempted_at", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
 
-  const attemptIds = (data ?? []).map((r) => r.id);
-  const { data: gridSelectionData, error: gridError } =
+  const attemptIds = data.map((r) => r.id);
+  const gridSelectionData =
     attemptIds.length > 0
-      ? await supabase.from("attempt_grid_selections").select("attempt_id, row_index, column_index").in("attempt_id", attemptIds)
-      : { data: [], error: null };
-  if (gridError) throw gridError;
+      ? await fetchAllRows<AttemptGridSelectionRow>((from, to) =>
+          supabase
+            .from("attempt_grid_selections")
+            .select("attempt_id, row_index, column_index")
+            .in("attempt_id", attemptIds)
+            .order("id", { ascending: true })
+            .range(from, to),
+        )
+      : [];
 
-  const gridSelectionsByAttemptId = groupGridSelections(gridSelectionData ?? []);
-  return (data ?? []).map((row) => toAttempt(row, gridSelectionsByAttemptId));
+  const gridSelectionsByAttemptId = groupGridSelections(gridSelectionData);
+  return data.map((row) => toAttempt(row, gridSelectionsByAttemptId));
 }
 
 // QuestionStats + computeQuestionStats both live in @/lib/quizLogic, not
