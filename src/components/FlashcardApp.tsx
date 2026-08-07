@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { fetchAllQuestions, Question } from "@/services/questions";
 import { getErrorMessage } from "@/lib/errorMessage";
 import { useQuizSession, Notice } from "@/hooks/useQuizSession";
+import { GoToMenuProvider } from "@/lib/goToMenuContext";
 import Landing from "@/components/Landing";
 import FilterMode from "@/components/picker/FilterMode";
 import ReviewMode from "@/components/picker/ReviewMode";
@@ -15,17 +16,17 @@ import Analytics from "@/components/analytics/Analytics";
 import PixelWindow from "@/components/ui/PixelWindow";
 import SessionScreen from "@/components/session/SessionScreen";
 import FinishedScreen from "@/components/session/FinishedScreen";
-import AccountMenu from "@/components/auth/AccountMenu";
+import HeaderActions from "@/components/ui/HeaderActions";
 import NoticeBanner from "@/components/ui/NoticeBanner";
 import { useHasMounted } from "@/lib/useHasMounted";
 
 // A PixelWindow plus its below-the-fold notice banner, for the picker
 // screens (filter/review/new/history-pick) that share this exact layout.
-// The account/display menu replaces this window's own decorative close
-// button directly -- every screen in this app gets its hamburger this way
-// (via this PixelWindow's headerAction, or TitleBar for screens whose main
-// content isn't already a single PixelWindow), so there's no separate
-// global header strip anywhere.
+// HeaderActions (Home + account/display menu) replaces this window's own
+// decorative close button directly -- every screen in this app gets its
+// header this way (via this PixelWindow's headerAction, or FlashcardShell/
+// TitleBar's own for screens whose main content isn't already a single
+// PixelWindow), so there's no separate global header strip anywhere.
 function PickerScreen({
   title,
   notice,
@@ -37,7 +38,7 @@ function PickerScreen({
 }) {
   return (
     <div className="view-fade-in w-full max-w-sm flex flex-col items-center gap-3">
-      <PixelWindow title={title} headerAction={<AccountMenu />}>
+      <PixelWindow title={title} headerAction={<HeaderActions />}>
         {children}
       </PixelWindow>
       {notice && <NoticeBanner notice={notice} />}
@@ -74,6 +75,7 @@ export default function FlashcardApp() {
     startNewByRange,
     startHistoryList,
     selectHistoryEntry,
+    goToMenu,
     goToFilterPick,
     goToReviewPick,
     goToNewPick,
@@ -111,93 +113,95 @@ export default function FlashcardApp() {
   }
 
   return (
-    <div className={pageClassName}>
-      {questions && view === "menu" && (
-        <div className="view-fade-in w-full max-w-sm">
-          <PixelWindow title="MENU.EXE" headerAction={<AccountMenu />}>
-            <Landing
-              onSelectPlay={() => startPlay()}
-              onSelectFilter={goToFilterPick}
-              onSelectReview={goToReviewPick}
-              onSelectNew={goToNewPick}
-              onSelectHistory={goToHistoryPick}
-              onSelectAnalytics={goToAnalytics}
+    <GoToMenuProvider goToMenu={goToMenu}>
+      <div className={pageClassName}>
+        {questions && view === "menu" && (
+          <div className="view-fade-in w-full max-w-sm">
+            <PixelWindow title="MENU.EXE" headerAction={<HeaderActions />}>
+              <Landing
+                onSelectPlay={() => startPlay()}
+                onSelectFilter={goToFilterPick}
+                onSelectReview={goToReviewPick}
+                onSelectNew={goToNewPick}
+                onSelectHistory={goToHistoryPick}
+                onSelectAnalytics={goToAnalytics}
+              />
+            </PixelWindow>
+          </div>
+        )}
+
+        {view === "filterPick" && questions && (
+          <PickerScreen title="FILTER.EXE" notice={notice}>
+            <FilterMode questions={questions} onPlay={startPlay} onMostWrong={startReviewByFilter} />
+          </PickerScreen>
+        )}
+
+        {view === "reviewPick" && (
+          <PickerScreen title="REVIEW.EXE" notice={notice}>
+            <ReviewMode onSelect={startReviewByRange} />
+          </PickerScreen>
+        )}
+
+        {view === "newPick" && (
+          <PickerScreen title="NEW.EXE" notice={notice}>
+            <NewMode onSelect={startNewByRange} />
+          </PickerScreen>
+        )}
+
+        {view === "historyPick" && (
+          <PickerScreen title="HISTORY.EXE" notice={notice}>
+            <HistoryMode onSelect={startHistoryList} />
+          </PickerScreen>
+        )}
+
+        {view === "historyList" && (
+          <div className="view-fade-in w-full max-w-xl">
+            <HistoryList entries={historyEntries} onSelect={selectHistoryEntry} />
+          </div>
+        )}
+
+        {view === "historyDetail" && historyDetailEntry && (
+          <div className="view-fade-in w-full max-w-xl">
+            <HistoryDetail
+              question={historyDetailEntry.question}
+              response={historyDetailEntry.attempt.selectedIndices}
+              stats={questionStats?.get(historyDetailEntry.question.id)}
             />
-          </PixelWindow>
-        </div>
-      )}
+          </div>
+        )}
 
-      {view === "filterPick" && questions && (
-        <PickerScreen title="FILTER.EXE" notice={notice}>
-          <FilterMode questions={questions} onPlay={startPlay} onMostWrong={startReviewByFilter} />
-        </PickerScreen>
-      )}
+        {view === "analytics" && questions && (
+          <div className="view-fade-in w-full max-w-xl">
+            <Analytics questions={questions} />
+          </div>
+        )}
 
-      {view === "reviewPick" && (
-        <PickerScreen title="REVIEW.EXE" notice={notice}>
-          <ReviewMode onSelect={startReviewByRange} />
-        </PickerScreen>
-      )}
+        {view === "finished" && mode && modeTitle && (
+          <div className="view-fade-in w-full max-w-xl">
+            <FinishedScreen
+              title={modeTitle}
+              score={score}
+              total={queue.length}
+              queue={queue}
+              answers={answers}
+              questionStats={questionStats}
+            />
+          </div>
+        )}
 
-      {view === "newPick" && (
-        <PickerScreen title="NEW.EXE" notice={notice}>
-          <NewMode onSelect={startNewByRange} />
-        </PickerScreen>
-      )}
-
-      {view === "historyPick" && (
-        <PickerScreen title="HISTORY.EXE" notice={notice}>
-          <HistoryMode onSelect={startHistoryList} />
-        </PickerScreen>
-      )}
-
-      {view === "historyList" && (
-        <div className="view-fade-in w-full max-w-xl">
-          <HistoryList entries={historyEntries} onSelect={selectHistoryEntry} />
-        </div>
-      )}
-
-      {view === "historyDetail" && historyDetailEntry && (
-        <div className="view-fade-in w-full max-w-xl">
-          <HistoryDetail
-            question={historyDetailEntry.question}
-            response={historyDetailEntry.attempt.selectedIndices}
-            stats={questionStats?.get(historyDetailEntry.question.id)}
-          />
-        </div>
-      )}
-
-      {view === "analytics" && questions && (
-        <div className="view-fade-in w-full max-w-xl">
-          <Analytics questions={questions} />
-        </div>
-      )}
-
-      {view === "finished" && mode && modeTitle && (
-        <div className="view-fade-in w-full max-w-xl">
-          <FinishedScreen
-            title={modeTitle}
-            score={score}
-            total={queue.length}
-            queue={queue}
-            answers={answers}
-            questionStats={questionStats}
-          />
-        </div>
-      )}
-
-      {view === "session" && mode && current && (
-        <div className="view-fade-in w-full max-w-xl">
-          <SessionScreen
-            mode={mode}
-            current={current}
-            index={index}
-            queueLength={queue.length}
-            stats={questionStats?.get(current.id)}
-            onNext={handleNext}
-          />
-        </div>
-      )}
-    </div>
+        {view === "session" && mode && current && (
+          <div className="view-fade-in w-full max-w-xl">
+            <SessionScreen
+              mode={mode}
+              current={current}
+              index={index}
+              queueLength={queue.length}
+              stats={questionStats?.get(current.id)}
+              onNext={handleNext}
+            />
+          </div>
+        )}
+      </div>
+    </GoToMenuProvider>
   );
 }

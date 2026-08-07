@@ -1,7 +1,7 @@
 "use client";
 
 import QuestionCard from "@/components/session/QuestionCard";
-import AccountMenu from "@/components/auth/AccountMenu";
+import HeaderActions from "@/components/ui/HeaderActions";
 import { Question } from "@/services/questions";
 import { QuestionStats } from "@/services/attempts";
 import { SessionMode } from "@/lib/quizLogic";
@@ -26,7 +26,7 @@ export default function SessionScreen({
       <div key={current.id} className="view-fade-in w-full">
         <QuestionCard
           headerLeft={mode !== "infinite" ? `${index + 1} / ${queueLength}` : null}
-          headerAction={<AccountMenu />}
+          headerAction={<HeaderActions />}
           question={current}
           onNext={onNext}
           stats={stats}

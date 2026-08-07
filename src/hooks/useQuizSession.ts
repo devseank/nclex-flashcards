@@ -173,10 +173,18 @@ export function useQuizSession(questions: Question[] | null) {
     // every view === "session" render branch guards on -- so the screen
     // would just go blank with no way back, since there's no button here to
     // recover with.
+    //
+    // Entering "menu" (only ever via the header bar's Home icon, goToMenu)
+    // collapses too, and unconditionally: goToMenu clears essentially every
+    // bit of companion state (current, historyEntries, historyDetailEntry,
+    // ...), so leaving its origin screen's entry in the stack would hit the
+    // exact same class of blank-screen bug on back -- e.g. back from menu
+    // landing on "historyDetail" with historyDetailEntry already nulled out.
     const prev = prevViewRef.current;
     const collapse =
       (view === "session" && (prev === "filterPick" || prev === "reviewPick" || prev === "newPick")) ||
-      view === "finished";
+      view === "finished" ||
+      view === "menu";
     const entry = { ...window.history.state, nclexView: view } satisfies NavHistoryState;
     if (collapse) {
       window.history.replaceState(entry, "");
@@ -329,6 +337,23 @@ export function useQuizSession(questions: Question[] | null) {
     setView("historyDetail");
   }
 
+  // Explicit "jump straight home" action for the header bar's Home icon --
+  // deliberately resets every bit of in-progress session/notice/history
+  // state, unlike browser/hardware back (which only restores `view` itself;
+  // see the push effect above). A stale `notice` or `historyEntries` would
+  // otherwise leak into whatever's opened next.
+  function goToMenu() {
+    setView("menu");
+    setMode(null);
+    setFilterLabel(null);
+    setSessionLabel("");
+    setCurrent(null);
+    setQuestionStats(null);
+    setNotice(null);
+    setHistoryEntries([]);
+    setHistoryDetailEntry(null);
+  }
+
   function goToFilterPick() {
     setNotice(null);
     setView("filterPick");
@@ -414,6 +439,7 @@ export function useQuizSession(questions: Question[] | null) {
     startNewByRange,
     startHistoryList,
     selectHistoryEntry,
+    goToMenu,
     goToFilterPick,
     goToReviewPick,
     goToNewPick,

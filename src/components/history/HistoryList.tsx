@@ -3,7 +3,7 @@
 import { Question } from "@/services/questions";
 import { Attempt } from "@/services/attempts";
 import PixelWindow from "@/components/ui/PixelWindow";
-import AccountMenu from "@/components/auth/AccountMenu";
+import HeaderActions from "@/components/ui/HeaderActions";
 
 export type HistoryEntry = { attempt: Attempt; question: Question };
 
@@ -15,7 +15,7 @@ export default function HistoryList({
   onSelect: (entry: HistoryEntry) => void;
 }) {
   return (
-    <PixelWindow title="HISTORY.EXE" headerAction={<AccountMenu />} wide>
+    <PixelWindow title="HISTORY.EXE" headerAction={<HeaderActions />} wide>
       <div className="space-y-2">
         {entries.map(({ attempt, question }) => (
           <button

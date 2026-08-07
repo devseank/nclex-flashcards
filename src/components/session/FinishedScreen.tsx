@@ -2,7 +2,7 @@
 
 import QuestionCard from "@/components/session/QuestionCard";
 import PixelWindow from "@/components/ui/PixelWindow";
-import AccountMenu from "@/components/auth/AccountMenu";
+import HeaderActions from "@/components/ui/HeaderActions";
 import { Question } from "@/services/questions";
 import { QuestionStats } from "@/services/attempts";
 
@@ -23,7 +23,7 @@ export default function FinishedScreen({
 }) {
   return (
     <div className="w-full max-w-xl flex flex-col items-center gap-6">
-      <PixelWindow title="DONE.EXE" headerAction={<AccountMenu />}>
+      <PixelWindow title="DONE.EXE" headerAction={<HeaderActions />}>
         <p className="text-base">
           You scored {score} / {total} on {title}.
         </p>

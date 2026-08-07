@@ -3,7 +3,7 @@
 import { Question } from "@/services/questions";
 import { QuestionStats } from "@/services/attempts";
 import QuestionCard from "@/components/session/QuestionCard";
-import AccountMenu from "@/components/auth/AccountMenu";
+import HeaderActions from "@/components/ui/HeaderActions";
 
 export default function HistoryDetail({
   question,
@@ -23,7 +23,7 @@ export default function HistoryDetail({
     <div className="w-full max-w-xl flex flex-col items-center">
       <QuestionCard
         headerLeft="HISTORY"
-        headerAction={<AccountMenu />}
+        headerAction={<HeaderActions />}
         question={question}
         mode="review"
         initialResponse={response}

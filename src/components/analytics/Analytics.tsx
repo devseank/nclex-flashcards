@@ -17,7 +17,7 @@ import { fetchAttempts, Attempt } from "@/services/attempts";
 import { Question } from "@/services/questions";
 import PixelWindow from "@/components/ui/PixelWindow";
 import TitleBar from "@/components/ui/TitleBar";
-import AccountMenu from "@/components/auth/AccountMenu";
+import HeaderActions from "@/components/ui/HeaderActions";
 import InfoTooltip from "@/components/ui/InfoTooltip";
 import RangeSelect, { RANGE_LABELS } from "@/components/ui/RangeSelect";
 import { getErrorMessage } from "@/lib/errorMessage";
@@ -117,7 +117,7 @@ export default function Analytics({
       .catch((err) => setError(getErrorMessage(err)));
   }, []);
 
-  const titleBar = <TitleBar left="ANALYTICS" action={<AccountMenu />} />;
+  const titleBar = <TitleBar left="ANALYTICS" action={<HeaderActions />} />;
 
   if (error) {
     return (
