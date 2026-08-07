@@ -34,6 +34,7 @@ function mockQuestion(id: number): Question {
     choices: ["A", "B"],
     rationale: "Because.",
     createdAt: hoursAgo(1000),
+    source: "test",
     type: "choice",
     correctIndices: [0],
   };

@@ -9,12 +9,18 @@ export type QuestionFilter = {
   categories: string[];
   kinds: QuestionKind[];
   tags: string[];
+  sources: string[];
 };
 
-export const EMPTY_FILTER: QuestionFilter = { categories: [], kinds: [], tags: [] };
+export const EMPTY_FILTER: QuestionFilter = { categories: [], kinds: [], tags: [], sources: [] };
 
 export function isFilterEmpty(filter: QuestionFilter): boolean {
-  return filter.categories.length === 0 && filter.kinds.length === 0 && filter.tags.length === 0;
+  return (
+    filter.categories.length === 0 &&
+    filter.kinds.length === 0 &&
+    filter.tags.length === 0 &&
+    filter.sources.length === 0
+  );
 }
 
 // categories: ANY if empty, else OR -- question's (single) category must be
@@ -25,11 +31,14 @@ export function isFilterEmpty(filter: QuestionFilter): boolean {
 // but most questions carry only 0-1 tags in practice, so requiring 2+ tags
 // on one question almost always returned zero results -- OR is both what
 // actually surfaces results and what most multi-select tag pickers mean.
+// sources: ANY if empty, else OR -- question's (single) source must be one
+// of the selected ones, same shape as category.
 function matchesQuestionFilter(question: Question, filter: QuestionFilter): boolean {
   const categoryOk = filter.categories.length === 0 || filter.categories.includes(question.category);
   const kindOk = filter.kinds.length === 0 || filter.kinds.some((k) => matchesKind(question, k));
   const tagsOk = filter.tags.length === 0 || filter.tags.some((t) => question.tags.includes(t));
-  return categoryOk && kindOk && tagsOk;
+  const sourceOk = filter.sources.length === 0 || filter.sources.includes(question.source);
+  return categoryOk && kindOk && tagsOk && sourceOk;
 }
 
 // The one seam every call site asks "which questions match this filter?"
@@ -52,13 +61,14 @@ const KIND_SHORT_LABELS: Record<QuestionKind, string> = {
 };
 
 // Builds the human-readable session/filter label, e.g.
-// "Pharmacology — SINGLE, SATA — Cardiovascular, Endocrine". Omits any facet
-// left at ANY. Returns null for an entirely empty filter (the plain PLAY
-// case), same as today's category-only label did.
+// "Pharmacology — SINGLE, SATA — Cardiovascular, Endocrine — naxlex". Omits
+// any facet left at ANY. Returns null for an entirely empty filter (the
+// plain PLAY case), same as today's category-only label did.
 export function describeFilter(filter: QuestionFilter): string | null {
   const parts: string[] = [];
   if (filter.categories.length > 0) parts.push(filter.categories.join(", "));
   if (filter.kinds.length > 0) parts.push(filter.kinds.map((k) => KIND_SHORT_LABELS[k]).join(", "));
   if (filter.tags.length > 0) parts.push(filter.tags.join(", "));
+  if (filter.sources.length > 0) parts.push(filter.sources.join(", "));
   return parts.length > 0 ? parts.join(" — ") : null;
 }

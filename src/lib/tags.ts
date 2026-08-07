@@ -30,3 +30,11 @@ export function getAllTags(questions: Question[]): string[] {
   }
   return [...set].sort();
 }
+
+// Distinct, sorted sources -- which quiz-content batch/export each question
+// came from (e.g. "nurselabs", "naxlex"). Unlike category/tags, this is
+// provenance rather than subject matter, but the same "whatever strings
+// appear in the data are the list" pattern applies -- no fixed taxonomy.
+export function getAllSources(questions: Question[]): string[] {
+  return [...new Set(questions.map((q) => q.source))].sort();
+}

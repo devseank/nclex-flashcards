@@ -14,6 +14,10 @@ type QuestionBase = {
   question: string;
   rationale: string;
   createdAt: string;
+  // Which quiz-content batch/export this question was transcribed from
+  // (e.g. "nurselabs", "naxlex") -- provenance, filterable in FILTER so a
+  // batch with known-shaky transcription can be excluded from a session.
+  source: string;
   // A URL to an illustration for this question (e.g. an anatomy diagram),
   // if any -- undefined for the common case of no image. Multiple
   // questions can share the same URL when they refer to the same image.
@@ -134,6 +138,7 @@ type QuestionRow = {
   created_at: string;
   image_url: string | null;
   ai_generated: boolean;
+  source: string;
 };
 
 type GridRowAnswerRow = {
@@ -177,6 +182,7 @@ function toQuestion(row: QuestionRow, gridAnswersByQuestionId: Map<number, numbe
     createdAt: row.created_at,
     imageUrl: row.image_url ?? undefined,
     aiGenerated: row.ai_generated,
+    source: row.source,
   };
 
   if (row.question_type === "sequence") {
@@ -246,7 +252,7 @@ export async function fetchAllQuestions(): Promise<Question[]> {
           "bowtie_condition_choices, bowtie_condition_answer, bowtie_action_choices, bowtie_action_answer, " +
           "bowtie_monitor_choices, bowtie_monitor_answer, " +
           "hotspot_x, hotspot_y, hotspot_width, hotspot_height, " +
-          "created_at, image_url, ai_generated",
+          "created_at, image_url, ai_generated, source",
       ),
     supabase.from("grid_row_answers").select("question_id, row_index, column_index"),
   ]);

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Question } from "@/services/questions";
-import { getAllCategories, getAllTags, getTagsForCategories } from "@/lib/tags";
+import { getAllCategories, getAllTags, getTagsForCategories, getAllSources } from "@/lib/tags";
 import { QuestionKind, KIND_LABELS } from "@/lib/questionKind";
 import { QuestionFilter, queryQuestions } from "@/lib/questionFilter";
 import { categoryVariant } from "@/lib/categoryVariant";
@@ -56,6 +56,7 @@ export default function FilterMode({
   const [kinds, setKinds] = useState<QuestionKind[]>([]);
   const [tags, setTags] = useState<string[]>([]);
   const [tagSearch, setTagSearch] = useState("");
+  const [sources, setSources] = useState<string[]>([]);
 
   const allCategories = getAllCategories(questions);
   // Tags narrow by selected categories (so the list only shows what's
@@ -64,8 +65,9 @@ export default function FilterMode({
   const tagPool = categories.length > 0 ? getTagsForCategories(questions, categories) : getAllTags(questions);
   const search = tagSearch.trim().toLowerCase();
   const visibleTags = search ? tagPool.filter((t) => t.toLowerCase().includes(search)) : tagPool;
+  const allSources = getAllSources(questions);
 
-  const filter: QuestionFilter = { categories, kinds, tags };
+  const filter: QuestionFilter = { categories, kinds, tags, sources };
   const matchCount = queryQuestions(questions, filter).length;
 
   // A tag selected under the old category set may not exist under the new
@@ -92,6 +94,10 @@ export default function FilterMode({
 
   function toggleTag(t: string) {
     setTags((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
+  }
+
+  function toggleSource(s: string) {
+    setSources((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
   }
 
   return (
@@ -147,7 +153,7 @@ export default function FilterMode({
               // showing each tag's own contribution is more useful at a
               // glance than a combined number that changes depending on
               // what else happens to be selected already.
-              const tagMatchCount = queryQuestions(questions, { categories, kinds, tags: [t] }).length;
+              const tagMatchCount = queryQuestions(questions, { categories, kinds, tags: [t], sources }).length;
               return (
                 <ToggleButton
                   key={t}
@@ -162,6 +168,24 @@ export default function FilterMode({
           {visibleTags.length === 0 && (
             <p className="text-xs text-gray-400">No tags match &quot;{tagSearch}&quot;.</p>
           )}
+        </div>
+      )}
+
+      {allSources.length > 1 && (
+        <div className="space-y-2">
+          <p className="text-xs text-gray-400">SOURCE (optional, pick any)</p>
+          <div className="grid grid-cols-2 gap-2">
+            <ToggleButton label="ALL" isSelected={sources.length === 0} selectedVariant="is-error" onClick={() => setSources([])} />
+            {allSources.map((s) => (
+              <ToggleButton
+                key={s}
+                label={s.trim() === "" ? "(unknown)" : s}
+                isSelected={sources.includes(s)}
+                selectedVariant="is-error"
+                onClick={() => toggleSource(s)}
+              />
+            ))}
+          </div>
         </div>
       )}
 

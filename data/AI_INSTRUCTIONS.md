@@ -256,8 +256,13 @@ Two SQL files, two different jobs — don't blend them:
    (0 if that file doesn't exist yet, i.e. nothing archived), so
    `questions.sql` stays sized to just the new/unarchived rows instead of
    growing without bound. It's still always safe to re-run as-is — the
-   generated SQL uses `on conflict (question) do nothing`, so already-
-   imported questions are automatically skipped if the ranges ever overlap.
+   generated SQL uses `on conflict (md5(question)) do nothing` (matched
+   against the `questions_question_key` functional index in
+   `supabase/schema.sql` — a plain unique constraint on `question` itself
+   can't be used, since a long NGN-style case-study stem can exceed a
+   btree index's ~2704-byte-per-row limit and abort the whole insert), so
+   already-imported questions are automatically skipped if the ranges ever
+   overlap.
 7. **Validate the regenerated SQL before handing it back**, not just the
    CSV: confirm the file has one `insert` per new question (row count
    matches what you appended), that string values are properly quoted/
@@ -279,7 +284,7 @@ Two SQL files, two different jobs — don't blend them:
    generated-and-pasted* rows off into numbered `data/archived-NN.sql`
    files (kept around as a local backup/reference, not for re-pasting —
    though harmless if you do, since every insert is
-   `on conflict (question) do nothing`) and advances the checkpoint so
+   `on conflict (md5(question)) do nothing`) and advances the checkpoint so
    `questions.sql` goes back to being small. To create the next chunk(s):
    ```
    node scripts/csv-to-sql.mjs data/questions.csv --start=<N> --end=<M> > data/archived-<NN>.sql

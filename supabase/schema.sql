@@ -12,9 +12,14 @@ create table if not exists public.questions (
   -- taxonomy/enum to keep in sync: whatever strings appear across
   -- `questions.tags` *are* the tag list.
   tags text[] not null default '{}',
-  -- unique so importing an overlapping/compounded CSV can safely use
-  -- `on conflict (question) do nothing` instead of re-inserting duplicates
-  question text not null unique,
+  -- Deliberately NOT `unique` inline -- a plain btree unique constraint
+  -- caps out at ~2704 bytes/row (1/3 of a page), which long NGN-style
+  -- case-study stems can exceed and abort the whole insert. See the
+  -- `questions_question_key` functional index below instead, which is
+  -- fixed-size regardless of the question's length; importing an
+  -- overlapping/compounded CSV uses `on conflict (md5(question)) do
+  -- nothing` against that index rather than `on conflict (question)`.
+  question text not null,
   choices jsonb not null,
   -- 'choice' (default): pick one or more of `choices` -- correct_indices is
   -- set, correct_order/grid_columns/grid_answer are null.
@@ -150,6 +155,16 @@ on conflict (id) do nothing;
 -- practice for tag-array queries generally and costs nothing to have.
 create index if not exists questions_tags_idx on public.questions using gin (tags);
 
+-- Dedup key for `question`, as an md5-hash functional index rather than a
+-- plain unique constraint on the column itself -- see the comment on
+-- `question` above. `drop constraint if exists` handles a database that
+-- still has the original (too-narrow) inline `unique` constraint, which
+-- shares this same default name and must be gone before the index below
+-- can reuse it; it's a no-op on a fresh install or one that's already
+-- been fixed.
+alter table public.questions drop constraint if exists questions_question_key;
+create unique index if not exists questions_question_key on public.questions (md5(question));
+
 alter table public.questions enable row level security;
 
 -- Question bank is shared across all signed-in users, but the app itself
@@ -158,6 +173,7 @@ alter table public.questions enable row level security;
 -- bypassing the login screen entirely. There is no insert/update/delete
 -- policy, so writes are only possible from the Supabase Studio table/SQL
 -- editor (which use the service role and bypass RLS).
+drop policy if exists "Authenticated users can read questions" on public.questions;
 create policy "Authenticated users can read questions"
   on public.questions
   for select
@@ -184,6 +200,7 @@ alter table public.grid_row_answers enable row level security;
 
 -- Mirrors `questions`' own read policy exactly -- this table carries no
 -- per-user data, just more of the shared question bank.
+drop policy if exists "Authenticated users can read grid_row_answers" on public.grid_row_answers;
 create policy "Authenticated users can read grid_row_answers"
   on public.grid_row_answers
   for select
@@ -225,6 +242,7 @@ create table if not exists public.cloze_blanks (
 
 alter table public.cloze_blanks enable row level security;
 
+drop policy if exists "Authenticated users can read cloze_blanks" on public.cloze_blanks;
 create policy "Authenticated users can read cloze_blanks"
   on public.cloze_blanks
   for select
@@ -245,6 +263,7 @@ create table if not exists public.cloze_blank_options (
 
 alter table public.cloze_blank_options enable row level security;
 
+drop policy if exists "Authenticated users can read cloze_blank_options" on public.cloze_blank_options;
 create policy "Authenticated users can read cloze_blank_options"
   on public.cloze_blank_options
   for select
@@ -294,12 +313,14 @@ alter table public.attempts enable row level security;
 
 -- Each user can only see and record their own attempts -- never another
 -- user's, and never anyone else's aggregate stats.
+drop policy if exists "Users can insert their own attempts" on public.attempts;
 create policy "Users can insert their own attempts"
   on public.attempts
   for insert
   to authenticated
   with check (user_id = auth.uid());
 
+drop policy if exists "Users can read their own attempts" on public.attempts;
 create policy "Users can read their own attempts"
   on public.attempts
   for select
@@ -327,12 +348,14 @@ alter table public.attempt_grid_selections enable row level security;
 
 -- Same per-user isolation as `attempts` itself, via a join back to it
 -- (this table has no user_id column of its own).
+drop policy if exists "Users can insert their own attempt_grid_selections" on public.attempt_grid_selections;
 create policy "Users can insert their own attempt_grid_selections"
   on public.attempt_grid_selections
   for insert
   to authenticated
   with check (exists (select 1 from public.attempts a where a.id = attempt_id and a.user_id = auth.uid()));
 
+drop policy if exists "Users can read their own attempt_grid_selections" on public.attempt_grid_selections;
 create policy "Users can read their own attempt_grid_selections"
   on public.attempt_grid_selections
   for select
@@ -360,18 +383,21 @@ alter table public.user_settings add constraint user_settings_theme_check check 
 
 alter table public.user_settings enable row level security;
 
+drop policy if exists "Users can read their own settings" on public.user_settings;
 create policy "Users can read their own settings"
   on public.user_settings
   for select
   to authenticated
   using (user_id = auth.uid());
 
+drop policy if exists "Users can insert their own settings" on public.user_settings;
 create policy "Users can insert their own settings"
   on public.user_settings
   for insert
   to authenticated
   with check (user_id = auth.uid());
 
+drop policy if exists "Users can update their own settings" on public.user_settings;
 create policy "Users can update their own settings"
   on public.user_settings
   for update

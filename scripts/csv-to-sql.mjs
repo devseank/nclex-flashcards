@@ -448,7 +448,7 @@ if (clozeBlanks.length > 0) {
 }
 
 console.log(
-  `insert into public.questions (category, tags, question, choices, question_type, correct_indices, correct_order, grid_columns, cloze_template, bowtie_condition_choices, bowtie_condition_answer, bowtie_action_choices, bowtie_action_answer, bowtie_monitor_choices, bowtie_monitor_answer, hotspot_x, hotspot_y, hotspot_width, hotspot_height, rationale, image_url, ai_generated, source)\nvalues\n  ${values.join(",\n  ")}\non conflict (question) do nothing;`,
+  `insert into public.questions (category, tags, question, choices, question_type, correct_indices, correct_order, grid_columns, cloze_template, bowtie_condition_choices, bowtie_condition_answer, bowtie_action_choices, bowtie_action_answer, bowtie_monitor_choices, bowtie_monitor_answer, hotspot_x, hotspot_y, hotspot_width, hotspot_height, rationale, image_url, ai_generated, source)\nvalues\n  ${values.join(",\n  ")}\non conflict (md5(question)) do nothing;`,
 );
 
 // A separate insert, joined back to the row(s) just inserted above by their
