@@ -11,10 +11,8 @@ const RANGE_OPTIONS: { key: ReviewRange; label: string }[] = [
 
 export default function ReviewMode({
   onSelect,
-  onBack,
 }: {
   onSelect: (range: ReviewRange) => void;
-  onBack: () => void;
 }) {
   return (
     <div className="space-y-3">
@@ -28,13 +26,6 @@ export default function ReviewMode({
           {opt.label}
         </button>
       ))}
-      <button
-        type="button"
-        onClick={onBack}
-        className="font-pixel text-[10px] text-[var(--text-navy)] underline"
-      >
-        ← MENU
-      </button>
     </div>
   );
 }

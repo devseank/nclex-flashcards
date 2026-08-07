@@ -21,13 +21,8 @@ import { restrictToParentElement, restrictToVerticalAxis } from "@dnd-kit/modifi
 import { CSS } from "@dnd-kit/utilities";
 import { SequenceQuestion } from "@/services/questions";
 import { QuestionStats } from "@/services/attempts";
-import { categoryVariant } from "@/lib/categoryVariant";
-import { cheerMessage } from "@/lib/cheerMessage";
-import NewBadge from "@/components/ui/NewBadge";
-import AiGeneratedBadge from "@/components/ui/AiGeneratedBadge";
-import ConfettiBurst, { ConfettiConfig, buildConfettiConfig } from "@/components/session/ConfettiBurst";
-import StickyNextBar from "@/components/session/StickyNextBar";
-import { FlashcardMode } from "@/components/session/Flashcard";
+import { ConfettiConfig, buildConfettiConfig } from "@/components/session/ConfettiBurst";
+import FlashcardShell, { FlashcardMode } from "@/components/session/FlashcardShell";
 
 // Rationale for sequence questions is a numbered walkthrough ("1. ... 2. ...")
 // rather than "Option A:" notes -- split it into its own paragraphs the same
@@ -124,12 +119,6 @@ export default function SequenceFlashcard({
   }
 
   const isFullyCorrect = showAnswer && isCorrectOrder(order);
-  const cheer = !showAnswer ? cheerMessage(stats, question.id) : null;
-
-  // Only the live moment of answering gets feedback -- not FinishedScreen's
-  // read-only replay, which renders this same component with mode="review"
-  // already revealed from the start (no actual reveal transition happens).
-  const justAnswered = mode !== "review" && showAnswer;
 
   function reveal() {
     // Math.random() (inside buildConfettiConfig) must not run during render,
@@ -159,48 +148,29 @@ export default function SequenceFlashcard({
   }
 
   return (
-    <div
-      className={`nes-container is-rounded w-full max-w-xl bg-white space-y-5 relative pb-24 ${
-        justAnswered ? (isFullyCorrect ? "flash-correct" : "shake flash-wrong") : ""
-      }`}
+    <FlashcardShell
+      question={question}
+      stats={stats}
+      mode={mode}
+      showAnswer={showAnswer}
+      isFullyCorrect={isFullyCorrect}
+      confettiConfig={confettiConfig}
+      instruction={!showAnswer ? "Drag the steps below into the correct order." : undefined}
+      // Sequence renders its own "CORRECT!/NOT QUITE" copy inline within its
+      // rationale box below (a different spot than Flashcard/Grid put it),
+      // so the shell's own copy is suppressed here.
+      showCorrectIndicator={false}
+      onNextClick={() => onNext?.(order)}
+      nextDisabled={!showAnswer}
+      // Unlike single-choice, sequence has no auto-reveal moment -- NEXT
+      // would otherwise be reachable at any point while still dragging,
+      // letting a question get skipped (and an attempt recorded against
+      // whatever order it happened to be in) before CHECK ORDER was ever
+      // pressed. CHECK ORDER lives in the sticky bar itself (left column,
+      // NEXT on the right) rather than as a separate full-width button
+      // above it.
+      check={!showAnswer ? { label: "CHECK ORDER", onClick: reveal } : undefined}
     >
-      {!stats && <NewBadge />}
-      {question.aiGenerated && <AiGeneratedBadge />}
-      {confettiConfig && <ConfettiBurst config={confettiConfig} />}
-      <button
-        type="button"
-        tabIndex={-1}
-        className={`nes-btn ${categoryVariant(question.category)} font-pixel text-[10px] tracking-wide !cursor-default`}
-      >
-        {question.category}
-        {question.tags.length > 0 && ` — ${question.tags.join(", ")}`}
-      </button>
-
-      {stats && (
-        <p className="text-xs text-gray-500 -mt-2">
-          Attempted {stats.totalAttempts}× · {stats.correctCount} correct / {stats.incorrectCount}{" "}
-          incorrect · Last: {new Date(stats.lastAttemptedAt).toLocaleDateString()}
-        </p>
-      )}
-
-      {cheer && <p className="font-pixel text-[11px] leading-relaxed text-emerald-600 -mt-2">{cheer}</p>}
-
-      <p className="text-xl leading-snug">
-        {question.question}
-        {!showAnswer && (
-          <span className="block text-sm text-gray-500 mt-1">Drag the steps below into the correct order.</span>
-        )}
-      </p>
-
-      {question.imageUrl && (
-        // eslint-disable-next-line @next/next/no-img-element -- static export (next/image needs no server either way, this app already sets images.unoptimized)
-        <img
-          src={question.imageUrl}
-          alt="Question illustration"
-          className="max-h-80 w-full rounded border-4 border-black object-contain"
-        />
-      )}
-
       <div className="space-y-2">
         <p className="font-pixel text-[10px] text-gray-500">STEPS</p>
         <DndContext
@@ -262,21 +232,6 @@ export default function SequenceFlashcard({
           ))}
         </div>
       )}
-
-      {/* Unlike single-choice, sequence has no auto-reveal moment -- NEXT
-          would otherwise be reachable at any point while still dragging,
-          letting a question get skipped (and an attempt recorded against
-          whatever order it happened to be in) before CHECK ORDER was ever
-          pressed. CHECK ORDER lives in the sticky bar itself (left column,
-          NEXT on the right) rather than as a separate full-width button
-          above it. */}
-      {mode !== "review" && (
-        <StickyNextBar
-          onClick={() => onNext?.(order)}
-          disabled={!showAnswer}
-          check={!showAnswer ? { label: "CHECK ORDER", onClick: reveal } : undefined}
-        />
-      )}
-    </div>
+    </FlashcardShell>
   );
 }

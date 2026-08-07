@@ -47,12 +47,10 @@ export default function FilterMode({
   questions,
   onPlay,
   onMostWrong,
-  onBack,
 }: {
   questions: Question[];
   onPlay: (filter: QuestionFilter) => void;
   onMostWrong: (filter: QuestionFilter) => void;
-  onBack: () => void;
 }) {
   const [categories, setCategories] = useState<string[]>([]);
   const [kinds, setKinds] = useState<QuestionKind[]>([]);
@@ -175,10 +173,6 @@ export default function FilterMode({
           MOST WRONG ({matchCount})
         </button>
       </div>
-
-      <button type="button" onClick={onBack} className="font-pixel text-[10px] text-[var(--text-navy)] underline">
-        ← MENU
-      </button>
     </div>
   );
 }

@@ -6,6 +6,7 @@ export default function PixelWindow({
   title,
   titleExtra,
   headerAction,
+  wide,
   children,
 }: {
   title: string;
@@ -14,6 +15,11 @@ export default function PixelWindow({
   // top-right corner -- e.g. the home screen's MENU.EXE window passes its
   // account/display-settings dropdown here instead.
   headerAction?: React.ReactNode;
+  // Widens the window to max-w-xl (matching the flashcard/analytics cards)
+  // instead of the default max-w-sm (sized for the menu/picker screens'
+  // short button lists) -- e.g. HISTORY.EXE's entries are full truncated
+  // question sentences, not short labels.
+  wide?: boolean;
   children: React.ReactNode;
 }) {
   const [shake, setShake] = useState(false);
@@ -25,7 +31,7 @@ export default function PixelWindow({
 
   return (
     <div
-      className={`nes-container is-rounded bg-white max-w-sm w-full p-0 ${shake ? "shake" : ""}`}
+      className={`nes-container is-rounded bg-white ${wide ? "max-w-xl" : "max-w-sm"} w-full p-0 ${shake ? "shake" : ""}`}
     >
       <div className="bg-[#12314a] flex items-center justify-between px-3 py-2">
         <span className="flex items-center">

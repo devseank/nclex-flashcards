@@ -3,17 +3,17 @@
 import { Question } from "@/services/questions";
 import { QuestionStats } from "@/services/attempts";
 import QuestionCard from "@/components/session/QuestionCard";
+import TitleBar from "@/components/ui/TitleBar";
+import AccountMenu from "@/components/auth/AccountMenu";
 
 export default function HistoryDetail({
   question,
   response,
   stats,
-  onBack,
 }: {
   question: Question;
   response: number[];
   stats?: QuestionStats;
-  onBack: () => void;
 }) {
   // `stats` must come from the caller (computed once for the whole history
   // list) rather than being looked up here -- this question has clearly
@@ -22,15 +22,7 @@ export default function HistoryDetail({
   // never-attempted "NEW" badge instead.
   return (
     <div className="w-full max-w-xl flex flex-col items-center gap-3">
-      <div className="w-full flex items-center px-1">
-        <button
-          type="button"
-          onClick={onBack}
-          className="font-pixel text-[10px] text-[var(--text-navy)] underline"
-        >
-          ← HISTORY
-        </button>
-      </div>
+      <TitleBar left="HISTORY" action={<AccountMenu />} />
       <QuestionCard question={question} mode="review" initialResponse={response} stats={stats} />
     </div>
   );

@@ -111,6 +111,11 @@ export function useQuizSession(questions: Question[] | null) {
   // press would immediately cancel itself out with a fresh forward entry).
   const isPoppingRef = useRef(false);
   const isFirstRenderRef = useRef(true);
+  // The view this render's effect is transitioning FROM, so the push effect
+  // below can tell "session started from a picker screen" (filterPick/
+  // reviewPick/newPick) and "just finished a session" apart from any other
+  // transition -- see the collapse logic there.
+  const prevViewRef = useRef<View>(view);
 
   useEffect(() => {
     // Next.js's App Router keeps its own bookkeeping in `history.state`
@@ -147,13 +152,38 @@ export function useQuizSession(questions: Question[] | null) {
   useEffect(() => {
     if (isFirstRenderRef.current) {
       isFirstRenderRef.current = false;
+      prevViewRef.current = view;
       return;
     }
     if (isPoppingRef.current) {
       isPoppingRef.current = false;
+      prevViewRef.current = view;
       return;
     }
-    window.history.pushState({ ...window.history.state, nclexView: view } satisfies NavHistoryState, "");
+
+    // Entering "session" from a picker screen, or entering "finished"
+    // (always from "session"), REPLACES the previous history entry instead
+    // of pushing a new one -- collapsing the transient chooser/live-session
+    // screen out of the back-stack so a single back press always lands on
+    // "menu", the same target every removed "← MENU"-style button used to
+    // jump straight to. Without this, back from a filter/review/new-started
+    // session would land on the picker screen instead of menu (one hop
+    // short), and back from "finished" would land on "session" with `current`
+    // already nulled out (handleNext does that before this runs), which
+    // every view === "session" render branch guards on -- so the screen
+    // would just go blank with no way back, since there's no button here to
+    // recover with.
+    const prev = prevViewRef.current;
+    const collapse =
+      (view === "session" && (prev === "filterPick" || prev === "reviewPick" || prev === "newPick")) ||
+      view === "finished";
+    const entry = { ...window.history.state, nclexView: view } satisfies NavHistoryState;
+    if (collapse) {
+      window.history.replaceState(entry, "");
+    } else {
+      window.history.pushState(entry, "");
+    }
+    prevViewRef.current = view;
   }, [view]);
 
   function beginSession(pool: Question[], m: SessionMode, label: string, filter: string | null) {
@@ -299,22 +329,6 @@ export function useQuizSession(questions: Question[] | null) {
     setView("historyDetail");
   }
 
-  function backToHistoryList() {
-    setView("historyList");
-  }
-
-  function backToMenu() {
-    setView("menu");
-    setMode(null);
-    setFilterLabel(null);
-    setSessionLabel("");
-    setCurrent(null);
-    setQuestionStats(null);
-    setNotice(null);
-    setHistoryEntries([]);
-    setHistoryDetailEntry(null);
-  }
-
   function goToFilterPick() {
     setNotice(null);
     setView("filterPick");
@@ -400,8 +414,6 @@ export function useQuizSession(questions: Question[] | null) {
     startNewByRange,
     startHistoryList,
     selectHistoryEntry,
-    backToHistoryList,
-    backToMenu,
     goToFilterPick,
     goToReviewPick,
     goToNewPick,

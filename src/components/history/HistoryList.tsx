@@ -2,31 +2,20 @@
 
 import { Question } from "@/services/questions";
 import { Attempt } from "@/services/attempts";
+import PixelWindow from "@/components/ui/PixelWindow";
+import AccountMenu from "@/components/auth/AccountMenu";
 
 export type HistoryEntry = { attempt: Attempt; question: Question };
 
 export default function HistoryList({
   entries,
   onSelect,
-  onBack,
 }: {
   entries: HistoryEntry[];
   onSelect: (entry: HistoryEntry) => void;
-  onBack: () => void;
 }) {
   return (
-    <div className="nes-container is-rounded w-full max-w-xl bg-white space-y-3">
-      <div className="flex items-center justify-between">
-        <p className="font-pixel text-xs">HISTORY</p>
-        <button
-          type="button"
-          onClick={onBack}
-          className="font-pixel text-[10px] text-[var(--text-navy)] underline"
-        >
-          ← BACK
-        </button>
-      </div>
-
+    <PixelWindow title="HISTORY.EXE" headerAction={<AccountMenu />} wide>
       <div className="space-y-2">
         {entries.map(({ attempt, question }) => (
           <button
@@ -46,6 +35,6 @@ export default function HistoryList({
           </button>
         ))}
       </div>
-    </div>
+    </PixelWindow>
   );
 }

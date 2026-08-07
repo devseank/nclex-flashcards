@@ -15,17 +15,17 @@ import Analytics from "@/components/analytics/Analytics";
 import PixelWindow from "@/components/ui/PixelWindow";
 import SessionScreen from "@/components/session/SessionScreen";
 import FinishedScreen from "@/components/session/FinishedScreen";
-import AppHeader from "@/components/AppHeader";
 import AccountMenu from "@/components/auth/AccountMenu";
 import NoticeBanner from "@/components/ui/NoticeBanner";
+import { useHasMounted } from "@/lib/useHasMounted";
 
 // A PixelWindow plus its below-the-fold notice banner, for the picker
 // screens (filter/review/new/history-pick) that share this exact layout.
 // The account/display menu replaces this window's own decorative close
-// button directly -- these screens already have a header bar to put it in,
-// so a second, separate global header strip above would just be wasted
-// whitespace (see the non-windowed views below, which don't have that
-// option and use <AppHeader/> instead).
+// button directly -- every screen in this app gets its hamburger this way
+// (via this PixelWindow's headerAction, or TitleBar for screens whose main
+// content isn't already a single PixelWindow), so there's no separate
+// global header strip anywhere.
 function PickerScreen({
   title,
   notice,
@@ -74,8 +74,6 @@ export default function FlashcardApp() {
     startNewByRange,
     startHistoryList,
     selectHistoryEntry,
-    backToHistoryList,
-    backToMenu,
     goToFilterPick,
     goToReviewPick,
     goToNewPick,
@@ -84,132 +82,122 @@ export default function FlashcardApp() {
     handleNext,
   } = useQuizSession(questions);
 
-  const pageClassName =
-    "min-h-dvh flex flex-col items-center justify-start sm:justify-center gap-8 px-4 pt-16 pb-[calc(4rem+env(safe-area-inset-bottom))]";
+  // Session/Analytics have the tallest, most-used content on a mobile
+  // screen -- the flat pt-16 every other view uses (sized for the
+  // vertically-centered menu/picker dialogs) was pushing the question card
+  // noticeably below the fold. sm: centering for larger viewports is
+  // unaffected either way.
+  //
+  // Gated on useHasMounted since `view`'s own initial value already
+  // legitimately differs between the server render (always "menu", no
+  // `window`) and a client hydrating with a restored non-"menu" view from
+  // `history.state` (e.g. a hard refresh while on Analytics) -- branching
+  // this div's className on `view` directly would otherwise reproduce that
+  // divergence as a real hydration mismatch, not just a hypothetical one.
+  const hasMounted = useHasMounted();
+  const isTopAligned = hasMounted && (view === "session" || view === "analytics");
+  const pageClassName = `min-h-dvh flex flex-col items-center justify-start sm:justify-center gap-8 px-4 ${
+    isTopAligned ? "pt-4 sm:pt-16" : "pt-16"
+  } pb-[calc(4rem+env(safe-area-inset-bottom))]`;
 
   if (error) {
     return (
-      <>
-        <AppHeader />
-        <div className={pageClassName}>
-          <p className="font-pixel text-sm text-[var(--text-navy)] text-center leading-relaxed">
-            {error}
-          </p>
-        </div>
-      </>
+      <div className={pageClassName}>
+        <p className="font-pixel text-sm text-[var(--text-navy)] text-center leading-relaxed">
+          {error}
+        </p>
+      </div>
     );
   }
 
-  const isWindowedView =
-    view === "menu" ||
-    view === "filterPick" ||
-    view === "reviewPick" ||
-    view === "newPick" ||
-    view === "historyPick";
-
   return (
-    <>
-      {!isWindowedView && <AppHeader />}
-      <div className={pageClassName}>
-        {questions && view === "menu" && (
-          <div className="view-fade-in w-full max-w-sm">
-            <PixelWindow title="MENU.EXE" headerAction={<AccountMenu />}>
-              <Landing
-                onSelectPlay={() => startPlay()}
-                onSelectFilter={goToFilterPick}
-                onSelectReview={goToReviewPick}
-                onSelectNew={goToNewPick}
-                onSelectHistory={goToHistoryPick}
-                onSelectAnalytics={goToAnalytics}
-              />
-            </PixelWindow>
-          </div>
-        )}
-
-        {view === "filterPick" && questions && (
-          <PickerScreen title="FILTER.EXE" notice={notice}>
-            <FilterMode
-              questions={questions}
-              onPlay={startPlay}
-              onMostWrong={startReviewByFilter}
-              onBack={backToMenu}
+    <div className={pageClassName}>
+      {questions && view === "menu" && (
+        <div className="view-fade-in w-full max-w-sm">
+          <PixelWindow title="MENU.EXE" headerAction={<AccountMenu />}>
+            <Landing
+              onSelectPlay={() => startPlay()}
+              onSelectFilter={goToFilterPick}
+              onSelectReview={goToReviewPick}
+              onSelectNew={goToNewPick}
+              onSelectHistory={goToHistoryPick}
+              onSelectAnalytics={goToAnalytics}
             />
-          </PickerScreen>
-        )}
+          </PixelWindow>
+        </div>
+      )}
 
-        {view === "reviewPick" && (
-          <PickerScreen title="REVIEW.EXE" notice={notice}>
-            <ReviewMode onSelect={startReviewByRange} onBack={backToMenu} />
-          </PickerScreen>
-        )}
+      {view === "filterPick" && questions && (
+        <PickerScreen title="FILTER.EXE" notice={notice}>
+          <FilterMode questions={questions} onPlay={startPlay} onMostWrong={startReviewByFilter} />
+        </PickerScreen>
+      )}
 
-        {view === "newPick" && (
-          <PickerScreen title="NEW.EXE" notice={notice}>
-            <NewMode onSelect={startNewByRange} onBack={backToMenu} />
-          </PickerScreen>
-        )}
+      {view === "reviewPick" && (
+        <PickerScreen title="REVIEW.EXE" notice={notice}>
+          <ReviewMode onSelect={startReviewByRange} />
+        </PickerScreen>
+      )}
 
-        {view === "historyPick" && (
-          <PickerScreen title="HISTORY.EXE" notice={notice}>
-            <HistoryMode onSelect={startHistoryList} onBack={backToMenu} />
-          </PickerScreen>
-        )}
+      {view === "newPick" && (
+        <PickerScreen title="NEW.EXE" notice={notice}>
+          <NewMode onSelect={startNewByRange} />
+        </PickerScreen>
+      )}
 
-        {view === "historyList" && (
-          <div className="view-fade-in w-full max-w-xl">
-            <HistoryList
-              entries={historyEntries}
-              onSelect={selectHistoryEntry}
-              onBack={goToHistoryPick}
-            />
-          </div>
-        )}
+      {view === "historyPick" && (
+        <PickerScreen title="HISTORY.EXE" notice={notice}>
+          <HistoryMode onSelect={startHistoryList} />
+        </PickerScreen>
+      )}
 
-        {view === "historyDetail" && historyDetailEntry && (
-          <div className="view-fade-in w-full max-w-xl">
-            <HistoryDetail
-              question={historyDetailEntry.question}
-              response={historyDetailEntry.attempt.selectedIndices}
-              stats={questionStats?.get(historyDetailEntry.question.id)}
-              onBack={backToHistoryList}
-            />
-          </div>
-        )}
+      {view === "historyList" && (
+        <div className="view-fade-in w-full max-w-xl">
+          <HistoryList entries={historyEntries} onSelect={selectHistoryEntry} />
+        </div>
+      )}
 
-        {view === "analytics" && questions && (
-          <div className="view-fade-in w-full max-w-xl">
-            <Analytics questions={questions} onBack={backToMenu} />
-          </div>
-        )}
+      {view === "historyDetail" && historyDetailEntry && (
+        <div className="view-fade-in w-full max-w-xl">
+          <HistoryDetail
+            question={historyDetailEntry.question}
+            response={historyDetailEntry.attempt.selectedIndices}
+            stats={questionStats?.get(historyDetailEntry.question.id)}
+          />
+        </div>
+      )}
 
-        {view === "finished" && mode && modeTitle && (
-          <div className="view-fade-in w-full max-w-xl">
-            <FinishedScreen
-              title={modeTitle}
-              score={score}
-              total={queue.length}
-              queue={queue}
-              answers={answers}
-              questionStats={questionStats}
-              onBackToMenu={backToMenu}
-            />
-          </div>
-        )}
+      {view === "analytics" && questions && (
+        <div className="view-fade-in w-full max-w-xl">
+          <Analytics questions={questions} />
+        </div>
+      )}
 
-        {view === "session" && mode && current && (
-          <div className="view-fade-in w-full max-w-xl">
-            <SessionScreen
-              mode={mode}
-              current={current}
-              index={index}
-              queueLength={queue.length}
-              stats={questionStats?.get(current.id)}
-              onNext={handleNext}
-              onBack={backToMenu}
-            />
-          </div>
-        )}
-      </div>
-    </>
+      {view === "finished" && mode && modeTitle && (
+        <div className="view-fade-in w-full max-w-xl">
+          <FinishedScreen
+            title={modeTitle}
+            score={score}
+            total={queue.length}
+            queue={queue}
+            answers={answers}
+            questionStats={questionStats}
+          />
+        </div>
+      )}
+
+      {view === "session" && mode && current && (
+        <div className="view-fade-in w-full max-w-xl">
+          <SessionScreen
+            mode={mode}
+            current={current}
+            index={index}
+            queueLength={queue.length}
+            stats={questionStats?.get(current.id)}
+            onNext={handleNext}
+          />
+        </div>
+      )}
+    </div>
   );
 }

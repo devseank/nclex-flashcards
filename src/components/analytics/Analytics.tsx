@@ -16,6 +16,8 @@ import {
 import { fetchAttempts, Attempt } from "@/services/attempts";
 import { Question } from "@/services/questions";
 import PixelWindow from "@/components/ui/PixelWindow";
+import TitleBar from "@/components/ui/TitleBar";
+import AccountMenu from "@/components/auth/AccountMenu";
 import InfoTooltip from "@/components/ui/InfoTooltip";
 import RangeSelect, { RANGE_LABELS } from "@/components/ui/RangeSelect";
 import { getErrorMessage } from "@/lib/errorMessage";
@@ -50,10 +52,8 @@ const CATEGORIES_TOOLTIP =
 
 export default function Analytics({
   questions,
-  onBack,
 }: {
   questions: Question[];
-  onBack: () => void;
 }) {
   const [attempts, setAttempts] = useState<Attempt[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -117,20 +117,12 @@ export default function Analytics({
       .catch((err) => setError(getErrorMessage(err)));
   }, []);
 
-  const backLink = (
-    <button
-      type="button"
-      onClick={onBack}
-      className="font-pixel text-[10px] text-[var(--text-navy)] underline self-start"
-    >
-      ← MENU
-    </button>
-  );
+  const titleBar = <TitleBar left="ANALYTICS" action={<AccountMenu />} />;
 
   if (error) {
     return (
       <div className="w-full max-w-xl flex flex-col gap-4">
-        {backLink}
+        {titleBar}
         <p className="font-pixel text-sm text-[var(--text-navy)] text-center leading-relaxed">{error}</p>
       </div>
     );
@@ -139,7 +131,7 @@ export default function Analytics({
   if (!attempts) {
     return (
       <div className="w-full max-w-xl flex flex-col gap-4">
-        {backLink}
+        {titleBar}
       </div>
     );
   }
@@ -187,7 +179,7 @@ export default function Analytics({
 
   return (
     <div className="w-full max-w-xl flex flex-col gap-6">
-      {backLink}
+      {titleBar}
 
       <PixelWindow title="STATS.EXE">
         <div className="grid grid-cols-3 gap-2 text-center">

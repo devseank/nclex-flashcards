@@ -10,10 +10,8 @@ const LIMIT_OPTIONS: { key: HistoryLimit; label: string }[] = [
 
 export default function HistoryMode({
   onSelect,
-  onBack,
 }: {
   onSelect: (limit: HistoryLimit) => void;
-  onBack: () => void;
 }) {
   return (
     <div className="space-y-3">
@@ -27,13 +25,6 @@ export default function HistoryMode({
           {opt.label}
         </button>
       ))}
-      <button
-        type="button"
-        onClick={onBack}
-        className="font-pixel text-[10px] text-[var(--text-navy)] underline"
-      >
-        ← MENU
-      </button>
     </div>
   );
 }
