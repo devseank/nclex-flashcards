@@ -181,7 +181,7 @@ export default function Analytics({
     <div className="w-full max-w-xl flex flex-col gap-6">
       {titleBar}
 
-      <PixelWindow title="STATS.EXE">
+      <PixelWindow title="STATS.EXE" wide>
         <div className="grid grid-cols-3 gap-2 text-center">
           <div>
             <p className="font-pixel text-xl text-[var(--text-navy-strong)]">{todayCount}</p>
@@ -198,7 +198,7 @@ export default function Analytics({
         </div>
       </PixelWindow>
 
-      <PixelWindow title="TREND.EXE" titleExtra={<InfoTooltip text={TREND_TOOLTIP} />}>
+      <PixelWindow title="TREND.EXE" titleExtra={<InfoTooltip text={TREND_TOOLTIP} />} wide>
         <div className="flex flex-col gap-3">
           <RangeSelect value={trendRange} onChange={setTrendRange} />
           <div className="h-48 w-full">
@@ -215,7 +215,7 @@ export default function Analytics({
         </div>
       </PixelWindow>
 
-      <PixelWindow title="CATEGORIES.EXE" titleExtra={<InfoTooltip text={CATEGORIES_TOOLTIP} />}>
+      <PixelWindow title="CATEGORIES.EXE" titleExtra={<InfoTooltip text={CATEGORIES_TOOLTIP} />} wide>
         <div className="flex flex-col gap-3">
           <RangeSelect value={categoriesRange} onChange={setCategoriesRange} />
           {categoryData.length > 0 ? (
