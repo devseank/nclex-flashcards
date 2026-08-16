@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Heart } from "lucide-react";
 
 export default function AnimatedHeart() {
   const [bursts, setBursts] = useState<{ id: number; offset: number }[]>([]);
@@ -20,19 +21,19 @@ export default function AnimatedHeart() {
         type="button"
         onClick={handleClick}
         aria-label="Boop the heart"
-        className="cursor-pointer bg-transparent border-none outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--text-navy-strong)]"
+        className="cursor-pointer bg-transparent border-none outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--signal)]"
       >
-        <span className="heartbeat inline-block">
-          <i className="nes-icon heart is-large m-0 block" />
+        <span className="heartbeat inline-block text-[var(--signal)]">
+          <Heart size={40} fill="currentColor" />
         </span>
       </button>
       {bursts.map((b) => (
         <span
           key={b.id}
-          className="burst-heart absolute pointer-events-none inline-block"
+          className="burst-heart absolute pointer-events-none inline-block text-[var(--signal)]"
           style={{ left: `calc(50% + ${b.offset}px)`, top: "calc(50% - 8px)" }}
         >
-          <i className="nes-icon heart is-small m-0 block" />
+          <Heart size={16} fill="currentColor" />
         </span>
       ))}
     </div>

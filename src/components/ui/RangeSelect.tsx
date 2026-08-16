@@ -1,4 +1,13 @@
+"use client";
+
 import { AnalyticsRange } from "@/lib/analyticsTrend";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/shadcn/select";
 
 export const RANGE_LABELS: Record<AnalyticsRange, string> = {
   today: "Today",
@@ -14,14 +23,17 @@ export default function RangeSelect({
   onChange: (range: AnalyticsRange) => void;
 }) {
   return (
-    <div className="nes-select">
-      <select value={value} onChange={(e) => onChange(e.target.value as AnalyticsRange)}>
+    <Select value={value} onValueChange={(v) => onChange(v as AnalyticsRange)}>
+      <SelectTrigger className="font-mono text-xs uppercase tracking-wider border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] focus-visible:ring-[var(--signal)]">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent className="font-mono border-[var(--border)]">
         {(Object.keys(RANGE_LABELS) as AnalyticsRange[]).map((r) => (
-          <option key={r} value={r}>
+          <SelectItem key={r} value={r} className="text-xs uppercase tracking-wider">
             {RANGE_LABELS[r]}
-          </option>
+          </SelectItem>
         ))}
-      </select>
-    </div>
+      </SelectContent>
+    </Select>
   );
 }

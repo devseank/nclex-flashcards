@@ -125,13 +125,19 @@ export default function Flashcard({
           const isSelected = selected.includes(i);
           const explanation = showAnswer ? rationaleByChoice[i] : undefined;
 
-          let variant = "";
+          let variant = "border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)]";
+          let marker = null;
           if (showAnswer) {
-            if (isCorrectChoice) variant = "is-success";
-            else if (isSelected) variant = "is-error";
-            else variant = "is-disabled";
+            if (isCorrectChoice) {
+              variant = "border-[var(--signal)] bg-[var(--signal)] text-[var(--signal-foreground)]";
+              marker = "✓ ";
+            } else if (isSelected) {
+              marker = "✕ ";
+            } else {
+              variant = "border-[var(--border-muted)] text-[var(--muted-foreground)]";
+            }
           } else if (isSelected) {
-            variant = "is-primary";
+            variant = "border-[var(--signal)] bg-[var(--signal)] text-[var(--signal-foreground)]";
           }
 
           return (
@@ -140,12 +146,13 @@ export default function Flashcard({
                 type="button"
                 disabled={mode === "review" || revealed}
                 onClick={() => toggleChoice(i)}
-                className={`nes-btn w-full text-left text-base ${variant}`}
+                className={`border font-mono w-full text-left text-base py-2 px-3 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--signal)] ${variant}`}
               >
+                {marker}
                 {choice}
               </button>
               {explanation && (
-                <div className="mt-1 px-3 py-2 border-l-4 border-gray-300 bg-gray-50 text-sm text-gray-700 leading-snug">
+                <div className="mt-1 px-3 py-2 border-l-4 border-[var(--border-muted)] bg-[var(--muted)] text-sm text-[var(--muted-foreground)] leading-snug">
                   {explanation}
                 </div>
               )}

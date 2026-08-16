@@ -362,12 +362,14 @@ create policy "Users can read their own attempt_grid_selections"
   to authenticated
   using (exists (select 1 from public.attempts a where a.id = attempt_id and a.user_id = auth.uid()));
 
--- One row per user, upserted whenever a preference changes (currently just
--- the theme). `user_id` is both the primary key and defaults to the
--- caller's own id, so upserts never need to pass it explicitly.
+-- One row per user, upserted whenever a preference changes (theme, and now
+-- the mono font choice from the UI overhaul). `user_id` is both the primary
+-- key and defaults to the caller's own id, so upserts never need to pass it
+-- explicitly.
 create table if not exists public.user_settings (
   user_id uuid primary key default auth.uid() references auth.users (id) on delete cascade,
   theme text not null default 'light' check (theme in ('light', 'dark')),
+  font text not null default 'jetbrains' check (font in ('jetbrains', 'plex', 'space')),
   updated_at timestamptz not null default now()
 );
 
@@ -380,6 +382,13 @@ update public.user_settings set theme = 'light' where theme = 'system';
 alter table public.user_settings alter column theme set default 'light';
 alter table public.user_settings drop constraint if exists user_settings_theme_check;
 alter table public.user_settings add constraint user_settings_theme_check check (theme in ('light', 'dark'));
+
+-- Migrating an existing project: the `font` column is new (mono-brutalist UI
+-- overhaul) -- add it if missing, matching the create-table default/check
+-- above. Idempotent to re-run.
+alter table public.user_settings add column if not exists font text not null default 'jetbrains';
+alter table public.user_settings drop constraint if exists user_settings_font_check;
+alter table public.user_settings add constraint user_settings_font_check check (font in ('jetbrains', 'plex', 'space'));
 
 alter table public.user_settings enable row level security;
 

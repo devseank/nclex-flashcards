@@ -2,7 +2,6 @@
 
 import { Question } from "@/services/questions";
 import { QuestionStats } from "@/services/attempts";
-import { categoryVariant } from "@/lib/categoryVariant";
 import { cheerMessage } from "@/lib/cheerMessage";
 import NewBadge from "@/components/ui/NewBadge";
 import AiGeneratedBadge from "@/components/ui/AiGeneratedBadge";
@@ -14,12 +13,11 @@ import StickyNextBar, { StickyActionBarCheck } from "@/components/session/Sticky
 // -- already revealed from the start, no reveal transition ever happens.
 export type FlashcardMode = "immediate" | "review";
 
-// Shared outer chrome for all three question types (Flashcard/
-// SequenceFlashcard/GridFlashcard) -- badges, category button, stats line,
-// cheer message, question text + image, and the sticky NEXT bar. Each type
-// keeps its own state/reveal logic and supplies only its unique answer UI
-// (and rationale rendering, since those genuinely differ in shape/order per
-// type) as `children`.
+// Shared outer chrome for all six question types -- badges, category label,
+// stats line, cheer message, question text + image, and the sticky NEXT
+// bar. Each type keeps its own state/reveal logic and supplies only its
+// unique answer UI (and rationale rendering, since those genuinely differ
+// in shape/order per type) as `children`.
 export default function FlashcardShell({
   headerLeft,
   headerAction,
@@ -37,7 +35,7 @@ export default function FlashcardShell({
   check,
   children,
 }: {
-  // Attaches a navy title-bar row (same look as PixelWindow's) to the TOP of
+  // Attaches a title-bar row (same look as PixelWindow's) to the TOP of
   // this same card -- one bordered box, not a separate bar floating above it
   // -- for the live session and history-detail screens, which aren't
   // otherwise wrapped in a PixelWindow of their own. Omitted (the common
@@ -90,32 +88,30 @@ export default function FlashcardShell({
   const body = (
     <>
       {hasHeader && badges}
-      <button
-        type="button"
-        tabIndex={-1}
-        className={`nes-btn ${categoryVariant(question.category)} font-pixel text-[10px] tracking-wide !cursor-default`}
-      >
+      <span className="inline-block border border-[var(--border)] font-mono text-[10px] uppercase tracking-wider px-2 py-1">
         {question.category}
         {question.tags.length > 0 && ` — ${question.tags.join(", ")}`}
-      </button>
+      </span>
 
       {stats && (
-        <p className="text-xs text-gray-500 -mt-2">
+        <p className="text-xs text-[var(--muted-foreground)] -mt-2">
           Attempted {stats.totalAttempts}× · {stats.correctCount} correct / {stats.incorrectCount}{" "}
           incorrect · Last: {new Date(stats.lastAttemptedAt).toLocaleDateString()}
         </p>
       )}
 
-      {cheer && <p className="font-pixel text-[11px] leading-relaxed text-emerald-600 -mt-2">{cheer}</p>}
+      {cheer && <p className="font-mono text-[11px] leading-relaxed italic text-[var(--muted-foreground)] -mt-2">{cheer}</p>}
 
       {!hideQuestionText && (
         <p className="text-xl leading-snug">
           {question.question}
-          {!showAnswer && instruction && <span className="block text-sm text-gray-500 mt-1">{instruction}</span>}
+          {!showAnswer && instruction && (
+            <span className="block text-sm text-[var(--muted-foreground)] mt-1">{instruction}</span>
+          )}
         </p>
       )}
       {hideQuestionText && !showAnswer && instruction && (
-        <p className="text-sm text-gray-500">{instruction}</p>
+        <p className="text-sm text-[var(--muted-foreground)]">{instruction}</p>
       )}
 
       {question.imageUrl && (
@@ -123,12 +119,14 @@ export default function FlashcardShell({
         <img
           src={question.imageUrl}
           alt="Question illustration"
-          className="max-h-80 w-full rounded border-4 border-black object-contain"
+          className="max-h-80 w-full border border-[var(--border)] object-contain"
         />
       )}
 
       {showAnswer && showCorrectIndicator && (
-        <p className="font-pixel text-xs">{isFullyCorrect ? "CORRECT!" : "NOT QUITE"}</p>
+        <p className="font-mono text-xs uppercase tracking-wider font-bold">
+          {isFullyCorrect ? "Correct!" : "Not quite"}
+        </p>
       )}
 
       {children}
@@ -139,7 +137,7 @@ export default function FlashcardShell({
 
   return (
     <div
-      className={`nes-container is-rounded w-full max-w-xl bg-white relative ${
+      className={`border border-[var(--border)] bg-[var(--surface)] text-[var(--surface-foreground)] w-full max-w-xl relative ${
         hasHeader ? "p-0" : "space-y-5 pb-24"
       } ${justAnswered ? (isFullyCorrect ? "flash-correct" : "shake flash-wrong") : ""}`}
     >
@@ -147,8 +145,8 @@ export default function FlashcardShell({
       {confettiConfig && <ConfettiBurst config={confettiConfig} />}
 
       {hasHeader && (
-        <div className="bg-[#12314a] flex items-center justify-between px-3 py-2">
-          <span className="font-pixel text-[10px] text-white">{headerLeft}</span>
+        <div className="border-b border-[var(--border)] flex items-center justify-between px-3 py-2">
+          <span className="font-mono text-xs uppercase tracking-wider">{headerLeft}</span>
           {headerAction}
         </div>
       )}

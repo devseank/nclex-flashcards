@@ -2,65 +2,28 @@
 
 import { createPortal } from "react-dom";
 
-// Game-themed emoji, shared visual language with the cheer message.
-const CONFETTI_EMOJIS = ["🍄", "⭐", "🪙", "⚡", "🔥", "👾", "🎮"];
-const CONFETTI_COLORS = ["#f16722", "#35c6c3", "#f7d51d", "#92cc41", "#209cee", "#e76e55", "#a86ee0"];
+export type ConfettiConfig = { centerY: number; rotation: number };
 
-type Variant = "radial" | "shower" | "sidesweep";
-const VARIANTS: Variant[] = ["radial", "shower", "sidesweep"];
-const PIECE_COUNT = 11;
-
-function randomOf<T>(items: T[]): T {
-  return items[Math.floor(Math.random() * items.length)];
-}
-
-type Piece = {
-  content: string | null;
-  color: string | undefined;
-  angle: number | null;
-  drift: number;
-  startX: number;
-  delay: number;
-};
-
-export type ConfettiConfig = { variant: Variant; direction: 1 | -1; pieces: Piece[]; centerY: number };
-
-// Randomizes the burst's shape (radial/shower/sidesweep), direction, and
-// whether pieces are colored squares or emoji. Math.random() must not run
-// during render (React's purity rules), so callers build this inside an
-// event handler -- e.g. the moment a correct answer is revealed -- and pass
-// the result down as a prop, rather than this component rolling its own.
+// Math.random() must not run during render (React's purity rules), so
+// callers build this inside an event handler -- e.g. the moment a correct
+// answer is revealed -- and pass the result down as a prop, rather than
+// this component rolling its own.
 //
 // `centerY` captures the document-coordinate vertical center of the
 // *current* viewport (scrollY + half the viewport height) at the moment you
 // answer, since ConfettiBurst positions itself with a plain document
 // coordinate rather than tracking scroll live -- see the component below
-// for why.
+// for why. `rotation` gives the stamp its slight "rubber stamp" skew.
 export function buildConfettiConfig(): ConfettiConfig {
-  const variant = randomOf(VARIANTS);
-  const useEmoji = Math.random() < 0.5;
-  const direction = Math.random() < 0.5 ? 1 : -1;
   const centerY = window.scrollY + window.innerHeight / 2;
-
-  const pieces: Piece[] = Array.from({ length: PIECE_COUNT }, (_, i) => ({
-    content: useEmoji ? randomOf(CONFETTI_EMOJIS) : null,
-    color: useEmoji ? undefined : randomOf(CONFETTI_COLORS),
-    angle: variant === "radial" ? (360 / PIECE_COUNT) * i + (Math.random() * 20 - 10) : null,
-    // Also fans "sidesweep" pieces apart vertically -- without this they'd
-    // all travel the exact same path and visually collapse into one piece.
-    drift: Math.random() * 60 - 30,
-    // Scatters each piece's starting point across a wide horizontal band
-    // instead of a single point, so the burst reads as screen-wide rather
-    // than one small cluster.
-    startX: Math.random() * 280 - 140,
-    delay: i * 20 + Math.random() * 60,
-  }));
-
-  return { variant, direction, pieces, centerY };
+  const rotation = Math.random() * 8 - 4;
+  return { centerY, rotation };
 }
 
-// Brief celebratory burst on a correct answer -- purely presentational, pure
-// CSS keyframes drive the actual motion (no JS animation loop or timers), so
+// Brief celebratory stamp on a correct answer -- a HUD-style "[ CORRECT ]"
+// glyph stamp, replacing the old rainbow confetti/emoji particle burst
+// (dropped for the monochrome+signal-accent design). Purely presentational,
+// pure CSS keyframes drive the motion (no JS animation loop or timers), so
 // it never delays or blocks anything on screen.
 //
 // Portaled to document.body and placed with position:absolute at a plain
@@ -74,34 +37,17 @@ export function buildConfettiConfig(): ConfettiConfig {
 // class entirely -- it's not simulated, so every engine places it correctly
 // on the first paint.
 export default function ConfettiBurst({ config }: { config: ConfettiConfig }) {
-  const { variant, direction, pieces, centerY } = config;
+  const { centerY, rotation } = config;
 
   return createPortal(
     <div
-      className="pointer-events-none absolute z-50 overflow-visible"
-      style={{ top: centerY, left: "50%" }}
+      className="pointer-events-none absolute z-50"
+      style={{ top: centerY, left: "50%", transform: `translate(-50%, -50%) rotate(${rotation}deg)` }}
       aria-hidden="true"
     >
-      {pieces.map((piece, i) => (
-        <span
-          key={i}
-          className={`confetti-piece confetti-${variant} absolute ${
-            piece.content ? "text-3xl" : "w-4 h-4 border-2 border-black"
-          }`}
-          style={
-            {
-              backgroundColor: piece.color,
-              animationDelay: `${piece.delay}ms`,
-              "--confetti-angle": piece.angle != null ? `${piece.angle}deg` : "0deg",
-              "--confetti-drift": `${piece.drift}px`,
-              "--confetti-start-x": `${piece.startX}px`,
-              "--confetti-direction": direction,
-            } as React.CSSProperties
-          }
-        >
-          {piece.content}
-        </span>
-      ))}
+      <div className="stamp-in border-4 border-[var(--signal)] text-[var(--signal)] font-mono text-lg uppercase tracking-widest px-4 py-2 whitespace-nowrap">
+        ✓ Correct
+      </div>
     </div>,
     document.body,
   );

@@ -1,12 +1,16 @@
 import type { Metadata, Viewport } from "next";
-import { Press_Start_2P, Inter } from "next/font/google";
+import { JetBrains_Mono, IBM_Plex_Mono, Space_Mono } from "next/font/google";
 import { ThemeProvider } from "@/lib/theme";
+import { FontProvider } from "@/lib/font";
+import { TooltipProvider } from "@/components/ui/shadcn/tooltip";
 import "./globals.css";
 
 // Runs before hydration so the page never paints the wrong theme and then
 // flips -- must read the same localStorage key as THEME_STORAGE_KEY in
 // src/lib/theme.tsx (duplicated here as a literal since this script can't
 // import that module: it has to run standalone, before any JS bundle loads).
+// The font read/apply is bundled into the same script (one parse, not two)
+// -- must stay in sync with FONT_STORAGE_KEY/FONT_CLASSES in src/lib/font.tsx.
 const THEME_INIT_SCRIPT = `
 (function () {
   try {
@@ -14,18 +18,33 @@ const THEME_INIT_SCRIPT = `
     var isDark = pref === "dark" || (pref !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
     document.documentElement.classList.toggle("dark", isDark);
   } catch (e) {}
+  try {
+    var fontPref = localStorage.getItem("nclex-font");
+    var fontClass = fontPref === "plex" ? "font-plex" : fontPref === "space" ? "font-space" : "font-jetbrains";
+    document.documentElement.classList.add(fontClass);
+  } catch (e) {}
 })();
 `;
 
-const pixelFont = Press_Start_2P({
-  weight: "400",
-  variable: "--font-pixel",
+// All three loaded simultaneously as separate CSS variables so switching
+// the active mono font (FontToggle) is a pure `--font-mono` custom-property
+// remap via a `.font-*` class on <html> -- no runtime font fetch on switch,
+// see the design-tokens section of the plan doc.
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
   subsets: ["latin"],
 });
 
-const bodyFont = Inter({
-  variable: "--font-body",
+const ibmPlexMono = IBM_Plex_Mono({
+  variable: "--font-ibm-plex-mono",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
+const spaceMono = Space_Mono({
+  variable: "--font-space-mono",
+  subsets: ["latin"],
+  weight: ["400", "700"],
 });
 
 export const metadata: Metadata = {
@@ -49,14 +68,18 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${pixelFont.variable} ${bodyFont.variable} h-full antialiased`}
+      className={`${jetbrainsMono.variable} ${ibmPlexMono.variable} ${spaceMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body className="min-h-full flex flex-col">
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <FontProvider>
+            <TooltipProvider>{children}</TooltipProvider>
+          </FontProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -44,12 +44,14 @@ function SortableStep({
   letter,
   label,
   variant,
+  marker,
   disabled,
 }: {
   id: string;
   letter: string;
   label: string;
   variant: string;
+  marker?: string | null;
   disabled: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled });
@@ -64,17 +66,18 @@ function SortableStep({
     <div
       ref={setNodeRef}
       style={style}
-      className={`nes-btn w-full text-left text-base flex items-center gap-3 ${variant} ${
+      className={`border font-mono w-full text-left text-base py-2 px-3 flex items-center gap-3 ${variant} ${
         isDragging ? "opacity-50" : ""
       } ${disabled ? "" : "cursor-grab active:cursor-grabbing"}`}
       {...(disabled ? {} : { ...attributes, ...listeners })}
     >
       {!disabled && (
-        <span className="text-gray-400 select-none shrink-0" aria-hidden="true">
+        <span className="text-[var(--muted-foreground)] select-none shrink-0" aria-hidden="true">
           ⠿
         </span>
       )}
       <span>
+        {marker}
         {letter}. {label}
       </span>
     </div>
@@ -86,9 +89,9 @@ function SortableStep({
 // just recolored, instead of introducing a different visual notation.
 function StaticStepRow({ letter, label, variant }: { letter: string; label: string; variant: string }) {
   return (
-    <div className={`nes-btn w-full text-left text-base flex items-center gap-3 ${variant}`}>
+    <div className={`border font-mono w-full text-left text-base py-2 px-3 flex items-center gap-3 ${variant}`}>
       <span>
-        {letter}. {label}
+        ✓ {letter}. {label}
       </span>
     </div>
   );
@@ -178,7 +181,7 @@ export default function SequenceFlashcard({
       check={!showAnswer ? { label: "CHECK ORDER", onClick: reveal } : undefined}
     >
       <div className="space-y-2">
-        <p className="font-pixel text-[10px] text-gray-500">STEPS</p>
+        <p className="font-mono text-[10px] uppercase tracking-wider text-[var(--muted-foreground)]">STEPS</p>
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -189,7 +192,12 @@ export default function SequenceFlashcard({
             <div className="space-y-2">
               {order.map((choiceIndex, position) => {
                 const isRightSpot = showAnswer && question.correctOrder[position] === choiceIndex;
-                const variant = showAnswer ? (isRightSpot ? "is-success" : "is-error") : "";
+                const variant = showAnswer
+                  ? isRightSpot
+                    ? "border-[var(--signal)] bg-[var(--signal)] text-[var(--signal-foreground)]"
+                    : "border-[var(--border)] text-[var(--foreground)]"
+                  : "border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)]";
+                const marker = showAnswer ? (isRightSpot ? "✓ " : "✕ ") : null;
                 return (
                   <SortableStep
                     key={choiceIndex}
@@ -197,6 +205,7 @@ export default function SequenceFlashcard({
                     letter={LETTERS[choiceIndex]}
                     label={question.choices[choiceIndex]}
                     variant={variant}
+                    marker={marker}
                     disabled={showAnswer}
                   />
                 );
@@ -207,21 +216,25 @@ export default function SequenceFlashcard({
       </div>
 
       {!showAnswer && (
-        <button type="button" onClick={reset} className="font-pixel text-[10px] text-[var(--text-navy)] underline">
+        <button
+          type="button"
+          onClick={reset}
+          className="font-mono text-[10px] uppercase tracking-wider text-[var(--muted-foreground)] underline outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--signal)]"
+        >
           Reset order
         </button>
       )}
 
       {showAnswer && (
         <div className="space-y-2">
-          <p className="font-pixel text-[10px] text-gray-500">CORRECT ORDER</p>
+          <p className="font-mono text-[10px] uppercase tracking-wider text-[var(--muted-foreground)]">CORRECT ORDER</p>
           <div className="space-y-2">
             {question.correctOrder.map((choiceIndex) => (
               <StaticStepRow
                 key={choiceIndex}
                 letter={LETTERS[choiceIndex]}
                 label={question.choices[choiceIndex]}
-                variant="is-success"
+                variant="border-[var(--signal)] bg-[var(--signal)] text-[var(--signal-foreground)]"
               />
             ))}
           </div>
@@ -229,8 +242,10 @@ export default function SequenceFlashcard({
       )}
 
       {showAnswer && (
-        <div className="nes-container is-rounded space-y-2">
-          <p className="font-pixel text-xs">{isFullyCorrect ? "CORRECT!" : "NOT QUITE"}</p>
+        <div className="border border-[var(--border)] bg-[var(--surface)] p-4 space-y-2">
+          <p className="font-mono text-xs uppercase tracking-wider font-bold">
+            {isFullyCorrect ? "Correct!" : "Not quite"}
+          </p>
           {splitNumberedRationale(question.rationale).map((line, i) => (
             <p key={i} className="text-lg leading-snug">
               {line}

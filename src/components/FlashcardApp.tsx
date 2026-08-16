@@ -105,7 +105,7 @@ export default function FlashcardApp() {
   if (error) {
     return (
       <div className={pageClassName}>
-        <p className="font-pixel text-sm text-[var(--text-navy)] text-center leading-relaxed">
+        <p className="font-mono text-sm text-[var(--foreground)] text-center leading-relaxed">
           {error}
         </p>
       </div>

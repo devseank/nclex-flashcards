@@ -3,13 +3,9 @@
 import { useTheme } from "@/lib/theme";
 import { useHasMounted } from "@/lib/useHasMounted";
 import { ThemePreference } from "@/services/settings";
-import { Sun, Moon } from "@nsmr/pixelart-react";
+import { Sun, Moon } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-// @nsmr/pixelart-react, not a hand-rolled SVG -- its 24x24 blocky icons
-// already match nes.css's own pixel-art grain, and it's the only free
-// pixel-icon package found with a genuine standalone Sun (the more popular
-// `pixelarticons` only ships a sun *combined with a cloud* in its free
-// tier, no plain sun).
 const OPTIONS: { value: ThemePreference; label: string; Icon: typeof Sun }[] = [
   { value: "light", label: "Light mode", Icon: Sun },
   { value: "dark", label: "Dark mode", Icon: Moon },
@@ -35,9 +31,12 @@ export default function ThemeToggle() {
             aria-pressed={isActive}
             aria-label={label}
             title={label}
-            className={`nes-btn ${isActive ? "is-primary" : ""} flex items-center justify-center py-2`}
+            className={cn(
+              "border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] flex items-center justify-center py-2 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--signal)]",
+              isActive && "border-[var(--signal)] bg-[var(--signal)] text-[var(--signal-foreground)]",
+            )}
           >
-            <Icon />
+            <Icon size={16} />
           </button>
         );
       })}

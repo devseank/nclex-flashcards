@@ -89,19 +89,13 @@ export default function ClozeFlashcard({
           const pick = selected[blankIndex];
 
           if (!showAnswer) {
-            // nes.css's own `.nes-select { width: calc(100% - 8px) }` and
-            // `.nes-select select { width: 100% }` rules fight any
-            // Tailwind width utility here (same specificity, and nes.css's
-            // is a plain value, not auto, so min-w-* has nothing to
-            // shrink-to-fit against) -- inline styles are the reliable way
-            // to override both and get an inline, content-sized dropdown
-            // instead of one that claims the full sentence width.
             return (
-              <span key={i} className="nes-select inline-block align-middle mx-1" style={{ width: "auto" }}>
+              <span key={i} className="inline-block align-middle mx-1">
                 <select
                   aria-label={`Blank ${blankIndex + 1}`}
                   value={pick ?? ""}
                   onChange={(e) => pickOption(blankIndex, Number(e.target.value))}
+                  className="border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] font-mono text-sm px-1 py-0.5 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--signal)]"
                   style={{ width: "auto" }}
                 >
                   <option value="" disabled>
@@ -120,12 +114,19 @@ export default function ClozeFlashcard({
           const pickedCorrect = pick === blank.correctIndex;
           return (
             <span key={i} className="inline-flex flex-wrap items-center gap-1 mx-1 align-middle">
-              <span className={`nes-btn ${pickedCorrect ? "is-success" : "is-error"} text-sm py-1 px-2 !cursor-default`}>
+              <span
+                className={`border font-mono text-sm py-1 px-2 !cursor-default ${
+                  pickedCorrect
+                    ? "border-[var(--signal)] bg-[var(--signal)] text-[var(--signal-foreground)]"
+                    : "border-[var(--border)] text-[var(--foreground)]"
+                }`}
+              >
+                {pickedCorrect ? "✓ " : "✕ "}
                 {pick !== null ? blank.options[pick] : "(no answer)"}
               </span>
               {!pickedCorrect && (
-                <span className="nes-btn is-success text-sm py-1 px-2 !cursor-default">
-                  {blank.options[blank.correctIndex]}
+                <span className="border border-[var(--signal)] bg-[var(--signal)] text-[var(--signal-foreground)] font-mono text-sm py-1 px-2 !cursor-default">
+                  ✓ {blank.options[blank.correctIndex]}
                 </span>
               )}
             </span>
@@ -134,7 +135,7 @@ export default function ClozeFlashcard({
       </p>
 
       {showAnswer && question.rationale && (
-        <div className="nes-container is-rounded space-y-2">
+        <div className="border border-[var(--border)] bg-[var(--surface)] p-4 space-y-2">
           <p className="text-lg leading-snug">{question.rationale}</p>
         </div>
       )}

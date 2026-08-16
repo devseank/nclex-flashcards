@@ -20,7 +20,7 @@ export default function HistoryMode({
           key={opt.key}
           type="button"
           onClick={() => onSelect(opt.key)}
-          className="nes-btn w-full font-pixel text-xs py-2"
+          className="border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] font-mono w-full text-xs uppercase tracking-wider py-2 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--signal)]"
         >
           {opt.label}
         </button>

@@ -78,12 +78,17 @@
   }
 }
 
-/* Periodic light sweep -- used on the golden NEW badge and the PLAY button.
-   The element needs its own overflow-hidden so the sweep never spills onto
-   surrounding content. */
+/* HUD-style radar-scan sweep -- used on the NEW badge and the PLAY button
+   (both filled with --signal). A thin bright line crossing the element on a
+   loop, replacing the old diagonal skeuomorphic gloss. Uses
+   --signal-foreground (not --signal) for the line color specifically
+   because both consumers already fill their own background with --signal --
+   a --signal-colored line would be invisible against it. The element needs
+   its own overflow-hidden so the sweep never spills onto surrounding
+   content. */
 @keyframes shine-sweep {
-  0%, 20% { transform: translateX(-150%) skewX(-20deg); }
-  55%, 100% { transform: translateX(220%) skewX(-20deg); }
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
 .shine-sweep {
@@ -95,10 +100,11 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: 35%;
+  width: 2px;
   height: 100%;
-  background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.9), transparent);
-  animation: shine-sweep 2.6s ease-in-out infinite;
+  background: var(--signal-foreground);
+  box-shadow: 0 0 6px var(--signal-foreground);
+  animation: shine-sweep 2.6s linear infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -107,43 +113,29 @@
   }
 }
 
-/* Brief, CSS-only answer feedback. All under ~750ms and compositor-only
-   (opacity/transform), so nothing here ever delays revealing the actual
-   answer -- it's a decorative overlay on top of it. */
-@keyframes confetti-radial {
-  0% { transform: translate(calc(-50% + var(--confetti-start-x)), -50%) rotate(var(--confetti-angle)) translateY(0) scale(1); opacity: 1; }
-  100% { transform: translate(calc(-50% + var(--confetti-start-x)), -50%) rotate(var(--confetti-angle)) translateY(-90px) scale(0.5); opacity: 0; }
+/* HUD-style "stamp" celebration on a correct answer (ConfettiBurst.tsx) --
+   replaces the old rainbow confetti/emoji particle burst, which had no home
+   in the monochrome+signal-accent design. Overshoots slightly on entry (a
+   rubber-stamp "thump") then holds and fades, all compositor-only
+   (opacity/transform) so it never delays or blocks anything on screen. */
+@keyframes stamp-in {
+  0% { transform: scale(2); opacity: 0; }
+  12% { transform: scale(0.92); opacity: 1; }
+  20% { transform: scale(1); opacity: 1; }
+  75% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1); opacity: 0; }
 }
 
-@keyframes confetti-shower {
-  0% { transform: translate(calc(-50% + var(--confetti-start-x) + var(--confetti-drift)), -50%) translateY(0); opacity: 1; }
-  100% { transform: translate(calc(-50% + var(--confetti-start-x) + var(--confetti-drift) * 3), -50%) translateY(-100px); opacity: 0; }
+.stamp-in {
+  animation: stamp-in 900ms ease-out both;
 }
-
-@keyframes confetti-sidesweep {
-  0% { transform: translate(calc(-50% + var(--confetti-start-x)), -50%) translate(0, var(--confetti-drift)) rotate(0deg); opacity: 1; }
-  100% {
-    transform: translate(calc(-50% + var(--confetti-start-x)), -50%) translate(calc(var(--confetti-direction) * 110px), var(--confetti-drift))
-      rotate(calc(var(--confetti-direction) * 180deg));
-    opacity: 0;
-  }
-}
-
-.confetti-piece {
-  left: 50%;
-  top: 50%;
-  animation-duration: 700ms;
-  animation-timing-function: ease-out;
-  animation-fill-mode: both;
-}
-
-.confetti-radial { animation-name: confetti-radial; }
-.confetti-shower { animation-name: confetti-shower; }
-.confetti-sidesweep { animation-name: confetti-sidesweep; }
 
 /* A translucent veil that pulses in and back out, rather than swapping the
    card's actual background to a solid color (which read as jarring and "too
-   black" against the pixel-art white card when it was solid near-black). */
+   black" against the pixel-art white card when it was solid near-black).
+   flash-wrong carries an explicit ✕ glyph (not a second color) as its
+   distinguishing signal -- the one-accent-color rule reserves --signal for
+   correct/active states, so "wrong" can't just be a red tint anymore. */
 @keyframes flash-pulse {
   0%, 100% { opacity: 0; }
   30%, 70% { opacity: 1; }
@@ -161,14 +153,22 @@
   opacity: 0;
   pointer-events: none;
   animation: flash-pulse 380ms ease-in-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono), monospace;
+  font-weight: 700;
 }
 
 .flash-wrong::before {
-  background: rgba(50, 15, 15, 0.35);
+  content: "✕";
+  font-size: 4rem;
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--foreground) 12%, transparent);
 }
 
 .flash-correct::before {
-  background: rgba(255, 210, 0, 0.45);
+  background: color-mix(in srgb, var(--signal) 25%, transparent);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -179,7 +179,7 @@
   .flash-correct::before {
     animation: none;
   }
-  .confetti-piece {
+  .stamp-in {
     animation: none;
     opacity: 0;
   }

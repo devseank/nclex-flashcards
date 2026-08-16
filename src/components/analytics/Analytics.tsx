@@ -1,18 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  LabelList,
-  LabelProps,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { CartesianGrid, Cell, LabelList, LabelProps, ResponsiveContainer, Tooltip, XAxis, YAxis, BarChart as RechartsBarChart, Bar } from "recharts";
 import { fetchAttempts, Attempt } from "@/services/attempts";
 import { Question } from "@/services/questions";
 import PixelWindow from "@/components/ui/PixelWindow";
@@ -20,35 +9,42 @@ import TitleBar from "@/components/ui/TitleBar";
 import HeaderActions from "@/components/ui/HeaderActions";
 import InfoTooltip from "@/components/ui/InfoTooltip";
 import RangeSelect, { RANGE_LABELS } from "@/components/ui/RangeSelect";
+import { BarChart } from "@/components/ui/tremor/BarChart";
 import { getErrorMessage } from "@/lib/errorMessage";
 import { startOfToday, startOfWeek, startOfMonth } from "@/lib/dateRanges";
 import { AnalyticsRange, buildTrendData } from "@/lib/analyticsTrend";
 import { useIsDarkMode } from "@/lib/useIsDarkMode";
 
-// Bar fill colors stay fixed in both themes -- they're already saturated
-// enough to read fine against either a light or dark card.
-const BLUE = "#209cee";
-const GREEN = "#92cc41";
-const YELLOW = "#f7d51d";
-const RED = "#e76e55";
-
-// Axis/grid/tooltip colors, unlike the bar fills above, MUST flip with the
-// theme (dark navy text is invisible on a dark card) -- but they're passed
-// as SVG stroke/fill props straight to recharts, which needs a literal
-// color string, not `var(--...)` (recharts doesn't re-render just because
-// a CSS custom property changed underneath it). useIsDarkMode() makes this
-// a real prop-value change on a real re-render instead.
-const NAVY_LIGHT = "#12314a";
-const NAVY_DARK = "#cfe6ff";
-const GRID_LIGHT = "#ddd";
-const GRID_DARK = "#3d4c63";
-const TOOLTIP_BG_LIGHT = "#ffffff";
-const TOOLTIP_BG_DARK = "#1b2432";
+// The category-accuracy chart still needs per-row conditional coloring
+// (highlight only the categories that need review) -- a shape Tremor Raw's
+// BarChart doesn't support (its `colors` prop assigns one color per data
+// *series*, not per row within one series), so it stays on raw recharts,
+// restyled to the new tokens. The trend chart below (a single plain series)
+// has no such requirement and uses the vendored Tremor BarChart instead.
+//
+// recharts renders plain SVG with whatever color values it's given at
+// render time -- it has no idea about CSS custom properties, so passing
+// `var(--foreground)` as a stroke/fill prop won't update when the theme
+// toggles. These literal light/dark pairs mirror theme.css's own token
+// values; useIsDarkMode() makes them a real prop-value change on a real
+// re-render instead.
+const FOREGROUND_LIGHT = "#111111";
+const FOREGROUND_DARK = "#f2f2ee";
+const BORDER_MUTED_LIGHT = "#d9d9d4";
+const BORDER_MUTED_DARK = "#262626";
+const MUTED_FOREGROUND_LIGHT = "#5c5c58";
+const MUTED_FOREGROUND_DARK = "#9a9a94";
+const SURFACE_LIGHT = "#ffffff";
+const SURFACE_DARK = "#141414";
+const BORDER_LIGHT = "#000000";
+const BORDER_DARK = "#e8e8e2";
+const SIGNAL_LIGHT = "#b87400";
+const SIGNAL_DARK = "#ffb000";
 
 const TREND_TOOLTIP =
   "How many questions you've answered, grouped by hour (Today), day (This week), or week (All time).";
 const CATEGORIES_TOOLTIP =
-  "Accuracy per category for the selected range, sorted worst to best so you know what to review first. Green = 80%+, yellow = 50-79%, red = under 50%.";
+  "Accuracy per category for the selected range, sorted worst to best so you know what to review first. Highlighted = under 50%, needs review.";
 
 export default function Analytics({
   questions,
@@ -60,23 +56,25 @@ export default function Analytics({
   const [trendRange, setTrendRange] = useState<AnalyticsRange>("week");
   const [categoriesRange, setCategoriesRange] = useState<AnalyticsRange>("week");
   const isDark = useIsDarkMode();
-  const navy = isDark ? NAVY_DARK : NAVY_LIGHT;
-  const gridStroke = isDark ? GRID_DARK : GRID_LIGHT;
+  const foreground = isDark ? FOREGROUND_DARK : FOREGROUND_LIGHT;
+  const mutedForeground = isDark ? MUTED_FOREGROUND_DARK : MUTED_FOREGROUND_LIGHT;
+  const gridStroke = isDark ? BORDER_MUTED_DARK : BORDER_MUTED_LIGHT;
+  const signal = isDark ? SIGNAL_DARK : SIGNAL_LIGHT;
   const tooltipStyle = {
     contentStyle: {
-      border: `2px solid ${navy}`,
+      border: `1px solid ${isDark ? BORDER_DARK : BORDER_LIGHT}`,
       borderRadius: 0,
-      fontFamily: "var(--font-body), sans-serif",
+      fontFamily: "var(--font-mono), monospace",
       fontSize: 12,
-      backgroundColor: isDark ? TOOLTIP_BG_DARK : TOOLTIP_BG_LIGHT,
-      color: navy,
+      backgroundColor: isDark ? SURFACE_DARK : SURFACE_LIGHT,
+      color: foreground,
     },
-    labelStyle: { color: navy, fontWeight: 700 },
+    labelStyle: { color: foreground, fontWeight: 700 },
     // recharts' own item-value line defaults to a hardcoded black (or the
     // bar's own fill color) when no itemStyle is given -- fine against the
     // light tooltip background, but nearly invisible against the dark one,
     // since nothing here was overriding it before.
-    itemStyle: { color: navy },
+    itemStyle: { color: foreground },
   };
 
   // Renders the category name in the reserved right-hand margin (see
@@ -89,9 +87,9 @@ export default function Analytics({
   // edge with textAnchor="end" right-aligns every name at one consistent x
   // regardless of how long that row's own bar is -- never inside a bar,
   // never at a ragged, differently-placed spot per row. Always the
-  // theme-aware `navy`: this column sits in the margin, past where any bar
-  // can reach, so it's always over the plain card background, never a bar's
-  // own fill color.
+  // theme-aware `foreground`: this column sits in the margin, past where any
+  // bar can reach, so it's always over the plain card background, never a
+  // bar's own fill color.
   function renderCategoryLabel(props: LabelProps) {
     const y = Number(props.y ?? 0);
     const height = Number(props.height ?? 0);
@@ -105,7 +103,7 @@ export default function Analytics({
     // puts every label inside that reserved strip, no further offset needed.
     const rightEdge = Number(parentViewBox?.x ?? 0) + Number(parentViewBox?.width ?? 0) - 4;
     return (
-      <text x={rightEdge} y={y + height / 2} fontSize={10} fill={navy} textAnchor="end" dominantBaseline="middle">
+      <text x={rightEdge} y={y + height / 2} fontSize={10} fill={foreground} textAnchor="end" dominantBaseline="middle">
         {props.value}
       </text>
     );
@@ -123,7 +121,7 @@ export default function Analytics({
     return (
       <div className="w-full max-w-xl flex flex-col gap-4">
         {titleBar}
-        <p className="font-pixel text-sm text-[var(--text-navy)] text-center leading-relaxed">{error}</p>
+        <p className="font-mono text-sm text-[var(--foreground)] text-center leading-relaxed">{error}</p>
       </div>
     );
   }
@@ -184,16 +182,16 @@ export default function Analytics({
       <PixelWindow title="STATS.EXE" wide>
         <div className="grid grid-cols-3 gap-2 text-center">
           <div>
-            <p className="font-pixel text-xl text-[var(--text-navy-strong)]">{todayCount}</p>
-            <p className="text-xs text-gray-500">Today</p>
+            <p className="font-mono text-xl text-[var(--foreground)]">{todayCount}</p>
+            <p className="text-xs text-[var(--muted-foreground)]">Today</p>
           </div>
           <div>
-            <p className="font-pixel text-xl text-[var(--text-navy-strong)]">{weekCount}</p>
-            <p className="text-xs text-gray-500">This week</p>
+            <p className="font-mono text-xl text-[var(--foreground)]">{weekCount}</p>
+            <p className="text-xs text-[var(--muted-foreground)]">This week</p>
           </div>
           <div>
-            <p className="font-pixel text-xl text-[var(--text-navy-strong)]">{monthCount}</p>
-            <p className="text-xs text-gray-500">This month</p>
+            <p className="font-mono text-xl text-[var(--foreground)]">{monthCount}</p>
+            <p className="text-xs text-[var(--muted-foreground)]">This month</p>
           </div>
         </div>
       </PixelWindow>
@@ -201,17 +199,16 @@ export default function Analytics({
       <PixelWindow title="TREND.EXE" titleExtra={<InfoTooltip text={TREND_TOOLTIP} />} wide>
         <div className="flex flex-col gap-3">
           <RangeSelect value={trendRange} onChange={setTrendRange} />
-          <div className="h-48 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={trendData}>
-                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
-                <XAxis dataKey="label" fontSize={10} stroke={navy} tick={{ fill: navy }} />
-                <YAxis allowDecimals={false} fontSize={10} stroke={navy} tick={{ fill: navy }} width={24} />
-                <Tooltip {...tooltipStyle} />
-                <Bar dataKey="count" fill={BLUE} radius={0} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          <BarChart
+            data={trendData}
+            index="label"
+            categories={["count"]}
+            colors={["signal"]}
+            showLegend={false}
+            allowDecimals={false}
+            valueFormatter={(v) => `${v}`}
+            className="h-48 font-mono"
+          />
         </div>
       </PixelWindow>
 
@@ -221,9 +218,9 @@ export default function Analytics({
           {categoryData.length > 0 ? (
             <div style={{ height: Math.max(160, categoryData.length * 40) }} className="w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={categoryData} layout="vertical" margin={{ left: 8, right: categoryChartRightMargin }}>
+                <RechartsBarChart data={categoryData} layout="vertical" margin={{ left: 8, right: categoryChartRightMargin }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
-                  <XAxis type="number" domain={[0, 100]} fontSize={10} stroke={navy} tick={{ fill: navy }} />
+                  <XAxis type="number" domain={[0, 100]} fontSize={10} stroke={foreground} tick={{ fill: foreground }} />
                   {/* No visible tick text -- category names render in the
                       reserved right-hand margin via renderCategoryLabel
                       below, so this axis only needs to exist for the
@@ -234,16 +231,16 @@ export default function Analytics({
                     {categoryData.map((entry, i) => (
                       <Cell
                         key={i}
-                        fill={entry.accuracy >= 80 ? GREEN : entry.accuracy >= 50 ? YELLOW : RED}
+                        fill={entry.accuracy < 50 ? signal : mutedForeground}
                       />
                     ))}
                     <LabelList dataKey="category" content={renderCategoryLabel} />
                   </Bar>
-                </BarChart>
+                </RechartsBarChart>
               </ResponsiveContainer>
             </div>
           ) : (
-            <p className="text-sm text-gray-500 text-center">
+            <p className="text-sm text-[var(--muted-foreground)] text-center">
               {attempts.length === 0
                 ? "No attempts yet — answer some questions to see stats here."
                 : `No attempts in "${RANGE_LABELS[categoriesRange]}" — try a wider range.`}

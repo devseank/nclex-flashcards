@@ -32,16 +32,17 @@ export type StickyActionBarCheck = {
   disabled?: boolean;
 };
 
-// A disabled button swaps to nes.css's own is-disabled variant (a flat grey
-// fill) rather than dimming is-primary's blue with opacity -- opacity alone
-// reads as "still blue, just faded" rather than clearly inert, and nes.css's
-// own :active press effect is only suppressed for buttons carrying the
-// is-disabled class (see nes.css's `:active:not(.is-disabled)` rules), so
-// this also stops the pressed-in shadow shift from flashing on a tap that
-// isn't actually going to do anything.
-function actionButtonVariant(disabled: boolean | undefined): string {
-  return disabled ? "is-disabled" : "is-primary";
+// A disabled button swaps to a flat muted fill rather than dimming the
+// signal-accent fill with opacity -- opacity alone reads as "still active,
+// just faded" rather than clearly inert.
+function actionButtonClass(disabled: boolean | undefined): string {
+  return disabled
+    ? "border border-[var(--border)] bg-[var(--muted)] text-[var(--muted-foreground)] cursor-not-allowed"
+    : "border border-[var(--signal)] bg-[var(--signal)] text-[var(--signal-foreground)]";
 }
+
+const BUTTON_BASE =
+  "flex-1 font-mono text-xs uppercase tracking-wider py-2 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--signal)]";
 
 export default function StickyNextBar({
   onClick,
@@ -54,7 +55,7 @@ export default function StickyNextBar({
 }) {
   return createPortal(
     <div
-      className="gpu-layer fixed inset-x-0 bottom-0 z-40 border-t-4 border-black bg-white px-4 pt-3"
+      className="gpu-layer fixed inset-x-0 bottom-0 z-40 border-t border-[var(--border)] bg-[var(--surface)] px-4 pt-3"
       style={{ paddingBottom: `calc(${FOOTER_BUFFER} + env(safe-area-inset-bottom))` }}
     >
       <div className="mx-auto flex w-full max-w-xl gap-3">
@@ -63,7 +64,7 @@ export default function StickyNextBar({
             type="button"
             disabled={check.disabled}
             onClick={check.onClick}
-            className={`nes-btn flex-1 font-pixel text-xs py-2 ${actionButtonVariant(check.disabled)}`}
+            className={`${BUTTON_BASE} ${actionButtonClass(check.disabled)}`}
           >
             {check.label}
           </button>
@@ -72,7 +73,7 @@ export default function StickyNextBar({
           type="button"
           disabled={disabled}
           onClick={onClick}
-          className={`nes-btn flex-1 font-pixel text-xs py-2 ${actionButtonVariant(disabled)}`}
+          className={`${BUTTON_BASE} ${actionButtonClass(disabled)}`}
         >
           NEXT
         </button>

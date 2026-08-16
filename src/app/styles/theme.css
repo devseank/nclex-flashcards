@@ -4,67 +4,115 @@
    device setting instead of only ever following it. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* --- Mono-brutalist "HUD" design tokens ---
+   The app's full token set (see /Users/sean/.claude/plans/buzzing-orbiting-newell.md
+   for the overhaul this replaced -- nes.css/pixel-art -- and why). */
 :root {
-  --background: #eaf2fb;
-  --card-bg: #ffffff;
-  --text-navy: #33415c;
-  --text-navy-strong: #12314a;
+  --background: #f5f4f0;
+  --foreground: #111111;
+  --surface: #ffffff;
+  --surface-foreground: #111111;
+  --border: #000000;
+  --border-muted: #d9d9d4;
+  --muted: #ececea;
+  --muted-foreground: #5c5c58;
+  --signal: #b87400;
+  --signal-foreground: #0a0a0a;
+  --destructive: var(--foreground);
+  --destructive-foreground: var(--background);
+  --radius: 0rem;
 }
 
 .dark {
-  --background: #10161f;
-  --card-bg: #1b2432;
-  --text-navy: #9fc9ff;
-  --text-navy-strong: #cfe6ff;
+  --background: #0a0a0a;
+  --foreground: #f2f2ee;
+  --surface: #141414;
+  --surface-foreground: #f2f2ee;
+  --border: #e8e8e2;
+  --border-muted: #262626;
+  --muted: #1c1c1c;
+  --muted-foreground: #9a9a94;
+  --signal: #ffb000;
+  --signal-foreground: #0a0a0a;
+  --destructive: var(--foreground);
+  --destructive-foreground: var(--background);
+}
 
-  /* Dimmer counterparts of nes.css's is-primary/is-success/is-warning/
-     is-error accent colors -- same hue, pulled down in lightness/saturation
-     so the colored buttons don't glow at full light-mode brightness against
-     a near-black background. Named per-variant (base/hover/bevel, matching
-     the three shades nes.css itself uses per variant) and referenced by
-     nes-overrides.css instead of repeating hex values across each variant's
-     6 selectors. */
-  --dim-primary: #1d5f8a;
-  --dim-primary-hover: #17516f;
-  --dim-primary-bevel: #0c3550;
+/* Default active mono font, until the FontProvider/FontToggle
+   (src/lib/font.tsx, src/components/ui/FontToggle.tsx) applies the user's
+   saved choice via `.font-jetbrains`/`.font-plex`/`.font-space` on <html>
+   (each remapping this same variable). */
+:root {
+  --font-mono: var(--font-jetbrains-mono);
+}
 
-  --dim-success: #4c7a2e;
-  --dim-success-hover: #3f6626;
-  --dim-success-bevel: #274216;
+.font-jetbrains {
+  --font-mono: var(--font-jetbrains-mono);
+}
 
-  --dim-warning: #b8952f;
-  --dim-warning-hover: #9c7d27;
-  --dim-warning-bevel: #6b5719;
+.font-plex {
+  --font-mono: var(--font-ibm-plex-mono);
+}
 
-  --dim-error: #99392c;
-  --dim-error-hover: #7f2e24;
-  --dim-error-bevel: #4f1b16;
+.font-space {
+  --font-mono: var(--font-space-mono);
 }
 
 @theme inline {
   --color-background: var(--background);
-  --font-pixel: var(--font-pixel);
-  --font-body: var(--font-body);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-foreground: var(--surface-foreground);
+  --color-border: var(--border);
+  --color-border-muted: var(--border-muted);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-signal: var(--signal);
+  --color-signal-foreground: var(--signal-foreground);
+  /* So the vendored Tremor chart's "bg-signal-500"/"stroke-signal-500"/
+     "fill-signal-500" utilities (chartColors keys need a numbered shade,
+     matching Tailwind's own scale-step convention) resolve to the same
+     --signal driving the rest of the app, not a separate hardcoded hue. */
+  --color-signal-500: var(--signal);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-ring: var(--signal);
+  --radius: var(--radius);
+
+  /* shadcn plumbing aliases -- kept as pure neutrals, distinct from
+     `--color-signal` (the one brand accent) so the two concepts never
+     collide: shadcn's "accent" just means "subtle hover/highlight tint". */
+  --color-primary: var(--foreground);
+  --color-primary-foreground: var(--background);
+  --color-secondary: var(--surface);
+  --color-secondary-foreground: var(--foreground);
+  --color-accent: var(--border-muted);
+  --color-accent-foreground: var(--foreground);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--surface-foreground);
+  --color-input: var(--border);
+
+  /* Squared corners everywhere -- shadcn's own components reach for
+     rounded-sm/md/lg/xl throughout, so all four scale steps need to
+     resolve to 0, not just --radius itself. */
+  --radius-sm: 0rem;
+  --radius-md: 0rem;
+  --radius-lg: 0rem;
+  --radius-xl: 0rem;
+
+  --font-mono: var(--font-mono);
 }
 
-/* NES.css defaults body to "Press Start 2P" everywhere; override for readability. */
 html,
 body,
 pre,
 code,
 kbd,
 samp {
-  font-family: var(--font-body), sans-serif;
+  font-family: var(--font-mono), monospace;
 }
 
 body {
   background: var(--background);
-}
-
-.dark body {
-  color: #dbe4f0;
-}
-
-.font-pixel {
-  font-family: var(--font-pixel), monospace;
+  color: var(--foreground);
 }

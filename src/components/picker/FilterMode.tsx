@@ -5,24 +5,23 @@ import { Question } from "@/services/questions";
 import { getAllCategories, getAllTags, getTagsForCategories, getAllSources } from "@/lib/tags";
 import { QuestionKind, KIND_LABELS } from "@/lib/questionKind";
 import { QuestionFilter, queryQuestions } from "@/lib/questionFilter";
-import { categoryVariant } from "@/lib/categoryVariant";
 
 const KIND_OPTIONS: QuestionKind[] = ["single", "sata", "sequence", "grid", "cloze", "bowtie", "hotspot"];
 
-// One toggle button shared by all three facets below -- only the selected
-// color varies per facet (see callers), so a selected category/kind/tag
-// chip never gets confused for one another at a glance. Laid out 2-per-row
-// (see the grid wrappers below) rather than one full-width button per row,
-// since these lists can get long (27+ tags in the real question bank).
+// One toggle button shared by all four facets below -- selected always
+// reads as the one signal accent color, regardless of facet, since color no
+// longer distinguishes category/type/tag/source from one another (that was
+// nes.css-era per-variant coding; the new design reserves color for
+// selected/active state only). Laid out 2-per-row (see the grid wrappers
+// below) rather than one full-width button per row, since these lists can
+// get long (27+ tags in the real question bank).
 function ToggleButton({
   label,
   isSelected,
-  selectedVariant,
   onClick,
 }: {
   label: string;
   isSelected: boolean;
-  selectedVariant: string;
   onClick: () => void;
 }) {
   return (
@@ -30,7 +29,11 @@ function ToggleButton({
       type="button"
       onClick={onClick}
       aria-pressed={isSelected}
-      className={`nes-btn ${isSelected ? selectedVariant : ""} w-full font-pixel text-[8px] leading-tight py-2 px-1`}
+      className={`border font-mono w-full text-[10px] leading-tight py-2 px-1 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--signal)] ${
+        isSelected
+          ? "border-[var(--signal)] bg-[var(--signal)] text-[var(--signal-foreground)]"
+          : "border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)]"
+      }`}
     >
       {isSelected ? "✓ " : ""}
       {label.toUpperCase()}
@@ -103,49 +106,37 @@ export default function FilterMode({
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <p className="text-xs text-gray-400">CATEGORY (optional, pick any)</p>
+        <p className="font-mono text-xs uppercase tracking-wider text-[var(--muted-foreground)]">CATEGORY (optional, pick any)</p>
         <div className="grid grid-cols-2 gap-2">
-          <ToggleButton label="ALL" isSelected={categories.length === 0} selectedVariant="is-warning" onClick={clearCategories} />
+          <ToggleButton label="ALL" isSelected={categories.length === 0} onClick={clearCategories} />
           {allCategories.map((c) => (
-            <ToggleButton
-              key={c}
-              label={c}
-              isSelected={categories.includes(c)}
-              selectedVariant={categoryVariant(c)}
-              onClick={() => toggleCategory(c)}
-            />
+            <ToggleButton key={c} label={c} isSelected={categories.includes(c)} onClick={() => toggleCategory(c)} />
           ))}
         </div>
       </div>
 
       <div className="space-y-2">
-        <p className="text-xs text-gray-400">TYPE (optional, pick any)</p>
+        <p className="font-mono text-xs uppercase tracking-wider text-[var(--muted-foreground)]">TYPE (optional, pick any)</p>
         <div className="grid grid-cols-2 gap-2">
-          <ToggleButton label="ALL" isSelected={kinds.length === 0} selectedVariant="is-primary" onClick={() => setKinds([])} />
+          <ToggleButton label="ALL" isSelected={kinds.length === 0} onClick={() => setKinds([])} />
           {KIND_OPTIONS.map((k) => (
-            <ToggleButton
-              key={k}
-              label={KIND_LABELS[k]}
-              isSelected={kinds.includes(k)}
-              selectedVariant="is-primary"
-              onClick={() => toggleKind(k)}
-            />
+            <ToggleButton key={k} label={KIND_LABELS[k]} isSelected={kinds.includes(k)} onClick={() => toggleKind(k)} />
           ))}
         </div>
       </div>
 
       {tagPool.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs text-gray-400">TAGS (optional, pick any)</p>
+          <p className="font-mono text-xs uppercase tracking-wider text-[var(--muted-foreground)]">TAGS (optional, pick any)</p>
           <input
             type="text"
-            className="nes-input font-pixel text-xs"
+            className="border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] font-mono text-xs px-2 py-1.5 w-full outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--signal)]"
             placeholder="Search tags..."
             value={tagSearch}
             onChange={(e) => setTagSearch(e.target.value)}
           />
           <div className="grid grid-cols-2 gap-2">
-            <ToggleButton label="ALL" isSelected={tags.length === 0} selectedVariant="is-success" onClick={() => setTags([])} />
+            <ToggleButton label="ALL" isSelected={tags.length === 0} onClick={() => setTags([])} />
             {visibleTags.map((t) => {
               // Count for this tag alone (category/type applied, but not
               // combined with any OTHER currently-selected tags) -- with OR
@@ -159,29 +150,27 @@ export default function FilterMode({
                   key={t}
                   label={`${t} (${tagMatchCount})`}
                   isSelected={tags.includes(t)}
-                  selectedVariant="is-success"
                   onClick={() => toggleTag(t)}
                 />
               );
             })}
           </div>
           {visibleTags.length === 0 && (
-            <p className="text-xs text-gray-400">No tags match &quot;{tagSearch}&quot;.</p>
+            <p className="font-mono text-xs text-[var(--muted-foreground)]">No tags match &quot;{tagSearch}&quot;.</p>
           )}
         </div>
       )}
 
       {allSources.length > 1 && (
         <div className="space-y-2">
-          <p className="text-xs text-gray-400">SOURCE (optional, pick any)</p>
+          <p className="font-mono text-xs uppercase tracking-wider text-[var(--muted-foreground)]">SOURCE (optional, pick any)</p>
           <div className="grid grid-cols-2 gap-2">
-            <ToggleButton label="ALL" isSelected={sources.length === 0} selectedVariant="is-error" onClick={() => setSources([])} />
+            <ToggleButton label="ALL" isSelected={sources.length === 0} onClick={() => setSources([])} />
             {allSources.map((s) => (
               <ToggleButton
                 key={s}
                 label={s.trim() === "" ? "(unknown)" : s}
                 isSelected={sources.includes(s)}
-                selectedVariant="is-error"
                 onClick={() => toggleSource(s)}
               />
             ))}
@@ -190,10 +179,18 @@ export default function FilterMode({
       )}
 
       <div className="space-y-2 pt-2">
-        <button type="button" onClick={() => onPlay(filter)} className="nes-btn is-primary w-full font-pixel text-xs py-2">
+        <button
+          type="button"
+          onClick={() => onPlay(filter)}
+          className="border border-[var(--signal)] bg-[var(--signal)] text-[var(--signal-foreground)] font-mono w-full text-xs uppercase tracking-wider py-2 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--signal)]"
+        >
           PLAY ({matchCount})
         </button>
-        <button type="button" onClick={() => onMostWrong(filter)} className="nes-btn is-error w-full font-pixel text-xs py-2">
+        <button
+          type="button"
+          onClick={() => onMostWrong(filter)}
+          className="border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] font-mono w-full text-xs uppercase tracking-wider py-2 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--signal)]"
+        >
           MOST WRONG ({matchCount})
         </button>
       </div>

@@ -86,13 +86,19 @@ export default function GridFlashcard({
                 const isCorrectCell = showAnswer && question.gridAnswers[row]?.includes(colIndex);
                 const isWrongSelectedCell = showAnswer && isSelected && !isCorrectCell;
 
-                let variant = "";
+                let variant = "border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)]";
+                let marker = null;
                 if (showAnswer) {
-                  if (isCorrectCell) variant = "is-success";
-                  else if (isWrongSelectedCell) variant = "is-error";
-                  else variant = "is-disabled";
+                  if (isCorrectCell) {
+                    variant = "border-[var(--signal)] bg-[var(--signal)] text-[var(--signal-foreground)]";
+                    marker = "✓ ";
+                  } else if (isWrongSelectedCell) {
+                    marker = "✕ ";
+                  } else {
+                    variant = "border-[var(--border-muted)] text-[var(--muted-foreground)]";
+                  }
                 } else if (isSelected) {
-                  variant = "is-primary";
+                  variant = "border-[var(--signal)] bg-[var(--signal)] text-[var(--signal-foreground)]";
                 }
 
                 return (
@@ -102,8 +108,9 @@ export default function GridFlashcard({
                     aria-pressed={isSelected}
                     disabled={showAnswer}
                     onClick={() => toggleCell(row, colIndex)}
-                    className={`nes-btn w-full text-xs py-2 ${variant}`}
+                    className={`border font-mono w-full text-xs py-2 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--signal)] ${variant}`}
                   >
+                    {marker}
                     {column}
                   </button>
                 );
@@ -114,7 +121,7 @@ export default function GridFlashcard({
       </div>
 
       {showAnswer && question.rationale && (
-        <div className="nes-container is-rounded space-y-2">
+        <div className="border border-[var(--border)] bg-[var(--surface)] p-4 space-y-2">
           <p className="text-lg leading-snug">{question.rationale}</p>
         </div>
       )}

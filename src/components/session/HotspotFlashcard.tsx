@@ -110,7 +110,7 @@ export default function HotspotFlashcard({
       check={!showAnswer ? { label: "CHECK ANSWER", onClick: reveal, disabled: !clickPoint } : undefined}
     >
       {question.imageUrl && (
-        <div className="relative w-full h-80 border-4 border-black rounded overflow-hidden bg-gray-100">
+        <div className="relative w-full h-80 border border-[var(--border)] overflow-hidden bg-[var(--muted)]">
           {/* eslint-disable-next-line @next/next/no-img-element -- static export (next/image needs no server either way, this app already sets images.unoptimized) */}
           <img
             ref={imgRef}
@@ -122,15 +122,19 @@ export default function HotspotFlashcard({
           />
 
           {contentRect && clickPoint && (
+            // Filled = a hit (provisional pick, or confirmed correct); hollow
+            // outline-only = confirmed miss -- distinguishing "hit" vs "miss"
+            // by fill instead of a second color, per the one-signal-accent
+            // rule (no red).
             <span
               aria-hidden="true"
-              className="absolute rounded-full border-2 border-black -translate-x-1/2 -translate-y-1/2"
+              className="absolute rounded-full border-2 border-[var(--foreground)] -translate-x-1/2 -translate-y-1/2"
               style={{
                 left: contentRect.left + clickPoint.x * contentRect.width,
                 top: contentRect.top + clickPoint.y * contentRect.height,
                 width: 20,
                 height: 20,
-                backgroundColor: showAnswer ? (isFullyCorrect ? "#92cc41" : "#e76e55") : "#209cee",
+                backgroundColor: showAnswer && !isFullyCorrect ? "transparent" : "var(--signal)",
               }}
             />
           )}
@@ -138,7 +142,7 @@ export default function HotspotFlashcard({
           {contentRect && showAnswer && (
             <span
               aria-hidden="true"
-              className="absolute border-4 border-[#92cc41] pointer-events-none"
+              className="absolute border-2 border-[var(--signal)] pointer-events-none"
               style={{
                 left: contentRect.left + question.hotspotRegion.x * contentRect.width,
                 top: contentRect.top + question.hotspotRegion.y * contentRect.height,
@@ -151,7 +155,7 @@ export default function HotspotFlashcard({
       )}
 
       {showAnswer && question.rationale && (
-        <div className="nes-container is-rounded space-y-2">
+        <div className="border border-[var(--border)] bg-[var(--surface)] p-4 space-y-2">
           <p className="text-lg leading-snug">{question.rationale}</p>
         </div>
       )}

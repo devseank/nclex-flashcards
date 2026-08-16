@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { X } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export default function PixelWindow({
   title,
@@ -31,11 +33,16 @@ export default function PixelWindow({
 
   return (
     <div
-      className={`nes-container is-rounded bg-white ${wide ? "max-w-xl" : "max-w-sm"} w-full p-0 ${shake ? "shake" : ""}`}
+      className={cn(
+        "border border-[var(--border)] bg-[var(--surface)] text-[var(--surface-foreground)]",
+        wide ? "max-w-xl" : "max-w-sm",
+        "w-full",
+        shake && "shake",
+      )}
     >
-      <div className="bg-[#12314a] flex items-center justify-between px-3 py-2">
-        <span className="flex items-center">
-          <span className="font-pixel text-[10px] text-white">{title}</span>
+      <div className="border-b border-[var(--border)] flex items-center justify-between px-3 py-2">
+        <span className="flex items-center gap-2">
+          <span className="font-mono text-xs uppercase tracking-wider">{title}</span>
           {titleExtra}
         </span>
         {headerAction ?? (
@@ -43,9 +50,9 @@ export default function PixelWindow({
             type="button"
             onClick={handleCloseClick}
             aria-label="Close (not really)"
-            className="cursor-pointer bg-[#faf1de] border-2 border-black leading-none p-1 flex items-center justify-center outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--text-navy-strong)]"
+            className="cursor-pointer border border-[var(--border)] bg-[var(--surface)] leading-none p-1 flex items-center justify-center outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--signal)]"
           >
-            <i className="nes-icon close is-small m-0 block" />
+            <X size={14} />
           </button>
         )}
       </div>

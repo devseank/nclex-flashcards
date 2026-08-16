@@ -39,13 +39,19 @@ function SectionButtons({
         const isPicked = picked.includes(i);
         const isCorrectChoice = correctAnswer.includes(i);
 
-        let variant = "";
+        let variant = "border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)]";
+        let marker = null;
         if (showAnswer) {
-          if (isCorrectChoice) variant = "is-success";
-          else if (isPicked) variant = "is-error";
-          else variant = "is-disabled";
+          if (isCorrectChoice) {
+            variant = "border-[var(--signal)] bg-[var(--signal)] text-[var(--signal-foreground)]";
+            marker = "✓ ";
+          } else if (isPicked) {
+            marker = "✕ ";
+          } else {
+            variant = "border-[var(--border-muted)] text-[var(--muted-foreground)]";
+          }
         } else if (isPicked) {
-          variant = "is-primary";
+          variant = "border-[var(--signal)] bg-[var(--signal)] text-[var(--signal-foreground)]";
         }
 
         return (
@@ -55,8 +61,9 @@ function SectionButtons({
             aria-pressed={isPicked}
             disabled={showAnswer || (!isPicked && picked.length >= cap)}
             onClick={() => onToggle(i)}
-            className={`nes-btn w-full text-left text-sm ${variant}`}
+            className={`border font-mono w-full text-left text-sm py-2 px-3 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--signal)] ${variant}`}
           >
+            {marker}
             {choice}
           </button>
         );
@@ -144,7 +151,7 @@ export default function BowtieFlashcard({
     >
       <div className="space-y-5 text-left">
         <div className="space-y-2">
-          <p className="font-pixel text-[10px] text-gray-500">MOST LIKELY CONDITION</p>
+          <p className="font-mono text-[10px] uppercase tracking-wider text-[var(--muted-foreground)]">MOST LIKELY CONDITION</p>
           <SectionButtons
             choices={question.condition.choices}
             picked={selected.condition !== null ? [selected.condition] : []}
@@ -156,7 +163,7 @@ export default function BowtieFlashcard({
         </div>
 
         <div className="space-y-2">
-          <p className="font-pixel text-[10px] text-gray-500">ACTIONS TO TAKE (pick 2)</p>
+          <p className="font-mono text-[10px] uppercase tracking-wider text-[var(--muted-foreground)]">ACTIONS TO TAKE (pick 2)</p>
           <SectionButtons
             choices={question.actions.choices}
             picked={selected.actions}
@@ -168,7 +175,7 @@ export default function BowtieFlashcard({
         </div>
 
         <div className="space-y-2">
-          <p className="font-pixel text-[10px] text-gray-500">PARAMETERS TO MONITOR (pick 2)</p>
+          <p className="font-mono text-[10px] uppercase tracking-wider text-[var(--muted-foreground)]">PARAMETERS TO MONITOR (pick 2)</p>
           <SectionButtons
             choices={question.monitor.choices}
             picked={selected.monitor}
@@ -181,7 +188,7 @@ export default function BowtieFlashcard({
       </div>
 
       {showAnswer && question.rationale && (
-        <div className="nes-container is-rounded space-y-2">
+        <div className="border border-[var(--border)] bg-[var(--surface)] p-4 space-y-2">
           <p className="text-lg leading-snug">{question.rationale}</p>
         </div>
       )}

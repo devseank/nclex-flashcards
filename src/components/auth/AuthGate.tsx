@@ -5,6 +5,7 @@ import { useSession } from "@/lib/useSession";
 import { signInWithGoogle, rememberSignedInEmail } from "@/lib/googleAuth";
 import AnimatedHeart from "@/components/session/AnimatedHeart";
 import PixelWindow from "@/components/ui/PixelWindow";
+import { RiGoogleLine } from "@remixicon/react";
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const session = useSession();
@@ -27,9 +28,9 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
           <button
             type="button"
             onClick={() => signInWithGoogle()}
-            className="font-pixel text-sm text-[var(--text-navy)] blink flex items-center justify-center gap-2 mx-auto cursor-pointer bg-transparent border-none outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--text-navy-strong)]"
+            className="font-mono text-sm uppercase tracking-wider text-[var(--foreground)] blink flex items-center justify-center gap-2 mx-auto cursor-pointer bg-transparent border-none outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--signal)]"
           >
-            <i className="nes-icon google is-small m-0" />
+            <RiGoogleLine size={16} />
             PRESS START
           </button>
         </PixelWindow>

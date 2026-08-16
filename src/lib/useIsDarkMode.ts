@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 // recharts renders plain SVG with whatever color values it's given at
 // render time -- it has no idea about CSS custom properties, so passing
-// `var(--text-navy)` as a stroke/fill prop won't update when the theme
+// `var(--foreground)` as a stroke/fill prop won't update when the theme
 // toggles (recharts never re-renders just because a CSS variable changed
 // underneath it). This hook makes the *prop value itself* change on a real
 // re-render by watching the `.dark` class ThemeProvider toggles on <html>.

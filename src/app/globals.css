@@ -1,9 +1,7 @@
 @import "tailwindcss";
-@import "nes.css/css/nes.min.css" layer(components);
 
 /* Split by concern instead of one long file -- see each partial's own
    header comment for what it covers and why. */
 @import "./styles/theme.css";
-@import "./styles/nes-overrides.css";
 @import "./styles/scrollbar.css";
 @import "./styles/animations.css";
