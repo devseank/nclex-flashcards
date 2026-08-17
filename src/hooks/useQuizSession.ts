@@ -38,6 +38,8 @@ export type View =
   | "historyPick"
   | "historyList"
   | "historyDetail"
+  | "favoritesList"
+  | "favoritesDetail"
   | "session"
   | "finished"
   | "analytics";
@@ -59,7 +61,7 @@ type NavHistoryState = { nclexView: View };
 // so the screen would just render blank with no way back to menu. Safer to
 // fall back to "menu" for those than restore a view the rest of the state
 // can't actually support.
-const RESTORABLE_VIEWS = new Set<View>(["menu", "filterPick", "reviewPick", "newPick", "historyPick", "analytics"]);
+const RESTORABLE_VIEWS = new Set<View>(["menu", "filterPick", "reviewPick", "newPick", "historyPick", "favoritesList", "analytics"]);
 
 const MODE_LABELS: Record<SessionMode, string> = {
   infinite: "PLAY",
@@ -117,6 +119,7 @@ export function useQuizSession(questions: Question[] | null) {
   // as soon as ANY question renders (the star button), not just within a
   // specific "start a session" flow.
   const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
+  const [favoritesDetailQuestion, setFavoritesDetailQuestion] = useState<Question | null>(null);
 
   useEffect(() => {
     fetchFavoriteIds()
@@ -205,7 +208,7 @@ export function useQuizSession(questions: Question[] | null) {
     // landing on "historyDetail" with historyDetailEntry already nulled out.
     const prev = prevViewRef.current;
     const collapse =
-      (view === "session" && (prev === "filterPick" || prev === "reviewPick" || prev === "newPick")) ||
+      (view === "session" && (prev === "filterPick" || prev === "reviewPick" || prev === "newPick" || prev === "favoritesList")) ||
       view === "finished" ||
       view === "menu";
     const entry = { ...window.history.state, nclexView: view } satisfies NavHistoryState;
@@ -411,6 +414,7 @@ export function useQuizSession(questions: Question[] | null) {
     setNotice(null);
     setHistoryEntries([]);
     setHistoryDetailEntry(null);
+    setFavoritesDetailQuestion(null);
   }
 
   function goToFilterPick() {
@@ -431,6 +435,16 @@ export function useQuizSession(questions: Question[] | null) {
   function goToNewPick() {
     setNotice(null);
     setView("newPick");
+  }
+
+  function goToFavoritesList() {
+    setNotice(null);
+    setView("favoritesList");
+  }
+
+  function selectFavorite(question: Question) {
+    setFavoritesDetailQuestion(question);
+    setView("favoritesDetail");
   }
 
   function goToAnalytics() {
@@ -516,6 +530,7 @@ export function useQuizSession(questions: Question[] | null) {
     historyEntries,
     historyDetailEntry,
     favoriteIds,
+    favoritesDetailQuestion,
     toggleFavorite,
     startPlay,
     startFavorites,
@@ -524,11 +539,13 @@ export function useQuizSession(questions: Question[] | null) {
     startNewByRange,
     startHistoryList,
     selectHistoryEntry,
+    selectFavorite,
     goToMenu,
     goToFilterPick,
     goToReviewPick,
     goToNewPick,
     goToHistoryPick,
+    goToFavoritesList,
     goToAnalytics,
     handleNext,
   };

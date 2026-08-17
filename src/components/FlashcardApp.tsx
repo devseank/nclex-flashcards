@@ -12,6 +12,8 @@ import NewMode from "@/components/picker/NewMode";
 import HistoryMode from "@/components/picker/HistoryMode";
 import HistoryList from "@/components/history/HistoryList";
 import HistoryDetail from "@/components/history/HistoryDetail";
+import FavoritesList from "@/components/favorites/FavoritesList";
+import FavoritesDetail from "@/components/favorites/FavoritesDetail";
 import Analytics from "@/components/analytics/Analytics";
 import PixelWindow from "@/components/ui/PixelWindow";
 import SessionScreen from "@/components/session/SessionScreen";
@@ -70,6 +72,7 @@ export default function FlashcardApp() {
     historyEntries,
     historyDetailEntry,
     favoriteIds,
+    favoritesDetailQuestion,
     toggleFavorite,
     startPlay,
     startFavorites,
@@ -78,11 +81,13 @@ export default function FlashcardApp() {
     startNewByRange,
     startHistoryList,
     selectHistoryEntry,
+    selectFavorite,
     goToMenu,
     goToFilterPick,
     goToReviewPick,
     goToNewPick,
     goToHistoryPick,
+    goToFavoritesList,
     goToAnalytics,
     handleNext,
   } = useQuizSession(questions);
@@ -123,7 +128,7 @@ export default function FlashcardApp() {
             <PixelWindow title="MENU.EXE" headerAction={<HeaderActions />}>
               <Landing
                 onSelectPlay={() => startPlay()}
-                onSelectFavorites={startFavorites}
+                onSelectFavorites={goToFavoritesList}
                 onSelectFilter={goToFilterPick}
                 onSelectReview={goToReviewPick}
                 onSelectNew={goToNewPick}
@@ -183,6 +188,28 @@ export default function FlashcardApp() {
               stats={questionStats?.get(historyDetailEntry.question.id)}
               isFavorited={favoriteIds.has(historyDetailEntry.question.id)}
               onToggleFavorite={() => toggleFavorite(historyDetailEntry.question.id)}
+            />
+          </div>
+        )}
+
+        {view === "favoritesList" && questions && (
+          <div className="view-fade-in w-full max-w-xl">
+            <FavoritesList
+              questions={questions}
+              favoriteIds={favoriteIds}
+              onRemove={toggleFavorite}
+              onSelect={selectFavorite}
+              onPlay={startFavorites}
+            />
+          </div>
+        )}
+
+        {view === "favoritesDetail" && favoritesDetailQuestion && (
+          <div className="view-fade-in w-full max-w-xl">
+            <FavoritesDetail
+              question={favoritesDetailQuestion}
+              isFavorited={favoriteIds.has(favoritesDetailQuestion.id)}
+              onToggleFavorite={() => toggleFavorite(favoritesDetailQuestion.id)}
             />
           </div>
         )}
