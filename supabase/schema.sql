@@ -413,3 +413,37 @@ create policy "Users can update their own settings"
   to authenticated
   using (user_id = auth.uid())
   with check (user_id = auth.uid());
+
+-- One row per (user, question) they've starred. The composite primary key
+-- doubles as both the "did they favorite this?" lookup index and the
+-- constraint preventing a question from ever being double-favorited, so
+-- there's no separate surrogate id or unique constraint to keep in sync.
+create table if not exists public.favorites (
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  question_id bigint not null references public.questions (id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (user_id, question_id)
+);
+
+alter table public.favorites enable row level security;
+
+drop policy if exists "Users can read their own favorites" on public.favorites;
+create policy "Users can read their own favorites"
+  on public.favorites
+  for select
+  to authenticated
+  using (user_id = auth.uid());
+
+drop policy if exists "Users can insert their own favorites" on public.favorites;
+create policy "Users can insert their own favorites"
+  on public.favorites
+  for insert
+  to authenticated
+  with check (user_id = auth.uid());
+
+drop policy if exists "Users can delete their own favorites" on public.favorites;
+create policy "Users can delete their own favorites"
+  on public.favorites
+  for delete
+  to authenticated
+  using (user_id = auth.uid());

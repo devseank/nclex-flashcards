@@ -21,6 +21,8 @@ export default function GridFlashcard({
   mode = "immediate",
   initialSelected = [],
   stats,
+  isFavorited,
+  onToggleFavorite,
 }: {
   headerLeft?: React.ReactNode;
   headerAction?: React.ReactNode;
@@ -29,6 +31,8 @@ export default function GridFlashcard({
   mode?: FlashcardMode;
   initialSelected?: number[][];
   stats?: QuestionStats;
+  isFavorited: boolean;
+  onToggleFavorite: () => void;
 }) {
   const [selected, setSelected] = useState<RowSelection>(
     initialSelected.length === question.choices.length ? initialSelected : question.choices.map(() => []),
@@ -67,6 +71,8 @@ export default function GridFlashcard({
       headerAction={headerAction}
       question={question}
       stats={stats}
+      isFavorited={isFavorited}
+      onToggleFavorite={onToggleFavorite}
       mode={mode}
       showAnswer={showAnswer}
       isFullyCorrect={isFullyCorrect}

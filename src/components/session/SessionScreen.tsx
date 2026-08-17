@@ -12,6 +12,8 @@ export default function SessionScreen({
   index,
   queueLength,
   stats,
+  isFavorited,
+  onToggleFavorite,
   onNext,
 }: {
   mode: SessionMode;
@@ -19,6 +21,8 @@ export default function SessionScreen({
   index: number;
   queueLength: number;
   stats?: QuestionStats;
+  isFavorited: boolean;
+  onToggleFavorite: () => void;
   onNext: (selected: QuestionResponse) => void;
 }) {
   return (
@@ -30,6 +34,8 @@ export default function SessionScreen({
           question={current}
           onNext={onNext}
           stats={stats}
+          isFavorited={isFavorited}
+          onToggleFavorite={onToggleFavorite}
         />
       </div>
     </div>

@@ -48,10 +48,12 @@ function ToggleButton({
 // handed up, on PLAY/MOST WRONG.
 export default function FilterMode({
   questions,
+  favoriteIds,
   onPlay,
   onMostWrong,
 }: {
   questions: Question[];
+  favoriteIds: Set<number>;
   onPlay: (filter: QuestionFilter) => void;
   onMostWrong: (filter: QuestionFilter) => void;
 }) {
@@ -60,6 +62,7 @@ export default function FilterMode({
   const [tags, setTags] = useState<string[]>([]);
   const [tagSearch, setTagSearch] = useState("");
   const [sources, setSources] = useState<string[]>([]);
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
 
   const allCategories = getAllCategories(questions);
   // Tags narrow by selected categories (so the list only shows what's
@@ -69,8 +72,9 @@ export default function FilterMode({
   const search = tagSearch.trim().toLowerCase();
   const visibleTags = search ? tagPool.filter((t) => t.toLowerCase().includes(search)) : tagPool;
   const allSources = getAllSources(questions);
+  const favoriteIdsFilter = favoritesOnly ? [...favoriteIds] : [];
 
-  const filter: QuestionFilter = { categories, kinds, tags, sources };
+  const filter: QuestionFilter = { categories, kinds, tags, sources, favoriteIds: favoriteIdsFilter };
   const matchCount = queryQuestions(questions, filter).length;
 
   // A tag selected under the old category set may not exist under the new
@@ -144,7 +148,13 @@ export default function FilterMode({
               // showing each tag's own contribution is more useful at a
               // glance than a combined number that changes depending on
               // what else happens to be selected already.
-              const tagMatchCount = queryQuestions(questions, { categories, kinds, tags: [t], sources }).length;
+              const tagMatchCount = queryQuestions(questions, {
+                categories,
+                kinds,
+                tags: [t],
+                sources,
+                favoriteIds: favoriteIdsFilter,
+              }).length;
               return (
                 <ToggleButton
                   key={t}
@@ -177,6 +187,11 @@ export default function FilterMode({
           </div>
         </div>
       )}
+
+      <div className="space-y-2">
+        <p className="font-mono text-xs uppercase tracking-wider text-[var(--muted-foreground)]">FAVORITES</p>
+        <ToggleButton label="FAVORITES ONLY" isSelected={favoritesOnly} onClick={() => setFavoritesOnly((v) => !v)} />
+      </div>
 
       <div className="space-y-2 pt-2">
         <button

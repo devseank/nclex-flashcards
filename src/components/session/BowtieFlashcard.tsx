@@ -80,6 +80,8 @@ export default function BowtieFlashcard({
   mode = "immediate",
   initialSelected,
   stats,
+  isFavorited,
+  onToggleFavorite,
 }: {
   headerLeft?: React.ReactNode;
   headerAction?: React.ReactNode;
@@ -88,6 +90,8 @@ export default function BowtieFlashcard({
   mode?: FlashcardMode;
   initialSelected?: BowtieResponse;
   stats?: QuestionStats;
+  isFavorited: boolean;
+  onToggleFavorite: () => void;
 }) {
   const [selected, setSelected] = useState<Selection>(initialSelected ?? EMPTY_SELECTION);
   const [revealed, setRevealed] = useState(mode === "review");
@@ -140,6 +144,8 @@ export default function BowtieFlashcard({
       headerAction={headerAction}
       question={question}
       stats={stats}
+      isFavorited={isFavorited}
+      onToggleFavorite={onToggleFavorite}
       mode={mode}
       showAnswer={showAnswer}
       isFullyCorrect={isFullyCorrect}

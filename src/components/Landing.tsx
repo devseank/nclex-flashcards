@@ -14,6 +14,7 @@ const BUTTON_BASE =
 // hiding it behind its own extra "open menu" tap was a redundant step.
 export default function Landing({
   onSelectPlay,
+  onSelectFavorites,
   onSelectFilter,
   onSelectReview,
   onSelectNew,
@@ -21,6 +22,7 @@ export default function Landing({
   onSelectAnalytics,
 }: {
   onSelectPlay: () => void;
+  onSelectFavorites: () => void;
   onSelectFilter: () => void;
   onSelectReview: () => void;
   onSelectNew: () => void;
@@ -37,6 +39,13 @@ export default function Landing({
           className="shine-sweep relative w-full overflow-hidden border border-[var(--signal)] bg-[var(--signal)] text-[var(--signal-foreground)] font-mono text-sm uppercase tracking-wider py-3 flex items-center justify-center gap-2 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--signal)]"
         >
           <span aria-hidden="true">▶</span> PLAY
+        </button>
+      </div>
+
+      <div className="space-y-2">
+        <SectionLabel>FAVORITES</SectionLabel>
+        <button type="button" onClick={onSelectFavorites} className={`${BUTTON_BASE} w-full`}>
+          FAVORITES
         </button>
       </div>
 

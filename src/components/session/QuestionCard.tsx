@@ -22,6 +22,8 @@ export default function QuestionCard({
   mode = "immediate",
   initialResponse = [],
   stats,
+  isFavorited,
+  onToggleFavorite,
   onNext,
 }: {
   headerLeft?: React.ReactNode;
@@ -30,6 +32,8 @@ export default function QuestionCard({
   mode?: FlashcardMode;
   initialResponse?: QuestionResponse;
   stats?: QuestionStats;
+  isFavorited: boolean;
+  onToggleFavorite: () => void;
   onNext?: (response: QuestionResponse) => void;
 }) {
   if (question.type === "sequence") {
@@ -41,6 +45,8 @@ export default function QuestionCard({
         mode={mode}
         initialOrder={initialResponse as number[]}
         stats={stats}
+        isFavorited={isFavorited}
+        onToggleFavorite={onToggleFavorite}
         onNext={onNext}
       />
     );
@@ -55,6 +61,8 @@ export default function QuestionCard({
         mode={mode}
         initialSelected={initialResponse as number[][]}
         stats={stats}
+        isFavorited={isFavorited}
+        onToggleFavorite={onToggleFavorite}
         onNext={onNext}
       />
     );
@@ -69,6 +77,8 @@ export default function QuestionCard({
         mode={mode}
         initialSelected={initialResponse as number[]}
         stats={stats}
+        isFavorited={isFavorited}
+        onToggleFavorite={onToggleFavorite}
         onNext={onNext}
       />
     );
@@ -87,6 +97,8 @@ export default function QuestionCard({
         // rather than cast into a shape it can't actually be.
         initialSelected={Array.isArray(initialResponse) ? undefined : (initialResponse as BowtieResponse)}
         stats={stats}
+        isFavorited={isFavorited}
+        onToggleFavorite={onToggleFavorite}
         onNext={onNext}
       />
     );
@@ -103,6 +115,8 @@ export default function QuestionCard({
         // above -- HotspotResponse is also always an object, never an array.
         initialSelected={Array.isArray(initialResponse) ? undefined : (initialResponse as HotspotResponse)}
         stats={stats}
+        isFavorited={isFavorited}
+        onToggleFavorite={onToggleFavorite}
         onNext={onNext}
       />
     );
@@ -116,6 +130,8 @@ export default function QuestionCard({
       mode={mode}
       initialSelected={initialResponse as number[]}
       stats={stats}
+      isFavorited={isFavorited}
+      onToggleFavorite={onToggleFavorite}
       onNext={onNext}
     />
   );

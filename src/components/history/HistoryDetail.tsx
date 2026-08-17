@@ -10,10 +10,14 @@ export default function HistoryDetail({
   question,
   response,
   stats,
+  isFavorited,
+  onToggleFavorite,
 }: {
   question: Question;
   response: QuestionResponse;
   stats?: QuestionStats;
+  isFavorited: boolean;
+  onToggleFavorite: () => void;
 }) {
   // `stats` must come from the caller (computed once for the whole history
   // list) rather than being looked up here -- this question has clearly
@@ -29,6 +33,8 @@ export default function HistoryDetail({
         mode="review"
         initialResponse={response}
         stats={stats}
+        isFavorited={isFavorited}
+        onToggleFavorite={onToggleFavorite}
       />
     </div>
   );

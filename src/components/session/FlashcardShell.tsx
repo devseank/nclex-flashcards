@@ -5,6 +5,7 @@ import { QuestionStats } from "@/services/attempts";
 import { cheerMessage } from "@/lib/cheerMessage";
 import NewBadge from "@/components/ui/NewBadge";
 import AiGeneratedBadge from "@/components/ui/AiGeneratedBadge";
+import FavoriteButton from "@/components/ui/FavoriteButton";
 import ConfettiBurst, { ConfettiConfig } from "@/components/session/ConfettiBurst";
 import StickyNextBar, { StickyActionBarCheck } from "@/components/session/StickyNextBar";
 
@@ -30,6 +31,8 @@ export default function FlashcardShell({
   instruction,
   showCorrectIndicator = true,
   hideQuestionText = false,
+  isFavorited,
+  onToggleFavorite,
   onNextClick,
   nextDisabled,
   check,
@@ -60,6 +63,8 @@ export default function FlashcardShell({
   // there is just the plain, derived, underscore-blanked text used for the
   // DB's unique dedup key, not something worth showing verbatim as well.
   hideQuestionText?: boolean;
+  isFavorited: boolean;
+  onToggleFavorite: () => void;
   onNextClick: () => void;
   nextDisabled: boolean;
   check?: StickyActionBarCheck;
@@ -88,10 +93,13 @@ export default function FlashcardShell({
   const body = (
     <>
       {hasHeader && badges}
-      <span className="inline-block border border-[var(--border)] font-mono text-[10px] uppercase tracking-wider px-2 py-1">
-        {question.category}
-        {question.tags.length > 0 && ` — ${question.tags.join(", ")}`}
-      </span>
+      <div className="flex items-center justify-between gap-2">
+        <span className="inline-block border border-[var(--border)] font-mono text-[10px] uppercase tracking-wider px-2 py-1">
+          {question.category}
+          {question.tags.length > 0 && ` — ${question.tags.join(", ")}`}
+        </span>
+        <FavoriteButton isFavorited={isFavorited} onToggle={onToggleFavorite} />
+      </div>
 
       {stats && (
         <p className="text-xs text-[var(--muted-foreground)] -mt-2">

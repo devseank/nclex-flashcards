@@ -9,6 +9,7 @@ import {
   Attempt,
   QuestionStats,
 } from "@/services/attempts";
+import { fetchFavoriteIds, addFavorite, removeFavorite } from "@/services/favorites";
 import { getErrorMessage } from "@/lib/errorMessage";
 import { startOfToday, startOfWeek } from "@/lib/dateRanges";
 import { QuestionFilter, EMPTY_FILTER, queryQuestions, describeFilter } from "@/lib/questionFilter";
@@ -110,6 +111,18 @@ export function useQuizSession(questions: Question[] | null) {
   const [notice, setNotice] = useState<Notice | null>(null);
   const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
   const [historyDetailEntry, setHistoryDetailEntry] = useState<HistoryEntry | null>(null);
+  // Starred question ids -- persistent cross-session state (like theme/font),
+  // not per-session transient state, so goToMenu() never resets this. Loaded
+  // once on mount rather than per-flow like `attempts`: it needs to be known
+  // as soon as ANY question renders (the star button), not just within a
+  // specific "start a session" flow.
+  const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    fetchFavoriteIds()
+      .then((ids) => setFavoriteIds(new Set(ids)))
+      .catch((err) => console.error("Failed to fetch favorites:", err));
+  }, []);
 
   // Makes the browser/hardware back button (and iOS/Android swipe-back)
   // navigate within the app instead of leaving the page entirely. Every
@@ -240,6 +253,42 @@ export function useQuizSession(questions: Question[] | null) {
     // SRS scheduling data for subsequent picks. Not awaited so quiz start
     // stays instant; the cheer (and SRS-aware picking) just kick in a beat
     // after the first question renders once this resolves.
+    fetchAttempts()
+      .then((fetched) => {
+        setQuestionStats(computeQuestionStats(fetched));
+        setAttempts(fetched);
+      })
+      .catch(() => {});
+  }
+
+  // Optimistically flips local state first, then fires the actual
+  // add/remove request in the background -- same optimistic-then-fire-and-
+  // forget shape handleNext already uses for recordAttempt below.
+  function toggleFavorite(questionId: number) {
+    const wasFavorited = favoriteIds.has(questionId);
+    setFavoriteIds((prev) => {
+      const next = new Set(prev);
+      if (wasFavorited) next.delete(questionId);
+      else next.add(questionId);
+      return next;
+    });
+    const request = wasFavorited ? removeFavorite(questionId) : addFavorite(questionId);
+    request.catch((err) => console.error("Failed to update favorite:", err));
+  }
+
+  // Mirrors startPlay (infinite, spaced-repetition loop) rather than
+  // startReviewByRange/startNewByRange (a fixed quiz reaching "finished") --
+  // FAVORITES is framed as "play from it," the same direct-start
+  // interaction as PLAY itself, just pre-filtered to the starred pool.
+  function startFavorites() {
+    if (!questions) return;
+    const pool = questions.filter((q) => favoriteIds.has(q.id));
+    if (pool.length === 0) {
+      setNotice({ text: "No favorites yet — tap the star on a question to add one.", tone: "info" });
+      return;
+    }
+    beginSession(pool, "infinite", "", "FAVORITES");
+
     fetchAttempts()
       .then((fetched) => {
         setQuestionStats(computeQuestionStats(fetched));
@@ -466,7 +515,10 @@ export function useQuizSession(questions: Question[] | null) {
     modeTitle,
     historyEntries,
     historyDetailEntry,
+    favoriteIds,
+    toggleFavorite,
     startPlay,
+    startFavorites,
     startReviewByFilter,
     startReviewByRange,
     startNewByRange,

@@ -105,6 +105,8 @@ export default function SequenceFlashcard({
   mode = "immediate",
   initialOrder = [],
   stats,
+  isFavorited,
+  onToggleFavorite,
 }: {
   headerLeft?: React.ReactNode;
   headerAction?: React.ReactNode;
@@ -113,6 +115,8 @@ export default function SequenceFlashcard({
   mode?: FlashcardMode;
   initialOrder?: number[];
   stats?: QuestionStats;
+  isFavorited: boolean;
+  onToggleFavorite: () => void;
 }) {
   const defaultOrder = question.choices.map((_, i) => i);
   const [order, setOrder] = useState<number[]>(initialOrder.length ? initialOrder : defaultOrder);
@@ -160,6 +164,8 @@ export default function SequenceFlashcard({
       headerAction={headerAction}
       question={question}
       stats={stats}
+      isFavorited={isFavorited}
+      onToggleFavorite={onToggleFavorite}
       mode={mode}
       showAnswer={showAnswer}
       isFullyCorrect={isFullyCorrect}

@@ -38,6 +38,8 @@ export default function HotspotFlashcard({
   mode = "immediate",
   initialSelected,
   stats,
+  isFavorited,
+  onToggleFavorite,
 }: {
   headerLeft?: React.ReactNode;
   headerAction?: React.ReactNode;
@@ -46,6 +48,8 @@ export default function HotspotFlashcard({
   mode?: FlashcardMode;
   initialSelected?: HotspotResponse;
   stats?: QuestionStats;
+  isFavorited: boolean;
+  onToggleFavorite: () => void;
 }) {
   const imgRef = useRef<HTMLImageElement>(null);
   const [clickPoint, setClickPoint] = useState<HotspotResponse | null>(initialSelected ?? null);
@@ -100,6 +104,8 @@ export default function HotspotFlashcard({
       headerAction={headerAction}
       question={question}
       stats={stats}
+      isFavorited={isFavorited}
+      onToggleFavorite={onToggleFavorite}
       mode={mode}
       showAnswer={showAnswer}
       isFullyCorrect={isFullyCorrect}

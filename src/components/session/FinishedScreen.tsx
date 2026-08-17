@@ -14,6 +14,8 @@ export default function FinishedScreen({
   queue,
   answers,
   questionStats,
+  favoriteIds,
+  onToggleFavorite,
 }: {
   title: string;
   score: number;
@@ -21,6 +23,8 @@ export default function FinishedScreen({
   queue: Question[];
   answers: QuestionResponse[];
   questionStats: Map<number, QuestionStats> | null;
+  favoriteIds: Set<number>;
+  onToggleFavorite: (questionId: number) => void;
 }) {
   return (
     <div className="w-full max-w-xl flex flex-col items-center gap-6">
@@ -38,6 +42,8 @@ export default function FinishedScreen({
             mode="review"
             initialResponse={answers[i] ?? []}
             stats={questionStats?.get(q.id)}
+            isFavorited={favoriteIds.has(q.id)}
+            onToggleFavorite={() => onToggleFavorite(q.id)}
           />
         ))}
       </div>

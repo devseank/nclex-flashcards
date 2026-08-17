@@ -51,6 +51,8 @@ export default function Flashcard({
   mode = "immediate",
   initialSelected = [],
   stats,
+  isFavorited,
+  onToggleFavorite,
 }: {
   headerLeft?: React.ReactNode;
   headerAction?: React.ReactNode;
@@ -59,6 +61,8 @@ export default function Flashcard({
   mode?: FlashcardMode;
   initialSelected?: number[];
   stats?: QuestionStats;
+  isFavorited: boolean;
+  onToggleFavorite: () => void;
 }) {
   const isMultiSelect = question.correctIndices.length > 1;
   const [selected, setSelected] = useState<number[]>(initialSelected);
@@ -99,6 +103,8 @@ export default function Flashcard({
       headerAction={headerAction}
       question={question}
       stats={stats}
+      isFavorited={isFavorited}
+      onToggleFavorite={onToggleFavorite}
       mode={mode}
       showAnswer={showAnswer}
       isFullyCorrect={isFullyCorrect}

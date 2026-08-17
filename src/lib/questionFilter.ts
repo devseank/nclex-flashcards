@@ -10,16 +10,22 @@ export type QuestionFilter = {
   kinds: QuestionKind[];
   tags: string[];
   sources: string[];
+  // The user's own starred question ids, baked directly into the filter
+  // (rather than looked up externally) so matchesQuestionFilter stays a
+  // pure function of (question, filter) -- ANY (no restriction) if empty,
+  // same convention as every other facet here.
+  favoriteIds: number[];
 };
 
-export const EMPTY_FILTER: QuestionFilter = { categories: [], kinds: [], tags: [], sources: [] };
+export const EMPTY_FILTER: QuestionFilter = { categories: [], kinds: [], tags: [], sources: [], favoriteIds: [] };
 
 export function isFilterEmpty(filter: QuestionFilter): boolean {
   return (
     filter.categories.length === 0 &&
     filter.kinds.length === 0 &&
     filter.tags.length === 0 &&
-    filter.sources.length === 0
+    filter.sources.length === 0 &&
+    filter.favoriteIds.length === 0
   );
 }
 
@@ -33,12 +39,16 @@ export function isFilterEmpty(filter: QuestionFilter): boolean {
 // actually surfaces results and what most multi-select tag pickers mean.
 // sources: ANY if empty, else OR -- question's (single) source must be one
 // of the selected ones, same shape as category.
+// favoriteIds: ANY if empty, else the question's id must be in the list --
+// there's only ever one starred/not-starred state per question, so this is
+// effectively an AND filter, not OR-among-many like the facets above.
 function matchesQuestionFilter(question: Question, filter: QuestionFilter): boolean {
   const categoryOk = filter.categories.length === 0 || filter.categories.includes(question.category);
   const kindOk = filter.kinds.length === 0 || filter.kinds.some((k) => matchesKind(question, k));
   const tagsOk = filter.tags.length === 0 || filter.tags.some((t) => question.tags.includes(t));
   const sourceOk = filter.sources.length === 0 || filter.sources.includes(question.source);
-  return categoryOk && kindOk && tagsOk && sourceOk;
+  const favoriteOk = filter.favoriteIds.length === 0 || filter.favoriteIds.includes(question.id);
+  return categoryOk && kindOk && tagsOk && sourceOk && favoriteOk;
 }
 
 // The one seam every call site asks "which questions match this filter?"
@@ -70,5 +80,6 @@ export function describeFilter(filter: QuestionFilter): string | null {
   if (filter.kinds.length > 0) parts.push(filter.kinds.map((k) => KIND_SHORT_LABELS[k]).join(", "));
   if (filter.tags.length > 0) parts.push(filter.tags.join(", "));
   if (filter.sources.length > 0) parts.push(filter.sources.join(", "));
+  if (filter.favoriteIds.length > 0) parts.push("FAVORITES");
   return parts.length > 0 ? parts.join(" — ") : null;
 }

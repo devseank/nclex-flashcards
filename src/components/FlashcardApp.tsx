@@ -69,7 +69,10 @@ export default function FlashcardApp() {
     modeTitle,
     historyEntries,
     historyDetailEntry,
+    favoriteIds,
+    toggleFavorite,
     startPlay,
+    startFavorites,
     startReviewByFilter,
     startReviewByRange,
     startNewByRange,
@@ -116,10 +119,11 @@ export default function FlashcardApp() {
     <GoToMenuProvider goToMenu={goToMenu}>
       <div className={pageClassName}>
         {questions && view === "menu" && (
-          <div className="view-fade-in w-full max-w-sm">
+          <div className="view-fade-in w-full max-w-sm flex flex-col items-center gap-3">
             <PixelWindow title="MENU.EXE" headerAction={<HeaderActions />}>
               <Landing
                 onSelectPlay={() => startPlay()}
+                onSelectFavorites={startFavorites}
                 onSelectFilter={goToFilterPick}
                 onSelectReview={goToReviewPick}
                 onSelectNew={goToNewPick}
@@ -127,12 +131,18 @@ export default function FlashcardApp() {
                 onSelectAnalytics={goToAnalytics}
               />
             </PixelWindow>
+            {notice && <NoticeBanner notice={notice} />}
           </div>
         )}
 
         {view === "filterPick" && questions && (
           <PickerScreen title="FILTER.EXE" notice={notice}>
-            <FilterMode questions={questions} onPlay={startPlay} onMostWrong={startReviewByFilter} />
+            <FilterMode
+              questions={questions}
+              favoriteIds={favoriteIds}
+              onPlay={startPlay}
+              onMostWrong={startReviewByFilter}
+            />
           </PickerScreen>
         )}
 
@@ -171,6 +181,8 @@ export default function FlashcardApp() {
                 historyDetailEntry.attempt.selectedIndices
               }
               stats={questionStats?.get(historyDetailEntry.question.id)}
+              isFavorited={favoriteIds.has(historyDetailEntry.question.id)}
+              onToggleFavorite={() => toggleFavorite(historyDetailEntry.question.id)}
             />
           </div>
         )}
@@ -190,6 +202,8 @@ export default function FlashcardApp() {
               queue={queue}
               answers={answers}
               questionStats={questionStats}
+              favoriteIds={favoriteIds}
+              onToggleFavorite={toggleFavorite}
             />
           </div>
         )}
@@ -202,6 +216,8 @@ export default function FlashcardApp() {
               index={index}
               queueLength={queue.length}
               stats={questionStats?.get(current.id)}
+              isFavorited={favoriteIds.has(current.id)}
+              onToggleFavorite={() => toggleFavorite(current.id)}
               onNext={handleNext}
             />
           </div>
