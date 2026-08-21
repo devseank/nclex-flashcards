@@ -1,10 +1,8 @@
 // `import type` (not a value import) so this stays a pure, dependency-free
-// module at runtime -- `@/services/questions`/`@/services/attempts` pull in
-// the Supabase client, which throws at import time without env vars set.
-// That would make this file (and anything testing it) accidentally depend
-// on Supabase configuration for no real reason, since only the types are
-// used here.
-import type { Question } from "@/services/questions";
+// module at runtime -- `@/services/attempts` pulls in the Supabase client,
+// which throws at import time without env vars set. That would make this
+// file (and anything testing it) accidentally depend on Supabase
+// configuration for no real reason, since only the type is used here.
 import type { Attempt } from "@/services/attempts";
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -59,6 +57,14 @@ export const MAX_OVERDUE_BONUS = 10;
 export const MIN_NOT_YET_DUE_WEIGHT = 0.1;
 const NOT_YET_DUE_NUMERATOR_HOURS = 48;
 const NOT_YET_DUE_OFFSET_HOURS = 24;
+
+// Infinite-mode (PLAY/FAVORITES) lookahead window sizing -- see
+// useQuizSession.ts. WINDOW_SIZE hydrated questions sit ahead of `current`
+// so answering doesn't wait on a network round trip; REFILL_THRESHOLD is
+// how low the window can drop before a background refill tops it back up.
+// Not sacred -- revisit after manual feel-testing.
+export const WINDOW_SIZE = 6;
+export const REFILL_THRESHOLD = 2;
 
 export type QuestionSchedule = { box: number; nextDueAt: Date };
 
@@ -120,7 +126,7 @@ export function weightFor(schedule: QuestionSchedule | undefined, now: number): 
 //    grows with how overdue it is; not-yet-due -> a small but never-zero
 //    weight that decays the further out its due date is), and one is
 //    chosen via weighted-random selection.
-export function pickNextForReview(pool: Question[], attempts: Attempt[], excludeId?: number): Question {
+export function pickNextForReview<T extends { id: number }>(pool: T[], attempts: Attempt[], excludeId?: number): T {
   const candidates = excludeId ? pool.filter((q) => q.id !== excludeId) : pool;
   if (candidates.length === 0) return pool[0];
 
@@ -138,4 +144,28 @@ export function pickNextForReview(pool: Question[], attempts: Attempt[], exclude
     if (r <= 0) return candidates[i];
   }
   return candidates[candidates.length - 1];
+}
+
+// Composes the unmodified pickNextForReview in a loop against a shrinking
+// candidate array to get `count` distinct picks instead of 1 -- doesn't
+// change pickNextForReview's own algorithm or escape-valve logic at all.
+// Backs the infinite-mode lookahead window (see useQuizSession.ts): fetching
+// a whole batch of upcoming questions in one request instead of one fetch
+// per question. Stops early if the pool empties (expected for small pools,
+// e.g. a handful of favorites -- infinite mode already tolerates repeats
+// there today).
+export function pickBatch<T extends { id: number }>(
+  pool: T[],
+  attempts: Attempt[],
+  excludeIds: Set<number>,
+  count: number,
+): T[] {
+  const picks: T[] = [];
+  let candidates = pool.filter((q) => !excludeIds.has(q.id));
+  for (let i = 0; i < count && candidates.length > 0; i++) {
+    const pick = pickNextForReview(candidates, attempts);
+    picks.push(pick);
+    candidates = candidates.filter((q) => q.id !== pick.id);
+  }
+  return picks;
 }

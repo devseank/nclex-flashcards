@@ -42,7 +42,16 @@ export function isFilterEmpty(filter: QuestionFilter): boolean {
 // favoriteIds: ANY if empty, else the question's id must be in the list --
 // there's only ever one starred/not-starred state per question, so this is
 // effectively an AND filter, not OR-among-many like the facets above.
-function matchesQuestionFilter(question: Question, filter: QuestionFilter): boolean {
+type FilterableQuestion = {
+  id: number;
+  category: string;
+  tags: string[];
+  source: string;
+  type: Question["type"];
+  correctIndices?: number[];
+};
+
+function matchesQuestionFilter<T extends FilterableQuestion>(question: T, filter: QuestionFilter): boolean {
   const categoryOk = filter.categories.length === 0 || filter.categories.includes(question.category);
   const kindOk = filter.kinds.length === 0 || filter.kinds.some((k) => matchesKind(question, k));
   const tagsOk = filter.tags.length === 0 || filter.tags.some((t) => question.tags.includes(t));
@@ -56,7 +65,7 @@ function matchesQuestionFilter(question: Question, filter: QuestionFilter): bool
 // site itself. Today this is a plain client-side filter; if this ever moves
 // behind a real backend/API, only this function's body changes (likely to an
 // async request) -- no caller needs to change.
-export function queryQuestions(pool: Question[], filter: QuestionFilter): Question[] {
+export function queryQuestions<T extends FilterableQuestion>(pool: T[], filter: QuestionFilter): T[] {
   return pool.filter((q) => matchesQuestionFilter(q, filter));
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchAllQuestions, Question } from "@/services/questions";
+import { fetchQuestionMeta, QuestionMeta } from "@/services/questions";
 import { getErrorMessage } from "@/lib/errorMessage";
 import { useQuizSession, Notice } from "@/hooks/useQuizSession";
 import { GoToMenuProvider } from "@/lib/goToMenuContext";
@@ -49,12 +49,12 @@ function PickerScreen({
 }
 
 export default function FlashcardApp() {
-  const [questions, setQuestions] = useState<Question[] | null>(null);
+  const [meta, setMeta] = useState<QuestionMeta[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchAllQuestions()
-      .then(setQuestions)
+    fetchQuestionMeta()
+      .then(setMeta)
       .catch((err) => setError(getErrorMessage(err)));
   }, []);
 
@@ -73,6 +73,7 @@ export default function FlashcardApp() {
     historyDetailEntry,
     favoriteIds,
     favoritesDetailQuestion,
+    favoritesQuestions,
     toggleFavorite,
     startPlay,
     startFavorites,
@@ -90,7 +91,7 @@ export default function FlashcardApp() {
     goToFavoritesList,
     goToAnalytics,
     handleNext,
-  } = useQuizSession(questions);
+  } = useQuizSession(meta);
 
   // Session/Analytics have the tallest, most-used content on a mobile
   // screen -- the flat pt-16 every other view uses (sized for the
@@ -123,7 +124,7 @@ export default function FlashcardApp() {
   return (
     <GoToMenuProvider goToMenu={goToMenu}>
       <div className={pageClassName}>
-        {questions && view === "menu" && (
+        {meta && view === "menu" && (
           <div className="view-fade-in w-full max-w-sm flex flex-col items-center gap-3">
             <PixelWindow title="MENU.EXE" headerAction={<HeaderActions />}>
               <Landing
@@ -140,10 +141,10 @@ export default function FlashcardApp() {
           </div>
         )}
 
-        {view === "filterPick" && questions && (
+        {view === "filterPick" && meta && (
           <PickerScreen title="FILTER.EXE" notice={notice}>
             <FilterMode
-              questions={questions}
+              questions={meta}
               favoriteIds={favoriteIds}
               onPlay={startPlay}
               onMostWrong={startReviewByFilter}
@@ -192,10 +193,10 @@ export default function FlashcardApp() {
           </div>
         )}
 
-        {view === "favoritesList" && questions && (
+        {view === "favoritesList" && (
           <div className="view-fade-in w-full max-w-xl">
             <FavoritesList
-              questions={questions}
+              questions={favoritesQuestions}
               favoriteIds={favoriteIds}
               onRemove={toggleFavorite}
               onSelect={selectFavorite}
@@ -214,9 +215,9 @@ export default function FlashcardApp() {
           </div>
         )}
 
-        {view === "analytics" && questions && (
+        {view === "analytics" && meta && (
           <div className="view-fade-in w-full max-w-xl">
-            <Analytics questions={questions} />
+            <Analytics questions={meta} />
           </div>
         )}
 
@@ -232,6 +233,14 @@ export default function FlashcardApp() {
               favoriteIds={favoriteIds}
               onToggleFavorite={toggleFavorite}
             />
+          </div>
+        )}
+
+        {view === "session" && mode && !current && (
+          <div className="view-fade-in w-full max-w-xl">
+            <PixelWindow title="LOADING.EXE" headerAction={<HeaderActions />}>
+              <p className="font-mono text-sm text-[var(--muted-foreground)]">Loading question…</p>
+            </PixelWindow>
           </div>
         )}
 

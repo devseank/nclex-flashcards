@@ -4,6 +4,7 @@ import type { Attempt } from "@/services/attempts";
 import {
   computeSchedules,
   pickNextForReview,
+  pickBatch,
   weightFor,
   isCriticallyOverdue,
   escapeThresholdHours,
@@ -197,5 +198,31 @@ describe("pickNextForReview", () => {
     const pool = [mockQuestion(1), mockQuestion(2), mockQuestion(3)];
     const picked = pickNextForReview(pool, []);
     expect(pool.map((q) => q.id)).toContain(picked.id);
+  });
+});
+
+describe("pickBatch", () => {
+  it("returns count distinct ids when the pool is large enough", () => {
+    const pool = Array.from({ length: 20 }, (_, i) => mockQuestion(i));
+    const picks = pickBatch(pool, [], new Set(), 6);
+    expect(picks.length).toBe(6);
+    expect(new Set(picks.map((q) => q.id)).size).toBe(6);
+  });
+
+  it("returns fewer than count (no duplicates, no crash) when the pool is smaller", () => {
+    const pool = [mockQuestion(1), mockQuestion(2), mockQuestion(3)];
+    const picks = pickBatch(pool, [], new Set(), 6);
+    expect(picks.length).toBe(3);
+    expect(new Set(picks.map((q) => q.id)).size).toBe(3);
+  });
+
+  it("respects excludeIds", () => {
+    const pool = [mockQuestion(1), mockQuestion(2), mockQuestion(3)];
+    const picks = pickBatch(pool, [], new Set([1, 2]), 6);
+    expect(picks.map((q) => q.id)).toEqual([3]);
+  });
+
+  it("returns an empty array when the pool is empty", () => {
+    expect(pickBatch([], [], new Set(), 6)).toEqual([]);
   });
 });

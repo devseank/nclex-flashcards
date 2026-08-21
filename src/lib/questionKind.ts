@@ -15,12 +15,23 @@ export const KIND_LABELS: Record<QuestionKind, string> = {
 // SATA ("select all that apply") and single-choice are both question_type
 // "choice" -- the only thing distinguishing them is how many correct
 // indices there are, so no separate DB column is needed for this filter.
-export function matchesKind(question: Question, kind: QuestionKind): boolean {
+// Generic over T so this works against both a full Question and the
+// lightweight QuestionMeta -- both structurally satisfy this constraint,
+// so no caller needs to change.
+export function matchesKind<T extends { type: Question["type"]; correctIndices?: number[] }>(
+  question: T,
+  kind: QuestionKind,
+): boolean {
   if (kind === "sequence") return question.type === "sequence";
   if (kind === "grid") return question.type === "grid";
   if (kind === "cloze") return question.type === "cloze";
   if (kind === "bowtie") return question.type === "bowtie";
   if (kind === "hotspot") return question.type === "hotspot";
   if (question.type !== "choice") return false;
-  return kind === "sata" ? question.correctIndices.length > 1 : question.correctIndices.length === 1;
+  // `correctIndices` is only optional in T's type signature because
+  // QuestionMeta's non-choice rows lack it -- a "choice"-type row always
+  // has it populated, generic T just can't express that discriminated-union
+  // narrowing the way the real Question/QuestionMeta union types do.
+  const correctIndices = question.correctIndices ?? [];
+  return kind === "sata" ? correctIndices.length > 1 : correctIndices.length === 1;
 }

@@ -145,11 +145,7 @@ export function isCorrect(question: Question, response: QuestionResponse): boole
   );
 }
 
-export function selectMostWrong(
-  pool: Question[],
-  attempts: Attempt[],
-  since: Date | null,
-): Question[] {
+export function selectMostWrong<T extends { id: number }>(pool: T[], attempts: Attempt[], since: Date | null): T[] {
   const relevant = since ? attempts.filter((a) => new Date(a.attemptedAt) >= since) : attempts;
   const incorrectCounts = new Map<number, number>();
   for (const a of relevant) {
@@ -165,7 +161,11 @@ export function selectMostWrong(
 // Questions with zero attempts, optionally restricted to ones added since a
 // given date, newest addition first. Backs the NEW/NEWER/NEWEST picker for
 // practicing freshly-imported questions before anything else touches them.
-export function selectUnattempted(pool: Question[], attempts: Attempt[], since: Date | null): Question[] {
+export function selectUnattempted<T extends { id: number; createdAt: string }>(
+  pool: T[],
+  attempts: Attempt[],
+  since: Date | null,
+): T[] {
   const attemptedIds = new Set(attempts.map((a) => a.questionId));
   return pool
     .filter((q) => !attemptedIds.has(q.id))
@@ -175,7 +175,7 @@ export function selectUnattempted(pool: Question[], attempts: Attempt[], since: 
 
 // Questions with at least one attempt, sorted so the one it's been longest
 // since attempting comes first -- a simple staleness/spaced-repetition queue.
-export function selectLeastRecentlyTried(pool: Question[], attempts: Attempt[]): Question[] {
+export function selectLeastRecentlyTried<T extends { id: number }>(pool: T[], attempts: Attempt[]): T[] {
   const stats = computeQuestionStats(attempts);
   return pool
     .filter((q) => stats.has(q.id))

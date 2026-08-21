@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { CartesianGrid, Cell, LabelList, LabelProps, ResponsiveContainer, Tooltip, XAxis, YAxis, BarChart as RechartsBarChart, Bar } from "recharts";
 import { fetchAttempts, Attempt } from "@/services/attempts";
-import { Question } from "@/services/questions";
+import { QuestionMeta } from "@/services/questions";
 import PixelWindow from "@/components/ui/PixelWindow";
 import TitleBar from "@/components/ui/TitleBar";
 import HeaderActions from "@/components/ui/HeaderActions";
@@ -49,7 +49,7 @@ const CATEGORIES_TOOLTIP =
 export default function Analytics({
   questions,
 }: {
-  questions: Question[];
+  questions: QuestionMeta[];
 }) {
   const [attempts, setAttempts] = useState<Attempt[] | null>(null);
   const [error, setError] = useState<string | null>(null);

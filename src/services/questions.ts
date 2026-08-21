@@ -49,7 +49,7 @@ export type GridQuestion = QuestionBase & {
   // `gridColumns` indices correct for row i of `choices` -- single-select
   // is just the every-row-length-1 case (matrix multiple-response is more
   // than one). Comes from the grid_row_answers child table, not a column
-  // on this row (see fetchAllQuestions below).
+  // on this row (see fetchQuestionsByIds below).
   choices: string[];
   gridColumns: string[];
   gridAnswers: number[][];
@@ -242,25 +242,29 @@ function groupGridRowAnswers(rows: GridRowAnswerRow[]): Map<number, number[][]> 
   return byQuestion;
 }
 
-export async function fetchAllQuestions(): Promise<Question[]> {
-  // Both paginated via fetchAllRows (see src/lib/supabase.ts) -- a bare
-  // .select() silently truncates at Supabase's default max-rows (1000)
-  // once either table grows past it, with no error, so PLAY/FILTER would
-  // just quietly stop seeing anything beyond whatever the cap happens to
-  // be. Ordered by `id` (each table's own primary key) so the pagination
-  // itself is stable across requests.
+const FULL_QUESTION_SELECT =
+  "id, category, tags, question, choices, rationale, question_type, correct_indices, correct_order, grid_columns, " +
+  "cloze_template, cloze_blanks(blank_index, cloze_blank_options(option_index, label, is_correct)), " +
+  "bowtie_condition_choices, bowtie_condition_answer, bowtie_action_choices, bowtie_action_answer, " +
+  "bowtie_monitor_choices, bowtie_monitor_answer, " +
+  "hotspot_x, hotspot_y, hotspot_width, hotspot_height, " +
+  "created_at, image_url, ai_generated, source";
+
+// Fetches full bodies for a bounded set of ids -- fetched lazily, once a
+// screen is actually about to show a question's text, instead of eagerly
+// loading every question's body on mount. `.in()` is itself still
+// output-paginated via fetchAllRows, same as
+// src/services/attempts.ts:126-148's `.in("attempt_id", attemptIds)`, so a
+// large `ids` array can't silently truncate past PostgREST's 1000-row cap.
+export async function fetchQuestionsByIds(ids: number[]): Promise<Question[]> {
+  if (ids.length === 0) return [];
+
   const [data, gridRowAnswerData] = await Promise.all([
     fetchAllRows<QuestionRow>((from, to) =>
       supabase
         .from("questions")
-        .select(
-          "id, category, tags, question, choices, rationale, question_type, correct_indices, correct_order, grid_columns, " +
-            "cloze_template, cloze_blanks(blank_index, cloze_blank_options(option_index, label, is_correct)), " +
-            "bowtie_condition_choices, bowtie_condition_answer, bowtie_action_choices, bowtie_action_answer, " +
-            "bowtie_monitor_choices, bowtie_monitor_answer, " +
-            "hotspot_x, hotspot_y, hotspot_width, hotspot_height, " +
-            "created_at, image_url, ai_generated, source",
-        )
+        .select(FULL_QUESTION_SELECT)
+        .in("id", ids)
         .order("id", { ascending: true })
         .range(from, to),
     ),
@@ -268,6 +272,7 @@ export async function fetchAllQuestions(): Promise<Question[]> {
       supabase
         .from("grid_row_answers")
         .select("question_id, row_index, column_index")
+        .in("question_id", ids)
         .order("id", { ascending: true })
         .range(from, to),
     ),
@@ -275,4 +280,52 @@ export async function fetchAllQuestions(): Promise<Question[]> {
 
   const gridAnswersByQuestionId = groupGridRowAnswers(gridRowAnswerData);
   return data.map((row) => toQuestion(row, gridAnswersByQuestionId));
+}
+
+// Lightweight pool metadata -- the 7 scalar/array columns every pure
+// filtering/picking function (queryQuestions, pickNextForReview,
+// selectMostWrong/selectUnattempted/selectLeastRecentlyTried, matchesKind)
+// actually reads, with no question/rationale/choices text and no
+// cloze/bowtie/hotspot variant fields or joins. `correctIndices` is
+// optional, mirroring QuestionRow.correct_indices's real nullability (only
+// choice-type rows have it) -- needed here too since matchesKind's
+// sata/single distinction reads it.
+export type QuestionMeta = {
+  id: number;
+  category: string;
+  tags: string[];
+  type: Question["type"];
+  correctIndices?: number[];
+  createdAt: string;
+  source: string;
+};
+
+type QuestionMetaRow = {
+  id: number;
+  category: string;
+  tags: string[];
+  question_type: Question["type"];
+  correct_indices: number[] | null;
+  created_at: string;
+  source: string;
+};
+
+export async function fetchQuestionMeta(): Promise<QuestionMeta[]> {
+  const data = await fetchAllRows<QuestionMetaRow>((from, to) =>
+    supabase
+      .from("questions")
+      .select("id, category, tags, question_type, correct_indices, created_at, source")
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
+
+  return data.map((row) => ({
+    id: row.id,
+    category: row.category,
+    tags: row.tags,
+    type: row.question_type,
+    correctIndices: row.correct_indices ?? undefined,
+    createdAt: row.created_at,
+    source: row.source,
+  }));
 }

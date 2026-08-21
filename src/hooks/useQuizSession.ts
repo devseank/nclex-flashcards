@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Question } from "@/services/questions";
+import { Question, QuestionMeta, fetchQuestionsByIds } from "@/services/questions";
 import {
   recordAttempt,
   fetchAttempts,
@@ -24,7 +24,7 @@ import {
   selectUnattempted,
   selectLeastRecentlyTried,
 } from "@/lib/quizLogic";
-import { pickNextForReview } from "@/lib/srs";
+import { pickNextForReview, pickBatch, WINDOW_SIZE, REFILL_THRESHOLD } from "@/lib/srs";
 import { ReviewRange } from "@/components/picker/ReviewMode";
 import { NewRange } from "@/components/picker/NewMode";
 import { HistoryLimit } from "@/components/picker/HistoryMode";
@@ -52,7 +52,7 @@ export type Notice = { text: string; tone: "info" | "error" };
 type NavHistoryState = { nclexView: View };
 
 // Views restorable from history.state alone on a fresh mount -- each only
-// needs `questions` to render correctly. "session"/"finished"/"historyList"/
+// needs `meta` to render correctly. "session"/"finished"/"historyList"/
 // "historyDetail" also depend on companion state (current question, queue,
 // historyEntries, ...) that's never written to history.state, only ever
 // held in memory -- restoring just the view name for one of those would
@@ -85,7 +85,14 @@ const NEW_RANGE_LABELS: Record<NewRange, string> = {
 // Owns all quiz-session state and the actions that transition between
 // screens (start a mode/filter/review, answer a question, return to menu).
 // FlashcardApp just wires this up to the right screen components.
-export function useQuizSession(questions: Question[] | null) {
+//
+// `meta` is the lightweight pool (id/category/tags/type/correctIndices/
+// createdAt/source only) fetched on mount -- full question bodies
+// (question/rationale/choices/...) are fetched lazily, by id, only when a
+// screen is actually about to show that question's text, via the `hydrate`
+// cache below. This is what removes the multi-second "fetch every
+// question's full body up front" mount cost.
+export function useQuizSession(meta: QuestionMeta[] | null) {
   const [view, setView] = useState<View>(() => {
     if (typeof window === "undefined") return "menu";
     // Next.js's App Router remounts client components on back/forward (see
@@ -99,9 +106,21 @@ export function useQuizSession(questions: Question[] | null) {
   const [mode, setMode] = useState<SessionMode | null>(null);
   const [filterLabel, setFilterLabel] = useState<string | null>(null);
   const [sessionLabel, setSessionLabel] = useState("");
+  // The QuestionMeta[] pool backing the active infinite-mode session --
+  // pickNextForReview/pickBatch's pool argument. Bounded modes (review/new)
+  // don't need this after beginSession hydrates their whole (bounded) pool
+  // into `queue` up front.
+  const [metaPool, setMetaPool] = useState<QuestionMeta[]>([]);
   const [queue, setQueue] = useState<Question[]>([]);
   const [index, setIndex] = useState(0);
   const [current, setCurrent] = useState<Question | null>(null);
+  // Infinite mode only: a small lookahead window of already-hydrated
+  // Questions sitting ahead of `current`, FIFO -- so answering a question
+  // doesn't wait on a network round trip for the next one. Refilled in the
+  // background before it runs dry (see maybeRefill below). Never populated
+  // for bounded modes (review/new), which hydrate their whole pool up front
+  // instead.
+  const [upcoming, setUpcoming] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<QuestionResponse[]>([]);
   const [questionStats, setQuestionStats] = useState<Map<number, QuestionStats> | null>(null);
   // Raw attempt history (not just the derived `questionStats` map above) --
@@ -120,6 +139,39 @@ export function useQuizSession(questions: Question[] | null) {
   // specific "start a session" flow.
   const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
   const [favoritesDetailQuestion, setFavoritesDetailQuestion] = useState<Question | null>(null);
+  // Hydrated full bodies for every starred question, refreshed whenever
+  // goToFavoritesList is called -- bounded by however many the user has
+  // starred, so an eager hydrate on every visit is cheap.
+  const [favoritesQuestions, setFavoritesQuestions] = useState<Question[]>([]);
+
+  // Every full Question body ever fetched, keyed by id -- shared across
+  // every hydrate() call for the lifetime of this hook instance, so
+  // re-showing a question (e.g. it resurfaces in PLAY, or REVIEW overlaps
+  // with something already seen) never re-fetches it.
+  const cacheRef = useRef(new Map<number, Question>());
+  // Bumped on every infinite-mode "pick" (the empty-window fallback fetch in
+  // handleNext, and each background refill) -- an async op captures the
+  // value at call time and only applies its result if it's still current
+  // when the fetch resolves, so a slow stale fetch can't clobber newer
+  // current/upcoming state if the user answers unusually fast.
+  const ticketRef = useRef(0);
+  // Single-flight guard for maybeRefill -- an overlapping refill request
+  // just skips (the next handleNext call retries via the empty-window
+  // fallback, or a later maybeRefill call once this one finishes).
+  const isRefillingRef = useRef(false);
+
+  // Looks up the cache for each id, fetches only the misses in one request,
+  // merges the results in, and returns every requested id's Question in the
+  // order given.
+  function hydrate(ids: number[]): Promise<Question[]> {
+    const cache = cacheRef.current;
+    const missingIds = ids.filter((id) => !cache.has(id));
+    const fetchMissing = missingIds.length > 0 ? fetchQuestionsByIds(missingIds) : Promise.resolve([]);
+    return fetchMissing.then((fetched) => {
+      for (const q of fetched) cache.set(q.id, q);
+      return ids.map((id) => cache.get(id)!);
+    });
+  }
 
   useEffect(() => {
     fetchFavoriteIds()
@@ -220,27 +272,40 @@ export function useQuizSession(questions: Question[] | null) {
     prevViewRef.current = view;
   }, [view]);
 
-  function beginSession(pool: Question[], m: SessionMode, label: string, filter: string | null) {
+  function beginSession(pool: QuestionMeta[], m: SessionMode, label: string, filter: string | null) {
+    const ticket = ++ticketRef.current;
     setMode(m);
     setFilterLabel(filter);
     setSessionLabel(label);
     setAnswers([]);
     setNotice(null);
+    setCurrent(null);
+    setMetaPool(pool);
     setView("session");
 
     if (m === "infinite") {
-      setQueue(pool);
-      setCurrent(pickNextForReview(pool, attempts));
-    } else {
-      setQueue(pool);
+      setQueue([]);
       setIndex(0);
-      setCurrent(pool[0]);
+      setUpcoming([]);
+      const picks = pickBatch(pool, attempts, new Set(), WINDOW_SIZE);
+      hydrate(picks.map((q) => q.id)).then((hydrated) => {
+        if (ticketRef.current !== ticket) return;
+        setCurrent(hydrated[0] ?? null);
+        setUpcoming(hydrated.slice(1));
+      });
+    } else {
+      setIndex(0);
+      hydrate(pool.map((q) => q.id)).then((hydrated) => {
+        if (ticketRef.current !== ticket) return;
+        setQueue(hydrated);
+        setCurrent(hydrated[0] ?? null);
+      });
     }
   }
 
   function startPlay(filter: QuestionFilter = EMPTY_FILTER) {
-    if (!questions) return;
-    const pool = queryQuestions(questions, filter);
+    if (!meta) return;
+    const pool = queryQuestions(meta, filter);
     const label = describeFilter(filter);
     if (pool.length === 0) {
       // Multiple selected tags are an intersection (a question must have
@@ -284,8 +349,8 @@ export function useQuizSession(questions: Question[] | null) {
   // FAVORITES is framed as "play from it," the same direct-start
   // interaction as PLAY itself, just pre-filtered to the starred pool.
   function startFavorites() {
-    if (!questions) return;
-    const pool = questions.filter((q) => favoriteIds.has(q.id));
+    if (!meta) return;
+    const pool = meta.filter((q) => favoriteIds.has(q.id));
     if (pool.length === 0) {
       setNotice({ text: "No favorites yet — tap the star on a question to add one.", tone: "info" });
       return;
@@ -301,8 +366,8 @@ export function useQuizSession(questions: Question[] | null) {
   }
 
   async function startReviewByFilter(filter: QuestionFilter) {
-    if (!questions) return;
-    const pool = queryQuestions(questions, filter);
+    if (!meta) return;
+    const pool = queryQuestions(meta, filter);
     const label = describeFilter(filter);
 
     try {
@@ -320,13 +385,13 @@ export function useQuizSession(questions: Question[] | null) {
   }
 
   async function startReviewByRange(range: ReviewRange) {
-    if (!questions) return;
+    if (!meta) return;
 
     try {
       const attempts = await fetchAttempts();
 
       if (range === "stale") {
-        const leastRecentlyTried = selectLeastRecentlyTried(questions, attempts);
+        const leastRecentlyTried = selectLeastRecentlyTried(meta, attempts);
         if (leastRecentlyTried.length === 0) {
           setNotice({ text: "No attempted questions yet — answer a few first!", tone: "info" });
           return;
@@ -337,7 +402,7 @@ export function useQuizSession(questions: Question[] | null) {
       }
 
       const since = range === "today" ? startOfToday() : range === "week" ? startOfWeek() : null;
-      const mostWrong = selectMostWrong(questions, attempts, since);
+      const mostWrong = selectMostWrong(meta, attempts, since);
       if (mostWrong.length === 0) {
         setNotice({ text: "No incorrect answers in this period — nice work!", tone: "info" });
         return;
@@ -350,12 +415,12 @@ export function useQuizSession(questions: Question[] | null) {
   }
 
   async function startNewByRange(range: NewRange) {
-    if (!questions) return;
+    if (!meta) return;
     const since = range === "today" ? startOfToday() : range === "week" ? startOfWeek() : null;
 
     try {
       const attempts = await fetchAttempts();
-      const unattempted = selectUnattempted(questions, attempts, since);
+      const unattempted = selectUnattempted(meta, attempts, since);
       if (unattempted.length === 0) {
         setNotice({ text: "No unattempted questions in this period — you've seen them all!", tone: "info" });
         return;
@@ -367,18 +432,22 @@ export function useQuizSession(questions: Question[] | null) {
   }
 
   async function startHistoryList(limit: HistoryLimit) {
-    if (!questions) return;
+    if (!meta) return;
 
     try {
       const attempts = await fetchAttempts();
-      const entries: HistoryEntry[] = attempts
+      const sliced = attempts
         .slice()
         .sort((a, b) => (a.attemptedAt < b.attemptedAt ? 1 : -1))
-        .slice(0, limit)
-        .flatMap((attempt) => {
-          const question = questions.find((q) => q.id === attempt.questionId);
-          return question ? [{ attempt, question }] : [];
-        });
+        .slice(0, limit);
+
+      const uniqueIds = [...new Set(sliced.map((a) => a.questionId))];
+      const hydrated = await hydrate(uniqueIds);
+      const questionById = new Map(hydrated.map((q) => [q.id, q]));
+      const entries: HistoryEntry[] = sliced.flatMap((attempt) => {
+        const question = questionById.get(attempt.questionId);
+        return question ? [{ attempt, question }] : [];
+      });
 
       if (entries.length === 0) {
         setNotice({ text: "No attempts yet — answer a few questions first!", tone: "info" });
@@ -440,6 +509,9 @@ export function useQuizSession(questions: Question[] | null) {
   function goToFavoritesList() {
     setNotice(null);
     setView("favoritesList");
+    hydrate([...favoriteIds])
+      .then(setFavoritesQuestions)
+      .catch((err) => console.error("Failed to load favorites:", err));
   }
 
   function selectFavorite(question: Question) {
@@ -449,6 +521,31 @@ export function useQuizSession(questions: Question[] | null) {
 
   function goToAnalytics() {
     setView("analytics");
+  }
+
+  // Tops the lookahead window back up to WINDOW_SIZE once it's run low,
+  // in the background -- `upcomingList`/`currentId` are the just-updated
+  // values (not yet reflected in the `upcoming`/`current` state variables at
+  // the point handleNext calls this), so the exclude set stays accurate
+  // regardless of React's batching. Guarded by isRefillingRef (no more than
+  // one refill in flight) and ticketRef (a slow refill whose ticket has
+  // since been superseded by a newer pick just drops its result instead of
+  // clobbering newer state).
+  function maybeRefill(upcomingList: Question[], currentId: number, attemptsForWeighting: Attempt[]) {
+    if (upcomingList.length > REFILL_THRESHOLD || isRefillingRef.current) return;
+    isRefillingRef.current = true;
+    const ticket = ++ticketRef.current;
+    const exclude = new Set([currentId, ...upcomingList.map((q) => q.id)]);
+    const picks = pickBatch(metaPool, attemptsForWeighting, exclude, WINDOW_SIZE - upcomingList.length);
+    hydrate(picks.map((q) => q.id))
+      .then((hydrated) => {
+        if (ticketRef.current === ticket) {
+          setUpcoming((prev) => [...prev, ...hydrated]);
+        }
+      })
+      .finally(() => {
+        isRefillingRef.current = false;
+      });
   }
 
   function handleNext(selected: QuestionResponse) {
@@ -493,7 +590,22 @@ export function useQuizSession(questions: Question[] | null) {
     }
 
     if (mode === "infinite") {
-      setCurrent((prev) => pickNextForReview(queue, updatedAttempts, prev?.id));
+      if (upcoming.length > 0) {
+        const [next, ...rest] = upcoming;
+        setCurrent(next);
+        setUpcoming(rest);
+        maybeRefill(rest, next.id, updatedAttempts);
+      } else {
+        // Window hasn't caught up (e.g. very fast repeated answers) -- fall
+        // back to a single pick + fetch rather than blocking on nothing.
+        const ticket = ++ticketRef.current;
+        const pick = pickNextForReview(metaPool, updatedAttempts, current?.id);
+        hydrate([pick.id]).then(([hydrated]) => {
+          if (ticketRef.current !== ticket) return;
+          setCurrent(hydrated);
+          maybeRefill([], hydrated.id, updatedAttempts);
+        });
+      }
       return;
     }
 
@@ -531,6 +643,7 @@ export function useQuizSession(questions: Question[] | null) {
     historyDetailEntry,
     favoriteIds,
     favoritesDetailQuestion,
+    favoritesQuestions,
     toggleFavorite,
     startPlay,
     startFavorites,

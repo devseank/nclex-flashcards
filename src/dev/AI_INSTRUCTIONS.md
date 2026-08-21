@@ -29,15 +29,15 @@ read the **current** `src/hooks/useQuizSession.ts` and
 1. **`src/dev/fixtures.ts`** — a handful of hand-written `Question`/
    `Attempt` fixture objects (see `src/services/questions.ts` and
    `src/services/attempts.ts` for the current types) plus
-   `fetchAllQuestionsFixture()` / `fetchAttemptsFixture()` /
-   `recordAttemptFixture()` async functions mirroring
-   `src/services/questions.ts` and `src/services/attempts.ts`'s exported
-   function signatures, backed by an in-memory array instead of Supabase.
-   Include at least: one never-attempted question (to exercise the NEW
-   badge / new-question cheer message), one `sequence`-type question, one
-   multi-select (SATA) question, and a mix of correct/incorrect past
-   attempts spread across a few different days (to exercise REVIEW/NEW
-   range filters and the analytics trend chart).
+   `fetchQuestionMetaFixture()` / `fetchQuestionsByIdsFixture()` /
+   `fetchAttemptsFixture()` / `recordAttemptFixture()` async functions
+   mirroring `src/services/questions.ts` and `src/services/attempts.ts`'s
+   exported function signatures, backed by an in-memory array instead of
+   Supabase. Include at least: one never-attempted question (to exercise
+   the NEW badge / new-question cheer message), one `sequence`-type
+   question, one multi-select (SATA) question, and a mix of
+   correct/incorrect past attempts spread across a few different days (to
+   exercise REVIEW/NEW range filters and the analytics trend chart).
 2. **`src/dev/useQuizSessionTest.ts`** — a copy of
    `src/hooks/useQuizSession.ts` with its Supabase-backed imports
    (`@/services/questions`, `@/services/attempts`) swapped for the fixture
@@ -47,8 +47,8 @@ read the **current** `src/hooks/useQuizSession.ts` and
    instead.
 3. **`src/dev/FlashcardAppTest.tsx`** — a copy of
    `src/components/FlashcardApp.tsx` with `useQuizSession` swapped for
-   `useQuizSessionTest`, `fetchAllQuestions` swapped for
-   `fetchAllQuestionsFixture`, and `<AuthGate>`/`<SignOutButton>` removed
+   `useQuizSessionTest`, `fetchQuestionMeta` swapped for
+   `fetchQuestionMetaFixture`, and `<AuthGate>`/`<SignOutButton>` removed
    (no auth to gate). Every screen component it renders (`Landing`,
    `FilterMode`, `Flashcard`, `Analytics`, ...) should be the **real**
    production component, imported directly — only the data layer is fake.

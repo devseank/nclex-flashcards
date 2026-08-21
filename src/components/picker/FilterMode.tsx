@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Question } from "@/services/questions";
+import { QuestionMeta } from "@/services/questions";
 import { getAllCategories, getAllTags, getTagsForCategories, getAllSources } from "@/lib/tags";
 import { QuestionKind, KIND_LABELS } from "@/lib/questionKind";
 import { QuestionFilter, queryQuestions } from "@/lib/questionFilter";
@@ -52,7 +52,7 @@ export default function FilterMode({
   onPlay,
   onMostWrong,
 }: {
-  questions: Question[];
+  questions: QuestionMeta[];
   favoriteIds: Set<number>;
   onPlay: (filter: QuestionFilter) => void;
   onMostWrong: (filter: QuestionFilter) => void;
