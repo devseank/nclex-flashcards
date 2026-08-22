@@ -4,7 +4,9 @@ import { useEffect } from "react";
 import { Pencil, StickyNote } from "lucide-react";
 import { Note } from "@/services/notes";
 import { useNoteEditor } from "@/hooks/useNoteEditor";
+import { useNoteApi } from "@/lib/noteApiContext";
 import TagCombobox from "@/components/notes/TagCombobox";
+import TagBadge from "@/components/notes/TagBadge";
 
 // Note editing lives right here, under the revealed answer -- no navigating
 // to a dedicated page to jot something down while the question's still on
@@ -20,6 +22,7 @@ export default function NotePreview({
   note?: Note;
 }) {
   const editor = useNoteEditor(note ?? null);
+  const { tagColors } = useNoteApi();
 
   // Adopts the batched note once it resolves, if it arrives after this
   // component already mounted (hydrateNotes is async) -- but never while
@@ -37,18 +40,19 @@ export default function NotePreview({
       <div className="border border-[var(--border-muted)] bg-[var(--muted)] p-3 space-y-3">
         <p className="font-mono text-[9px] uppercase tracking-wider text-[var(--muted-foreground)]">Your note</p>
         {editor.draftInputs.map((input, i) => (
-          <div key={i} className="space-y-1.5">
+          <div key={i} className="flex items-start gap-2">
             <TagCombobox
               value={input.tag ?? ""}
               onChange={(tag) => editor.updateDraftInput(i, { tag: tag.trim() ? tag : null })}
               vocabulary={editor.vocabulary}
+              colors={tagColors}
             />
             <textarea
               value={input.text}
               onChange={(e) => editor.updateDraftInput(i, { text: e.target.value })}
               rows={2}
               placeholder={`Note ${i + 1} (optional)`}
-              className="border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] font-mono text-sm px-2 py-1.5 w-full outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--signal)] resize-y"
+              className="border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] font-mono text-sm px-2 py-1.5 flex-1 min-w-0 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--signal)] resize-y"
             />
           </div>
         ))}
@@ -72,7 +76,7 @@ export default function NotePreview({
         onClick={() => editor.edit(questionId)}
         className="cursor-pointer inline-flex items-center gap-1.5 self-start border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] font-mono text-[10px] uppercase tracking-wider px-2 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--signal)]"
       >
-        <StickyNote size={12} /> Note
+        <StickyNote size={12} /> + New Note
       </button>
     );
   }
@@ -93,11 +97,7 @@ export default function NotePreview({
       </div>
       {filledInputs.map((input, i) => (
         <div key={i} className="flex items-start gap-2">
-          {input.tag && (
-            <span className="shrink-0 border border-[var(--border)] font-mono text-[9px] uppercase tracking-wider px-1.5 py-0.5">
-              {input.tag}
-            </span>
-          )}
+          {input.tag && <TagBadge tag={input.tag} colors={tagColors} />}
           <p className="text-sm leading-snug whitespace-pre-wrap">{input.text}</p>
         </div>
       ))}

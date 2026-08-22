@@ -1,8 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Palette } from "lucide-react";
 import PixelWindow from "@/components/ui/PixelWindow";
 import HeaderActions from "@/components/ui/HeaderActions";
+import TagBadge from "@/components/notes/TagBadge";
+import TagColorEditor from "@/components/notes/TagColorEditor";
+import { useNoteApi } from "@/lib/noteApiContext";
 import { fetchNotesPage, NoteListEntry } from "@/services/notes";
 import { getErrorMessage } from "@/lib/errorMessage";
 
@@ -16,6 +20,8 @@ export default function NotesList({ onSelect }: { onSelect: (questionId: number)
   const [pageIndex, setPageIndex] = useState(0);
   const [data, setData] = useState<{ notes: NoteListEntry[]; totalCount: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showTagColors, setShowTagColors] = useState(false);
+  const { tagColors } = useNoteApi();
 
   useEffect(() => {
     fetchNotesPage(pageIndex, PAGE_SIZE)
@@ -28,6 +34,16 @@ export default function NotesList({ onSelect }: { onSelect: (questionId: number)
   return (
     <PixelWindow title="NOTES.EXE" headerAction={<HeaderActions />} wide>
       <div className="space-y-3">
+        <button
+          type="button"
+          onClick={() => setShowTagColors((prev) => !prev)}
+          className="cursor-pointer inline-flex items-center gap-1.5 border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] font-mono text-[10px] uppercase tracking-wider px-2 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--signal)]"
+        >
+          <Palette size={12} /> {showTagColors ? "Hide tag colors" : "Tag colors"}
+        </button>
+
+        {showTagColors && <TagColorEditor />}
+
         {error && <p className="font-mono text-sm text-[var(--foreground)] text-center py-4">{error}</p>}
 
         {!error && data && data.notes.length === 0 && (
@@ -55,12 +71,7 @@ export default function NotesList({ onSelect }: { onSelect: (questionId: number)
                     {tags.length > 0 && (
                       <span className="shrink-0 flex gap-1">
                         {tags.map((tag, i) => (
-                          <span
-                            key={i}
-                            className="border border-[var(--border)] text-[9px] uppercase tracking-wider px-1.5 py-0.5"
-                          >
-                            {tag}
-                          </span>
+                          <TagBadge key={i} tag={tag} colors={tagColors} />
                         ))}
                       </span>
                     )}

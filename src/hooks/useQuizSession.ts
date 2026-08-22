@@ -12,12 +12,14 @@ import {
 import { fetchFavoriteIds, addFavorite, removeFavorite } from "@/services/favorites";
 import {
   fetchNotesForQuestions,
+  fetchAllNotes,
   createBlankNote,
   saveNote,
   fetchNoteTagVocabulary,
   Note,
   NoteInput,
 } from "@/services/notes";
+import { fetchNoteTagColors, saveNoteTagColors, TagColorMap } from "@/services/settings";
 import { NoteApi } from "@/lib/noteApiContext";
 import { getErrorMessage } from "@/lib/errorMessage";
 import { startOfToday, startOfWeek } from "@/lib/dateRanges";
@@ -176,6 +178,10 @@ export function useQuizSession(meta: QuestionMeta[] | null) {
   // contains questions that actually have a Note (create-on-demand model,
   // same as favoriteIds is a Set of only the starred ones).
   const [notesByQuestionId, setNotesByQuestionId] = useState<Map<number, Note>>(new Map());
+  // Per-tag color assignments (lowercased tag -> hex), loaded once on
+  // mount alongside favoriteIds below -- see NoteApi's tagColors comment
+  // for why this is live state rather than a lazy per-component fetch.
+  const [tagColors, setTagColors] = useState<TagColorMap>({});
 
   // Every full Question body ever fetched, keyed by id -- shared across
   // every hydrate() call for the lifetime of this hook instance, so
@@ -263,16 +269,53 @@ export function useQuizSession(meta: QuestionMeta[] | null) {
     });
   }
 
+  // Optimistic-then-persist, same shape as toggleFavorite below -- the
+  // badge everywhere that tag is shown recolors immediately, the write to
+  // user_settings happens in the background. Always saves the FULL map
+  // (merged locally first), matching saveNoteTagColors' "overwrite the
+  // whole value" contract.
+  function setTagColor(tag: string, color: string) {
+    setTagColors((prev) => {
+      const next = { ...prev, [tag.toLowerCase()]: color };
+      saveNoteTagColors(next).catch((err) => console.error("Failed to save tag color:", err));
+      return next;
+    });
+  }
+
   const noteApi: NoteApi = {
     createBlankNote: createBlankNoteAndCache,
     saveNote: saveNoteAndCache,
     fetchNoteTagVocabulary,
+    tagColors,
+    setTagColor,
   };
 
   useEffect(() => {
     fetchFavoriteIds()
       .then((ids) => setFavoriteIds(new Set(ids)))
       .catch((err) => console.error("Failed to fetch favorites:", err));
+  }, []);
+
+  // Notes fetched eagerly, always, right alongside favorites/meta -- not
+  // lazily per screen -- so a revealed answer's note (if any) is already
+  // in `notesByQuestionId` by the time NotePreview mounts instead of
+  // popping in a beat later. The scattered hydrateNotes() calls elsewhere
+  // in this file become cache hits once this resolves; they're kept as
+  // the fallback for the (rare) case a screen renders before this fetch
+  // finishes.
+  useEffect(() => {
+    fetchAllNotes()
+      .then((notes) => {
+        for (const n of notes) noteCacheRef.current.set(n.questionId, n);
+        setNotesByQuestionId(new Map(notes.map((n) => [n.questionId, n])));
+      })
+      .catch((err) => console.error("Failed to fetch notes:", err));
+  }, []);
+
+  useEffect(() => {
+    fetchNoteTagColors()
+      .then(setTagColors)
+      .catch((err) => console.error("Failed to fetch tag colors:", err));
   }, []);
 
   // Makes the browser/hardware back button (and iOS/Android swipe-back)

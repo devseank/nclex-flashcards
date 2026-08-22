@@ -5,11 +5,13 @@ import PixelWindow from "@/components/ui/PixelWindow";
 import HeaderActions from "@/components/ui/HeaderActions";
 import QuestionCard from "@/components/session/QuestionCard";
 import TagCombobox from "@/components/notes/TagCombobox";
+import TagBadge from "@/components/notes/TagBadge";
 import { Question, fetchQuestionsByIds } from "@/services/questions";
 import { fetchAttempts, Attempt } from "@/services/attempts";
 import { selectMostRelevantAttempt } from "@/lib/quizLogic";
 import { fetchNoteForQuestion, fetchNextNote } from "@/services/notes";
 import { useNoteEditor } from "@/hooks/useNoteEditor";
+import { useNoteApi } from "@/lib/noteApiContext";
 import { getErrorMessage } from "@/lib/errorMessage";
 
 // The dedicated "browse everything you've annotated" page -- creating and
@@ -37,6 +39,7 @@ export default function NotesDetail({
   const [loading, setLoading] = useState(true);
 
   const editor = useNoteEditor(null);
+  const { tagColors } = useNoteApi();
 
   useEffect(() => {
     let cancelled = false;
@@ -126,28 +129,25 @@ export default function NotesDetail({
 
           {editor.isEditing
             ? editor.draftInputs.map((input, i) => (
-                <div key={i} className="space-y-1.5">
+                <div key={i} className="flex items-start gap-2">
                   <TagCombobox
                     value={input.tag ?? ""}
                     onChange={(tag) => editor.updateDraftInput(i, { tag: tag.trim() ? tag : null })}
                     vocabulary={editor.vocabulary}
+                    colors={tagColors}
                   />
                   <textarea
                     value={input.text}
                     onChange={(e) => editor.updateDraftInput(i, { text: e.target.value })}
                     rows={3}
                     placeholder={`Note ${i + 1} (optional)`}
-                    className="border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] font-mono text-sm px-2 py-1.5 w-full outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--signal)] resize-y"
+                    className="border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] font-mono text-sm px-2 py-1.5 flex-1 min-w-0 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--signal)] resize-y"
                   />
                 </div>
               ))
             : displayedInputs.map((input, i) => (
                 <div key={i} className="flex items-start gap-2">
-                  {input.tag && (
-                    <span className="shrink-0 border border-[var(--border)] font-mono text-[9px] uppercase tracking-wider px-1.5 py-0.5">
-                      {input.tag}
-                    </span>
-                  )}
+                  {input.tag && <TagBadge tag={input.tag} colors={tagColors} />}
                   <p className="text-sm leading-snug whitespace-pre-wrap">{input.text}</p>
                 </div>
               ))}

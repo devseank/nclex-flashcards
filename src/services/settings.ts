@@ -42,3 +42,24 @@ export async function saveFontPreference(font: FontPreference): Promise<void> {
     .upsert({ font, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
   if (error) throw error;
 }
+
+// Keyed by lowercased tag -> "#rrggbb". A brand-new user (or one who's
+// never customized a color) has no row/column value yet -- `{}` is the
+// valid "nothing customized" result, same as theme/font's `null`.
+export type TagColorMap = Record<string, string>;
+
+export async function fetchNoteTagColors(): Promise<TagColorMap> {
+  const { data, error } = await supabase.from("user_settings").select("note_tag_colors").maybeSingle();
+  if (error) throw error;
+  return (data?.note_tag_colors as TagColorMap | null) ?? {};
+}
+
+// Always writes the whole map (same "overwrite the full value" shape as
+// theme/font) -- the caller merges the one changed tag in locally first,
+// so this never races a concurrent per-tag update against itself.
+export async function saveNoteTagColors(colors: TagColorMap): Promise<void> {
+  const { error } = await supabase
+    .from("user_settings")
+    .upsert({ note_tag_colors: colors, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+  if (error) throw error;
+}

@@ -390,6 +390,14 @@ alter table public.user_settings add column if not exists font text not null def
 alter table public.user_settings drop constraint if exists user_settings_font_check;
 alter table public.user_settings add constraint user_settings_font_check check (font in ('jetbrains', 'plex', 'space'));
 
+-- Migrating an existing project: per-user tag color assignments for note
+-- tags (`{ [lowercased tag]: "#rrggbb" }`). A jsonb blob here, not a
+-- separate table, same reasoning as notes.inputs itself -- tags are
+-- freeform strings with no lookup table to key a row on (see
+-- docs/adr/0001-freeform-note-tags-no-lookup-table.md), and one user's
+-- distinct tag count is inherently small. Idempotent to re-run.
+alter table public.user_settings add column if not exists note_tag_colors jsonb not null default '{}'::jsonb;
+
 alter table public.user_settings enable row level security;
 
 drop policy if exists "Users can read their own settings" on public.user_settings;

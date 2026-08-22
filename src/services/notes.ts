@@ -69,6 +69,19 @@ export async function fetchNotesForQuestions(questionIds: number[]): Promise<Not
   return data.map(toNote);
 }
 
+// Every note this user has, full body included -- backs the "always fetch
+// notes alongside questions" eager mount load in useQuizSession, so a
+// revealed answer's note preview never waits on its own per-question
+// round trip. Same "cheap, one user's own count is inherently small"
+// reasoning as fetchNoteTagVocabulary above, just without narrowing to
+// the `inputs` column since callers need the full Note here.
+export async function fetchAllNotes(): Promise<Note[]> {
+  const data = await fetchAllRows<NoteRow>((from, to) =>
+    supabase.from("notes").select("id, question_id, inputs, updated_at").order("id", { ascending: true }).range(from, to),
+  );
+  return data.map(toNote);
+}
+
 // NOTES.EXE's list query -- real page-by-page pagination (the first in
 // this app; every other list either drains everything via fetchAllRows or
 // does a top-N slice like HISTORY's limit picker), sorted most-recently-
@@ -174,11 +187,17 @@ export async function fetchNoteTagVocabulary(): Promise<string[]> {
   const data = await fetchAllRows<{ inputs: NoteInput[] }>((from, to) =>
     supabase.from("notes").select("inputs").order("id", { ascending: true }).range(from, to),
   );
-  const tags = new Set<string>();
+  // Tags are free text, so the same word can land in different casings
+  // across notes ("Diet" vs "diet"). Rows are fetched oldest-id-first, so
+  // keying by lowercase and keeping the first casing seen de-dupes those
+  // variants down to whichever spelling was typed first.
+  const tags = new Map<string, string>();
   for (const row of data) {
     for (const input of row.inputs) {
-      if (input.tag) tags.add(input.tag);
+      if (input.tag && !tags.has(input.tag.toLowerCase())) {
+        tags.set(input.tag.toLowerCase(), input.tag);
+      }
     }
   }
-  return [...tags].sort();
+  return [...tags.values()].sort();
 }

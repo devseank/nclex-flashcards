@@ -2,6 +2,7 @@
 
 import { createContext, useContext } from "react";
 import { Note, NoteInput } from "@/services/notes";
+import { TagColorMap } from "@/services/settings";
 
 // Carries note read/write access down to NotePreview (rendered from deep
 // inside FlashcardShell, itself nested in 6 different Flashcard variants,
@@ -24,6 +25,13 @@ export type NoteApi = {
   createBlankNote: (questionId: number) => Promise<Note>;
   saveNote: (questionId: number, noteId: number, inputs: NoteInput[]) => Promise<Note | null>;
   fetchNoteTagVocabulary: () => Promise<string[]>;
+  // Live snapshot, not a fetch function -- unlike vocabulary (only needed
+  // once editing starts), a tag's color is needed the instant its badge
+  // renders in a read-only view, so this is fetched once up front (see
+  // useQuizSession's mount effect) and handed down as plain state instead
+  // of every badge-rendering component re-fetching it lazily.
+  tagColors: TagColorMap;
+  setTagColor: (tag: string, color: string) => void;
 };
 
 const NoteApiContext = createContext<NoteApi | null>(null);
