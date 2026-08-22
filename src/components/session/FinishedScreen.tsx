@@ -18,7 +18,6 @@ export default function FinishedScreen({
   favoriteIds,
   onToggleFavorite,
   notesByQuestionId,
-  onOpenNote,
 }: {
   title: string;
   score: number;
@@ -29,7 +28,6 @@ export default function FinishedScreen({
   favoriteIds: Set<number>;
   onToggleFavorite: (questionId: number) => void;
   notesByQuestionId: Map<number, Note>;
-  onOpenNote: (questionId: number) => void;
 }) {
   return (
     <div className="w-full max-w-xl flex flex-col items-center gap-6">
@@ -50,7 +48,6 @@ export default function FinishedScreen({
             isFavorited={favoriteIds.has(q.id)}
             onToggleFavorite={() => onToggleFavorite(q.id)}
             note={notesByQuestionId.get(q.id)}
-            onOpenNote={() => onOpenNote(q.id)}
           />
         ))}
       </div>

@@ -25,7 +25,7 @@ export default function GridFlashcard({
   isFavorited,
   onToggleFavorite,
   note,
-  onOpenNote,
+  hideNotePreview,
 }: {
   headerLeft?: React.ReactNode;
   headerAction?: React.ReactNode;
@@ -37,7 +37,7 @@ export default function GridFlashcard({
   isFavorited: boolean;
   onToggleFavorite: () => void;
   note?: Note;
-  onOpenNote?: () => void;
+  hideNotePreview?: boolean;
 }) {
   const [selected, setSelected] = useState<RowSelection>(
     initialSelected.length === question.choices.length ? initialSelected : question.choices.map(() => []),
@@ -79,7 +79,7 @@ export default function GridFlashcard({
       isFavorited={isFavorited}
       onToggleFavorite={onToggleFavorite}
       note={note}
-      onOpenNote={onOpenNote}
+      hideNotePreview={hideNotePreview}
       mode={mode}
       showAnswer={showAnswer}
       isFullyCorrect={isFullyCorrect}

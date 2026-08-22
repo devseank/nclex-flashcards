@@ -42,7 +42,7 @@ export default function HotspotFlashcard({
   isFavorited,
   onToggleFavorite,
   note,
-  onOpenNote,
+  hideNotePreview,
 }: {
   headerLeft?: React.ReactNode;
   headerAction?: React.ReactNode;
@@ -54,7 +54,7 @@ export default function HotspotFlashcard({
   isFavorited: boolean;
   onToggleFavorite: () => void;
   note?: Note;
-  onOpenNote?: () => void;
+  hideNotePreview?: boolean;
 }) {
   const imgRef = useRef<HTMLImageElement>(null);
   const [clickPoint, setClickPoint] = useState<HotspotResponse | null>(initialSelected ?? null);
@@ -112,7 +112,7 @@ export default function HotspotFlashcard({
       isFavorited={isFavorited}
       onToggleFavorite={onToggleFavorite}
       note={note}
-      onOpenNote={onOpenNote}
+      hideNotePreview={hideNotePreview}
       mode={mode}
       showAnswer={showAnswer}
       isFullyCorrect={isFullyCorrect}

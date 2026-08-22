@@ -13,13 +13,11 @@ export default function FavoritesDetail({
   isFavorited,
   onToggleFavorite,
   note,
-  onOpenNote,
 }: {
   question: Question;
   isFavorited: boolean;
   onToggleFavorite: () => void;
   note?: Note;
-  onOpenNote: () => void;
 }) {
   return (
     <div className="w-full max-w-xl flex flex-col items-center">
@@ -31,7 +29,6 @@ export default function FavoritesDetail({
         isFavorited={isFavorited}
         onToggleFavorite={onToggleFavorite}
         note={note}
-        onOpenNote={onOpenNote}
       />
     </div>
   );

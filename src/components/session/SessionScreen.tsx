@@ -16,7 +16,6 @@ export default function SessionScreen({
   isFavorited,
   onToggleFavorite,
   note,
-  onOpenNote,
   onNext,
 }: {
   mode: SessionMode;
@@ -27,7 +26,6 @@ export default function SessionScreen({
   isFavorited: boolean;
   onToggleFavorite: () => void;
   note?: Note;
-  onOpenNote: () => void;
   onNext: (selected: QuestionResponse) => void;
 }) {
   return (
@@ -42,7 +40,6 @@ export default function SessionScreen({
           isFavorited={isFavorited}
           onToggleFavorite={onToggleFavorite}
           note={note}
-          onOpenNote={onOpenNote}
         />
       </div>
     </div>

@@ -26,7 +26,7 @@ export default function QuestionCard({
   isFavorited,
   onToggleFavorite,
   note,
-  onOpenNote,
+  hideNotePreview,
   onNext,
 }: {
   headerLeft?: React.ReactNode;
@@ -38,7 +38,7 @@ export default function QuestionCard({
   isFavorited: boolean;
   onToggleFavorite: () => void;
   note?: Note;
-  onOpenNote?: () => void;
+  hideNotePreview?: boolean;
   onNext?: (response: QuestionResponse) => void;
 }) {
   if (question.type === "sequence") {
@@ -53,7 +53,7 @@ export default function QuestionCard({
         isFavorited={isFavorited}
         onToggleFavorite={onToggleFavorite}
         note={note}
-        onOpenNote={onOpenNote}
+        hideNotePreview={hideNotePreview}
         onNext={onNext}
       />
     );
@@ -71,7 +71,7 @@ export default function QuestionCard({
         isFavorited={isFavorited}
         onToggleFavorite={onToggleFavorite}
         note={note}
-        onOpenNote={onOpenNote}
+        hideNotePreview={hideNotePreview}
         onNext={onNext}
       />
     );
@@ -89,7 +89,7 @@ export default function QuestionCard({
         isFavorited={isFavorited}
         onToggleFavorite={onToggleFavorite}
         note={note}
-        onOpenNote={onOpenNote}
+        hideNotePreview={hideNotePreview}
         onNext={onNext}
       />
     );
@@ -111,7 +111,7 @@ export default function QuestionCard({
         isFavorited={isFavorited}
         onToggleFavorite={onToggleFavorite}
         note={note}
-        onOpenNote={onOpenNote}
+        hideNotePreview={hideNotePreview}
         onNext={onNext}
       />
     );
@@ -131,7 +131,7 @@ export default function QuestionCard({
         isFavorited={isFavorited}
         onToggleFavorite={onToggleFavorite}
         note={note}
-        onOpenNote={onOpenNote}
+        hideNotePreview={hideNotePreview}
         onNext={onNext}
       />
     );
@@ -148,7 +148,7 @@ export default function QuestionCard({
       isFavorited={isFavorited}
       onToggleFavorite={onToggleFavorite}
       note={note}
-      onOpenNote={onOpenNote}
+      hideNotePreview={hideNotePreview}
       onNext={onNext}
     />
   );

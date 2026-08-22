@@ -55,7 +55,7 @@ export default function Flashcard({
   isFavorited,
   onToggleFavorite,
   note,
-  onOpenNote,
+  hideNotePreview,
 }: {
   headerLeft?: React.ReactNode;
   headerAction?: React.ReactNode;
@@ -67,7 +67,7 @@ export default function Flashcard({
   isFavorited: boolean;
   onToggleFavorite: () => void;
   note?: Note;
-  onOpenNote?: () => void;
+  hideNotePreview?: boolean;
 }) {
   const isMultiSelect = question.correctIndices.length > 1;
   const [selected, setSelected] = useState<number[]>(initialSelected);
@@ -111,7 +111,7 @@ export default function Flashcard({
       isFavorited={isFavorited}
       onToggleFavorite={onToggleFavorite}
       note={note}
-      onOpenNote={onOpenNote}
+      hideNotePreview={hideNotePreview}
       mode={mode}
       showAnswer={showAnswer}
       isFullyCorrect={isFullyCorrect}

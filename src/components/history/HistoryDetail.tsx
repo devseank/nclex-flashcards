@@ -14,7 +14,6 @@ export default function HistoryDetail({
   isFavorited,
   onToggleFavorite,
   note,
-  onOpenNote,
 }: {
   question: Question;
   response: QuestionResponse;
@@ -22,7 +21,6 @@ export default function HistoryDetail({
   isFavorited: boolean;
   onToggleFavorite: () => void;
   note?: Note;
-  onOpenNote: () => void;
 }) {
   // `stats` must come from the caller (computed once for the whole history
   // list) rather than being looked up here -- this question has clearly
@@ -41,7 +39,6 @@ export default function HistoryDetail({
         isFavorited={isFavorited}
         onToggleFavorite={onToggleFavorite}
         note={note}
-        onOpenNote={onOpenNote}
       />
     </div>
   );

@@ -36,7 +36,7 @@ export default function FlashcardShell({
   isFavorited,
   onToggleFavorite,
   note,
-  onOpenNote,
+  hideNotePreview = false,
   onNextClick,
   nextDisabled,
   check,
@@ -69,11 +69,15 @@ export default function FlashcardShell({
   hideQuestionText?: boolean;
   isFavorited: boolean;
   onToggleFavorite: () => void;
-  // Undefined note + undefined onOpenNote (NotePreview's own no-op-if-
-  // missing-onOpen guard) is what every caller not yet wired for notes
-  // renders as -- nothing extra, not an error.
+  // Batched read from useQuizSession's notesByQuestionId cache -- undefined
+  // just means "no note yet," not "not checked," since NotePreview always
+  // renders (its own "+ NOTE" affordance) once an answer is showing.
   note?: Note;
-  onOpenNote?: () => void;
+  // NotesDetail's own bottom "question/attempt context" card is the one
+  // exception -- it's already ON the note-editing page, so a second inline
+  // editor underneath it would just be a confusing duplicate of the one at
+  // the top of that same page.
+  hideNotePreview?: boolean;
   onNextClick: () => void;
   nextDisabled: boolean;
   check?: StickyActionBarCheck;
@@ -148,7 +152,7 @@ export default function FlashcardShell({
 
       {children}
 
-      {showAnswer && <NotePreview note={note} onOpen={onOpenNote} />}
+      {showAnswer && !hideNotePreview && <NotePreview questionId={question.id} note={note} />}
 
       {mode !== "review" && <StickyNextBar onClick={onNextClick} disabled={nextDisabled} check={check} />}
     </>

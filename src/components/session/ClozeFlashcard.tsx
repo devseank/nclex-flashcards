@@ -29,7 +29,7 @@ export default function ClozeFlashcard({
   isFavorited,
   onToggleFavorite,
   note,
-  onOpenNote,
+  hideNotePreview,
 }: {
   headerLeft?: React.ReactNode;
   headerAction?: React.ReactNode;
@@ -41,7 +41,7 @@ export default function ClozeFlashcard({
   isFavorited: boolean;
   onToggleFavorite: () => void;
   note?: Note;
-  onOpenNote?: () => void;
+  hideNotePreview?: boolean;
 }) {
   const [selected, setSelected] = useState<BlankSelection>(
     initialSelected.length === question.clozeBlanks.length ? initialSelected : question.clozeBlanks.map(() => null),
@@ -81,7 +81,7 @@ export default function ClozeFlashcard({
       isFavorited={isFavorited}
       onToggleFavorite={onToggleFavorite}
       note={note}
-      onOpenNote={onOpenNote}
+      hideNotePreview={hideNotePreview}
       mode={mode}
       showAnswer={showAnswer}
       isFullyCorrect={isFullyCorrect}

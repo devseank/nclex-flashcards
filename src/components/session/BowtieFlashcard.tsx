@@ -84,7 +84,7 @@ export default function BowtieFlashcard({
   isFavorited,
   onToggleFavorite,
   note,
-  onOpenNote,
+  hideNotePreview,
 }: {
   headerLeft?: React.ReactNode;
   headerAction?: React.ReactNode;
@@ -96,7 +96,7 @@ export default function BowtieFlashcard({
   isFavorited: boolean;
   onToggleFavorite: () => void;
   note?: Note;
-  onOpenNote?: () => void;
+  hideNotePreview?: boolean;
 }) {
   const [selected, setSelected] = useState<Selection>(initialSelected ?? EMPTY_SELECTION);
   const [revealed, setRevealed] = useState(mode === "review");
@@ -152,7 +152,7 @@ export default function BowtieFlashcard({
       isFavorited={isFavorited}
       onToggleFavorite={onToggleFavorite}
       note={note}
-      onOpenNote={onOpenNote}
+      hideNotePreview={hideNotePreview}
       mode={mode}
       showAnswer={showAnswer}
       isFullyCorrect={isFullyCorrect}

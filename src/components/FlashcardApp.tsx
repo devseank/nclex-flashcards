@@ -5,6 +5,7 @@ import { fetchQuestionMeta, QuestionMeta } from "@/services/questions";
 import { getErrorMessage } from "@/lib/errorMessage";
 import { useQuizSession, Notice } from "@/hooks/useQuizSession";
 import { GoToMenuProvider } from "@/lib/goToMenuContext";
+import { NoteApiProvider } from "@/lib/noteApiContext";
 import Landing from "@/components/Landing";
 import FilterMode from "@/components/picker/FilterMode";
 import ReviewMode from "@/components/picker/ReviewMode";
@@ -78,6 +79,7 @@ export default function FlashcardApp() {
     favoritesQuestions,
     notesDetailQuestionId,
     notesByQuestionId,
+    noteApi,
     toggleFavorite,
     startPlay,
     startFavorites,
@@ -129,6 +131,7 @@ export default function FlashcardApp() {
 
   return (
     <GoToMenuProvider goToMenu={goToMenu}>
+      <NoteApiProvider api={noteApi}>
       <div className={pageClassName}>
         {meta && view === "menu" && (
           <div className="view-fade-in w-full max-w-sm flex flex-col items-center gap-3">
@@ -197,7 +200,6 @@ export default function FlashcardApp() {
               isFavorited={favoriteIds.has(historyDetailEntry.question.id)}
               onToggleFavorite={() => toggleFavorite(historyDetailEntry.question.id)}
               note={notesByQuestionId.get(historyDetailEntry.question.id)}
-              onOpenNote={() => goToNotesDetail(historyDetailEntry.question.id)}
             />
           </div>
         )}
@@ -221,7 +223,6 @@ export default function FlashcardApp() {
               isFavorited={favoriteIds.has(favoritesDetailQuestion.id)}
               onToggleFavorite={() => toggleFavorite(favoritesDetailQuestion.id)}
               note={notesByQuestionId.get(favoritesDetailQuestion.id)}
-              onOpenNote={() => goToNotesDetail(favoritesDetailQuestion.id)}
             />
           </div>
         )}
@@ -244,7 +245,6 @@ export default function FlashcardApp() {
               favoriteIds={favoriteIds}
               onToggleFavorite={toggleFavorite}
               notesByQuestionId={notesByQuestionId}
-              onOpenNote={goToNotesDetail}
             />
           </div>
         )}
@@ -268,7 +268,6 @@ export default function FlashcardApp() {
               isFavorited={favoriteIds.has(current.id)}
               onToggleFavorite={() => toggleFavorite(current.id)}
               note={notesByQuestionId.get(current.id)}
-              onOpenNote={() => goToNotesDetail(current.id)}
               onNext={handleNext}
             />
           </div>
@@ -285,6 +284,7 @@ export default function FlashcardApp() {
           />
         )}
       </div>
+      </NoteApiProvider>
     </GoToMenuProvider>
   );
 }

@@ -10,7 +10,15 @@ import {
   QuestionStats,
 } from "@/services/attempts";
 import { fetchFavoriteIds, addFavorite, removeFavorite } from "@/services/favorites";
-import { fetchNotesForQuestions, Note } from "@/services/notes";
+import {
+  fetchNotesForQuestions,
+  createBlankNote,
+  saveNote,
+  fetchNoteTagVocabulary,
+  Note,
+  NoteInput,
+} from "@/services/notes";
+import { NoteApi } from "@/lib/noteApiContext";
 import { getErrorMessage } from "@/lib/errorMessage";
 import { startOfToday, startOfWeek } from "@/lib/dateRanges";
 import { QuestionFilter, EMPTY_FILTER, queryQuestions, describeFilter } from "@/lib/questionFilter";
@@ -226,6 +234,40 @@ export function useQuizSession(meta: QuestionMeta[] | null) {
       });
     });
   }
+
+  // Keeps the note cache/state in sync on every write, not just on batched
+  // reads -- so editing a note (inline under a revealed answer, or from the
+  // dedicated NOTES.EXE detail page) is immediately reflected anywhere else
+  // that question resurfaces, without needing a fresh hydrateNotes call.
+  // Exposed to NotePreview/useNoteEditor via NoteApiContext rather than
+  // imported directly, since those are real, unmirrored components also
+  // rendered by the /dev-preview fixture harness -- see noteApiContext.tsx.
+  function createBlankNoteAndCache(questionId: number): Promise<Note> {
+    return createBlankNote(questionId).then((n) => {
+      noteCacheRef.current.set(questionId, n);
+      setNotesByQuestionId((prev) => new Map(prev).set(questionId, n));
+      return n;
+    });
+  }
+
+  function saveNoteAndCache(questionId: number, noteId: number, inputs: NoteInput[]): Promise<Note | null> {
+    return saveNote(noteId, inputs).then((saved) => {
+      noteCacheRef.current.set(questionId, saved);
+      setNotesByQuestionId((prev) => {
+        const next = new Map(prev);
+        if (saved) next.set(questionId, saved);
+        else next.delete(questionId);
+        return next;
+      });
+      return saved;
+    });
+  }
+
+  const noteApi: NoteApi = {
+    createBlankNote: createBlankNoteAndCache,
+    saveNote: saveNoteAndCache,
+    fetchNoteTagVocabulary,
+  };
 
   useEffect(() => {
     fetchFavoriteIds()
@@ -720,6 +762,7 @@ export function useQuizSession(meta: QuestionMeta[] | null) {
     favoritesQuestions,
     notesDetailQuestionId,
     notesByQuestionId,
+    noteApi,
     toggleFavorite,
     startPlay,
     startFavorites,
