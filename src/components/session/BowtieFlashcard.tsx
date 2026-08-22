@@ -4,6 +4,7 @@ import { useState } from "react";
 import { BowtieQuestion } from "@/services/questions";
 import { BowtieResponse } from "@/lib/quizLogic";
 import { QuestionStats } from "@/services/attempts";
+import { Note } from "@/services/notes";
 import { ConfettiConfig, buildConfettiConfig } from "@/components/session/ConfettiBurst";
 import FlashcardShell, { FlashcardMode } from "@/components/session/FlashcardShell";
 
@@ -82,6 +83,8 @@ export default function BowtieFlashcard({
   stats,
   isFavorited,
   onToggleFavorite,
+  note,
+  onOpenNote,
 }: {
   headerLeft?: React.ReactNode;
   headerAction?: React.ReactNode;
@@ -92,6 +95,8 @@ export default function BowtieFlashcard({
   stats?: QuestionStats;
   isFavorited: boolean;
   onToggleFavorite: () => void;
+  note?: Note;
+  onOpenNote?: () => void;
 }) {
   const [selected, setSelected] = useState<Selection>(initialSelected ?? EMPTY_SELECTION);
   const [revealed, setRevealed] = useState(mode === "review");
@@ -146,6 +151,8 @@ export default function BowtieFlashcard({
       stats={stats}
       isFavorited={isFavorited}
       onToggleFavorite={onToggleFavorite}
+      note={note}
+      onOpenNote={onOpenNote}
       mode={mode}
       showAnswer={showAnswer}
       isFullyCorrect={isFullyCorrect}

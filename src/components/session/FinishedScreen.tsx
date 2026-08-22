@@ -5,6 +5,7 @@ import PixelWindow from "@/components/ui/PixelWindow";
 import HeaderActions from "@/components/ui/HeaderActions";
 import { Question } from "@/services/questions";
 import { QuestionStats } from "@/services/attempts";
+import { Note } from "@/services/notes";
 import { QuestionResponse } from "@/lib/quizLogic";
 
 export default function FinishedScreen({
@@ -16,6 +17,8 @@ export default function FinishedScreen({
   questionStats,
   favoriteIds,
   onToggleFavorite,
+  notesByQuestionId,
+  onOpenNote,
 }: {
   title: string;
   score: number;
@@ -25,6 +28,8 @@ export default function FinishedScreen({
   questionStats: Map<number, QuestionStats> | null;
   favoriteIds: Set<number>;
   onToggleFavorite: (questionId: number) => void;
+  notesByQuestionId: Map<number, Note>;
+  onOpenNote: (questionId: number) => void;
 }) {
   return (
     <div className="w-full max-w-xl flex flex-col items-center gap-6">
@@ -44,6 +49,8 @@ export default function FinishedScreen({
             stats={questionStats?.get(q.id)}
             isFavorited={favoriteIds.has(q.id)}
             onToggleFavorite={() => onToggleFavorite(q.id)}
+            note={notesByQuestionId.get(q.id)}
+            onOpenNote={() => onOpenNote(q.id)}
           />
         ))}
       </div>

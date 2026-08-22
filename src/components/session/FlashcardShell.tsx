@@ -2,12 +2,14 @@
 
 import { Question } from "@/services/questions";
 import { QuestionStats } from "@/services/attempts";
+import { Note } from "@/services/notes";
 import { cheerMessage } from "@/lib/cheerMessage";
 import NewBadge from "@/components/ui/NewBadge";
 import AiGeneratedBadge from "@/components/ui/AiGeneratedBadge";
 import FavoriteButton from "@/components/ui/FavoriteButton";
 import ConfettiBurst, { ConfettiConfig } from "@/components/session/ConfettiBurst";
 import StickyNextBar, { StickyActionBarCheck } from "@/components/session/StickyNextBar";
+import NotePreview from "@/components/session/NotePreview";
 
 // "immediate": live answering, feedback (confetti/shake, CHECK->reveal) is
 // active. "review": read-only replay (FinishedScreen's list, HistoryDetail)
@@ -33,6 +35,8 @@ export default function FlashcardShell({
   hideQuestionText = false,
   isFavorited,
   onToggleFavorite,
+  note,
+  onOpenNote,
   onNextClick,
   nextDisabled,
   check,
@@ -65,6 +69,11 @@ export default function FlashcardShell({
   hideQuestionText?: boolean;
   isFavorited: boolean;
   onToggleFavorite: () => void;
+  // Undefined note + undefined onOpenNote (NotePreview's own no-op-if-
+  // missing-onOpen guard) is what every caller not yet wired for notes
+  // renders as -- nothing extra, not an error.
+  note?: Note;
+  onOpenNote?: () => void;
   onNextClick: () => void;
   nextDisabled: boolean;
   check?: StickyActionBarCheck;
@@ -138,6 +147,8 @@ export default function FlashcardShell({
       )}
 
       {children}
+
+      {showAnswer && <NotePreview note={note} onOpen={onOpenNote} />}
 
       {mode !== "review" && <StickyNextBar onClick={onNextClick} disabled={nextDisabled} check={check} />}
     </>

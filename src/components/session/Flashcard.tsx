@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ChoiceQuestion } from "@/services/questions";
 import { QuestionStats } from "@/services/attempts";
+import { Note } from "@/services/notes";
 import { ConfettiConfig, buildConfettiConfig } from "@/components/session/ConfettiBurst";
 import FlashcardShell, { FlashcardMode } from "@/components/session/FlashcardShell";
 
@@ -53,6 +54,8 @@ export default function Flashcard({
   stats,
   isFavorited,
   onToggleFavorite,
+  note,
+  onOpenNote,
 }: {
   headerLeft?: React.ReactNode;
   headerAction?: React.ReactNode;
@@ -63,6 +66,8 @@ export default function Flashcard({
   stats?: QuestionStats;
   isFavorited: boolean;
   onToggleFavorite: () => void;
+  note?: Note;
+  onOpenNote?: () => void;
 }) {
   const isMultiSelect = question.correctIndices.length > 1;
   const [selected, setSelected] = useState<number[]>(initialSelected);
@@ -105,6 +110,8 @@ export default function Flashcard({
       stats={stats}
       isFavorited={isFavorited}
       onToggleFavorite={onToggleFavorite}
+      note={note}
+      onOpenNote={onOpenNote}
       mode={mode}
       showAnswer={showAnswer}
       isFullyCorrect={isFullyCorrect}

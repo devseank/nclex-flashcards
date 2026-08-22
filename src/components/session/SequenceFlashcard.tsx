@@ -21,6 +21,7 @@ import { restrictToParentElement, restrictToVerticalAxis } from "@dnd-kit/modifi
 import { CSS } from "@dnd-kit/utilities";
 import { SequenceQuestion } from "@/services/questions";
 import { QuestionStats } from "@/services/attempts";
+import { Note } from "@/services/notes";
 import { ConfettiConfig, buildConfettiConfig } from "@/components/session/ConfettiBurst";
 import FlashcardShell, { FlashcardMode } from "@/components/session/FlashcardShell";
 
@@ -107,6 +108,8 @@ export default function SequenceFlashcard({
   stats,
   isFavorited,
   onToggleFavorite,
+  note,
+  onOpenNote,
 }: {
   headerLeft?: React.ReactNode;
   headerAction?: React.ReactNode;
@@ -117,6 +120,8 @@ export default function SequenceFlashcard({
   stats?: QuestionStats;
   isFavorited: boolean;
   onToggleFavorite: () => void;
+  note?: Note;
+  onOpenNote?: () => void;
 }) {
   const defaultOrder = question.choices.map((_, i) => i);
   const [order, setOrder] = useState<number[]>(initialOrder.length ? initialOrder : defaultOrder);
@@ -166,6 +171,8 @@ export default function SequenceFlashcard({
       stats={stats}
       isFavorited={isFavorited}
       onToggleFavorite={onToggleFavorite}
+      note={note}
+      onOpenNote={onOpenNote}
       mode={mode}
       showAnswer={showAnswer}
       isFullyCorrect={isFullyCorrect}

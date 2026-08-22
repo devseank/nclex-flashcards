@@ -447,3 +447,59 @@ create policy "Users can delete their own favorites"
   for delete
   to authenticated
   using (user_id = auth.uid());
+
+-- One row per (user, question) they've written a note for -- at most one,
+-- enforced by the unique constraint below, same "1:1 with a question"
+-- shape as favorites' composite key, just with a surrogate id since a note
+-- also needs to be addressable on its own (the detail page's NEXT button
+-- cursors through notes by id, not by question_id). Doesn't exist until
+-- the first insert, and gets deleted again the moment its `inputs` would
+-- otherwise be entirely blank -- see docs/adr/0002-note-row-lifecycle.md.
+-- `inputs` is a jsonb array of up to 3 `{ text, tag }` objects; there is no
+-- separate tags table -- see docs/adr/0001-freeform-note-tags-no-lookup-table.md.
+create table if not exists public.notes (
+  id bigint generated always as identity primary key,
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  question_id bigint not null references public.questions (id) on delete cascade,
+  inputs jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, question_id)
+);
+
+-- Backs both the NOTES.EXE list's own sort (updated_at desc, id desc as a
+-- tiebreaker for same-timestamp rows) and the detail page's cursor-based
+-- "next note" query, which walks this exact order without needing to know
+-- what page it's on.
+create index if not exists notes_user_id_updated_at_idx on public.notes (user_id, updated_at desc, id desc);
+
+alter table public.notes enable row level security;
+
+drop policy if exists "Users can read their own notes" on public.notes;
+create policy "Users can read their own notes"
+  on public.notes
+  for select
+  to authenticated
+  using (user_id = auth.uid());
+
+drop policy if exists "Users can insert their own notes" on public.notes;
+create policy "Users can insert their own notes"
+  on public.notes
+  for insert
+  to authenticated
+  with check (user_id = auth.uid());
+
+drop policy if exists "Users can update their own notes" on public.notes;
+create policy "Users can update their own notes"
+  on public.notes
+  for update
+  to authenticated
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
+
+drop policy if exists "Users can delete their own notes" on public.notes;
+create policy "Users can delete their own notes"
+  on public.notes
+  for delete
+  to authenticated
+  using (user_id = auth.uid());

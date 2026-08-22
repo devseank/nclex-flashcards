@@ -2,6 +2,7 @@
 
 import { Question } from "@/services/questions";
 import { QuestionStats } from "@/services/attempts";
+import { Note } from "@/services/notes";
 import { QuestionResponse, BowtieResponse, HotspotResponse } from "@/lib/quizLogic";
 import Flashcard, { FlashcardMode } from "@/components/session/Flashcard";
 import SequenceFlashcard from "@/components/session/SequenceFlashcard";
@@ -24,6 +25,8 @@ export default function QuestionCard({
   stats,
   isFavorited,
   onToggleFavorite,
+  note,
+  onOpenNote,
   onNext,
 }: {
   headerLeft?: React.ReactNode;
@@ -34,6 +37,8 @@ export default function QuestionCard({
   stats?: QuestionStats;
   isFavorited: boolean;
   onToggleFavorite: () => void;
+  note?: Note;
+  onOpenNote?: () => void;
   onNext?: (response: QuestionResponse) => void;
 }) {
   if (question.type === "sequence") {
@@ -47,6 +52,8 @@ export default function QuestionCard({
         stats={stats}
         isFavorited={isFavorited}
         onToggleFavorite={onToggleFavorite}
+        note={note}
+        onOpenNote={onOpenNote}
         onNext={onNext}
       />
     );
@@ -63,6 +70,8 @@ export default function QuestionCard({
         stats={stats}
         isFavorited={isFavorited}
         onToggleFavorite={onToggleFavorite}
+        note={note}
+        onOpenNote={onOpenNote}
         onNext={onNext}
       />
     );
@@ -79,6 +88,8 @@ export default function QuestionCard({
         stats={stats}
         isFavorited={isFavorited}
         onToggleFavorite={onToggleFavorite}
+        note={note}
+        onOpenNote={onOpenNote}
         onNext={onNext}
       />
     );
@@ -99,6 +110,8 @@ export default function QuestionCard({
         stats={stats}
         isFavorited={isFavorited}
         onToggleFavorite={onToggleFavorite}
+        note={note}
+        onOpenNote={onOpenNote}
         onNext={onNext}
       />
     );
@@ -117,6 +130,8 @@ export default function QuestionCard({
         stats={stats}
         isFavorited={isFavorited}
         onToggleFavorite={onToggleFavorite}
+        note={note}
+        onOpenNote={onOpenNote}
         onNext={onNext}
       />
     );
@@ -132,6 +147,8 @@ export default function QuestionCard({
       stats={stats}
       isFavorited={isFavorited}
       onToggleFavorite={onToggleFavorite}
+      note={note}
+      onOpenNote={onOpenNote}
       onNext={onNext}
     />
   );

@@ -20,6 +20,7 @@ export default function Landing({
   onSelectNew,
   onSelectHistory,
   onSelectAnalytics,
+  onSelectNotes,
 }: {
   onSelectPlay: () => void;
   onSelectFavorites: () => void;
@@ -28,6 +29,7 @@ export default function Landing({
   onSelectNew: () => void;
   onSelectHistory: () => void;
   onSelectAnalytics: () => void;
+  onSelectNotes: () => void;
 }) {
   return (
     <div className="space-y-4">
@@ -53,6 +55,13 @@ export default function Landing({
         <SectionLabel>FILTER</SectionLabel>
         <button type="button" onClick={onSelectFilter} className={`${BUTTON_BASE} w-full`}>
           FILTER
+        </button>
+      </div>
+
+      <div className="space-y-2">
+        <SectionLabel>NOTES</SectionLabel>
+        <button type="button" onClick={onSelectNotes} className={`${BUTTON_BASE} w-full`}>
+          NOTES
         </button>
       </div>
 

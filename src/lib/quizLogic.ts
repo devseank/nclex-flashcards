@@ -181,3 +181,17 @@ export function selectLeastRecentlyTried<T extends { id: number }>(pool: T[], at
     .filter((q) => stats.has(q.id))
     .sort((a, b) => new Date(stats.get(a.id)!.lastAttemptedAt).getTime() - new Date(stats.get(b.id)!.lastAttemptedAt).getTime());
 }
+
+// Backs the notes detail page's bottom section: the single most useful
+// past attempt to show alongside a note, not a stack of everything ever
+// tried. Priority is latest wrong attempt (the mistake the note is most
+// likely about) over latest attempt overall, over nothing at all -- never
+// a mix of both. Returns null (render the bare question, no prior
+// response) when the question has never been attempted.
+export function selectMostRelevantAttempt(attempts: Attempt[], questionId: number): Attempt | null {
+  const relevant = attempts.filter((a) => a.questionId === questionId);
+  const wrong = relevant.filter((a) => !a.isCorrect);
+  const pool = wrong.length > 0 ? wrong : relevant;
+  if (pool.length === 0) return null;
+  return pool.reduce((latest, a) => (a.attemptedAt > latest.attemptedAt ? a : latest));
+}

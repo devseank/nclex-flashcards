@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { GridQuestion } from "@/services/questions";
 import { QuestionStats } from "@/services/attempts";
+import { Note } from "@/services/notes";
 import { ConfettiConfig, buildConfettiConfig } from "@/components/session/ConfettiBurst";
 import FlashcardShell, { FlashcardMode } from "@/components/session/FlashcardShell";
 
@@ -23,6 +24,8 @@ export default function GridFlashcard({
   stats,
   isFavorited,
   onToggleFavorite,
+  note,
+  onOpenNote,
 }: {
   headerLeft?: React.ReactNode;
   headerAction?: React.ReactNode;
@@ -33,6 +36,8 @@ export default function GridFlashcard({
   stats?: QuestionStats;
   isFavorited: boolean;
   onToggleFavorite: () => void;
+  note?: Note;
+  onOpenNote?: () => void;
 }) {
   const [selected, setSelected] = useState<RowSelection>(
     initialSelected.length === question.choices.length ? initialSelected : question.choices.map(() => []),
@@ -73,6 +78,8 @@ export default function GridFlashcard({
       stats={stats}
       isFavorited={isFavorited}
       onToggleFavorite={onToggleFavorite}
+      note={note}
+      onOpenNote={onOpenNote}
       mode={mode}
       showAnswer={showAnswer}
       isFullyCorrect={isFullyCorrect}

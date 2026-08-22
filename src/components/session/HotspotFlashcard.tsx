@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { HotspotQuestion } from "@/services/questions";
 import { HotspotResponse } from "@/lib/quizLogic";
 import { QuestionStats } from "@/services/attempts";
+import { Note } from "@/services/notes";
 import { ConfettiConfig, buildConfettiConfig } from "@/components/session/ConfettiBurst";
 import FlashcardShell, { FlashcardMode } from "@/components/session/FlashcardShell";
 
@@ -40,6 +41,8 @@ export default function HotspotFlashcard({
   stats,
   isFavorited,
   onToggleFavorite,
+  note,
+  onOpenNote,
 }: {
   headerLeft?: React.ReactNode;
   headerAction?: React.ReactNode;
@@ -50,6 +53,8 @@ export default function HotspotFlashcard({
   stats?: QuestionStats;
   isFavorited: boolean;
   onToggleFavorite: () => void;
+  note?: Note;
+  onOpenNote?: () => void;
 }) {
   const imgRef = useRef<HTMLImageElement>(null);
   const [clickPoint, setClickPoint] = useState<HotspotResponse | null>(initialSelected ?? null);
@@ -106,6 +111,8 @@ export default function HotspotFlashcard({
       stats={stats}
       isFavorited={isFavorited}
       onToggleFavorite={onToggleFavorite}
+      note={note}
+      onOpenNote={onOpenNote}
       mode={mode}
       showAnswer={showAnswer}
       isFullyCorrect={isFullyCorrect}

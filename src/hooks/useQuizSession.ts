@@ -10,6 +10,7 @@ import {
   QuestionStats,
 } from "@/services/attempts";
 import { fetchFavoriteIds, addFavorite, removeFavorite } from "@/services/favorites";
+import { fetchNotesForQuestions, Note } from "@/services/notes";
 import { getErrorMessage } from "@/lib/errorMessage";
 import { startOfToday, startOfWeek } from "@/lib/dateRanges";
 import { QuestionFilter, EMPTY_FILTER, queryQuestions, describeFilter } from "@/lib/questionFilter";
@@ -40,6 +41,8 @@ export type View =
   | "historyDetail"
   | "favoritesList"
   | "favoritesDetail"
+  | "notesList"
+  | "notesDetail"
   | "session"
   | "finished"
   | "analytics";
@@ -61,7 +64,16 @@ type NavHistoryState = { nclexView: View };
 // so the screen would just render blank with no way back to menu. Safer to
 // fall back to "menu" for those than restore a view the rest of the state
 // can't actually support.
-const RESTORABLE_VIEWS = new Set<View>(["menu", "filterPick", "reviewPick", "newPick", "historyPick", "favoritesList", "analytics"]);
+const RESTORABLE_VIEWS = new Set<View>([
+  "menu",
+  "filterPick",
+  "reviewPick",
+  "newPick",
+  "historyPick",
+  "favoritesList",
+  "notesList",
+  "analytics",
+]);
 
 const MODE_LABELS: Record<SessionMode, string> = {
   infinite: "PLAY",
@@ -143,12 +155,28 @@ export function useQuizSession(meta: QuestionMeta[] | null) {
   // goToFavoritesList is called -- bounded by however many the user has
   // starred, so an eager hydrate on every visit is cheap.
   const [favoritesQuestions, setFavoritesQuestions] = useState<Question[]>([]);
+  // Which question's note is open on the dedicated notes detail page --
+  // NotesList/NotesDetail otherwise manage all their own state (pagination,
+  // edit mode, autosave) independently of this hook, the same way
+  // Analytics.tsx self-manages its own fetch; this is the one piece that's
+  // genuinely cross-cutting (both NOTES.EXE's list and the "+ NOTE"/edit
+  // affordance under any revealed answer navigate to the same place).
+  const [notesDetailQuestionId, setNotesDetailQuestionId] = useState<number | null>(null);
+  // Per-question note lookup for the read-only preview shown under a
+  // revealed answer (SessionScreen/HistoryDetail/FavoritesDetail/
+  // FinishedScreen) -- only ever grows via hydrateNotes below, and only
+  // contains questions that actually have a Note (create-on-demand model,
+  // same as favoriteIds is a Set of only the starred ones).
+  const [notesByQuestionId, setNotesByQuestionId] = useState<Map<number, Note>>(new Map());
 
   // Every full Question body ever fetched, keyed by id -- shared across
   // every hydrate() call for the lifetime of this hook instance, so
   // re-showing a question (e.g. it resurfaces in PLAY, or REVIEW overlaps
   // with something already seen) never re-fetches it.
   const cacheRef = useRef(new Map<number, Question>());
+  // `null` entries mean "checked, this question has no note" -- see
+  // hydrateNotes below.
+  const noteCacheRef = useRef(new Map<number, Note | null>());
   // Bumped on every infinite-mode "pick" (the empty-window fallback fetch in
   // handleNext, and each background refill) -- an async op captures the
   // value at call time and only applies its result if it's still current
@@ -170,6 +198,32 @@ export function useQuizSession(meta: QuestionMeta[] | null) {
     return fetchMissing.then((fetched) => {
       for (const q of fetched) cache.set(q.id, q);
       return ids.map((id) => cache.get(id)!);
+    });
+  }
+
+  // Same cache-then-fetch-misses shape as hydrate() above, but for notes --
+  // `null` cached means "checked, this question has no note." Only ids that
+  // actually resolve to a Note get merged into `notesByQuestionId` state (a
+  // Map of existing notes only, not a full id->note-or-null table), so
+  // NotePreview's callers can tell "has a note" apart from "not checked yet"
+  // with a plain `.get(id)`.
+  function hydrateNotes(questionIds: number[]): Promise<void> {
+    const cache = noteCacheRef.current;
+    const missingIds = questionIds.filter((id) => !cache.has(id));
+    const fetchMissing = missingIds.length > 0 ? fetchNotesForQuestions(missingIds) : Promise.resolve([]);
+    return fetchMissing.then((fetched) => {
+      const fetchedByQuestionId = new Map(fetched.map((n) => [n.questionId, n]));
+      for (const id of missingIds) {
+        cache.set(id, fetchedByQuestionId.get(id) ?? null);
+      }
+      setNotesByQuestionId((prev) => {
+        const next = new Map(prev);
+        for (const id of questionIds) {
+          const cached = cache.get(id);
+          if (cached) next.set(id, cached);
+        }
+        return next;
+      });
     });
   }
 
@@ -292,6 +346,7 @@ export function useQuizSession(meta: QuestionMeta[] | null) {
         if (ticketRef.current !== ticket) return;
         setCurrent(hydrated[0] ?? null);
         setUpcoming(hydrated.slice(1));
+        hydrateNotes(hydrated.map((q) => q.id)).catch((err) => console.error("Failed to load notes:", err));
       });
     } else {
       setIndex(0);
@@ -299,6 +354,7 @@ export function useQuizSession(meta: QuestionMeta[] | null) {
         if (ticketRef.current !== ticket) return;
         setQueue(hydrated);
         setCurrent(hydrated[0] ?? null);
+        hydrateNotes(hydrated.map((q) => q.id)).catch((err) => console.error("Failed to load notes:", err));
       });
     }
   }
@@ -466,6 +522,7 @@ export function useQuizSession(meta: QuestionMeta[] | null) {
   function selectHistoryEntry(entry: HistoryEntry) {
     setHistoryDetailEntry(entry);
     setView("historyDetail");
+    hydrateNotes([entry.question.id]).catch((err) => console.error("Failed to load notes:", err));
   }
 
   // Explicit "jump straight home" action for the header bar's Home icon --
@@ -484,6 +541,7 @@ export function useQuizSession(meta: QuestionMeta[] | null) {
     setHistoryEntries([]);
     setHistoryDetailEntry(null);
     setFavoritesDetailQuestion(null);
+    setNotesDetailQuestionId(null);
   }
 
   function goToFilterPick() {
@@ -510,17 +568,31 @@ export function useQuizSession(meta: QuestionMeta[] | null) {
     setNotice(null);
     setView("favoritesList");
     hydrate([...favoriteIds])
-      .then(setFavoritesQuestions)
+      .then((hydrated) => {
+        setFavoritesQuestions(hydrated);
+        hydrateNotes(hydrated.map((q) => q.id)).catch((err) => console.error("Failed to load notes:", err));
+      })
       .catch((err) => console.error("Failed to load favorites:", err));
   }
 
   function selectFavorite(question: Question) {
     setFavoritesDetailQuestion(question);
     setView("favoritesDetail");
+    hydrateNotes([question.id]).catch((err) => console.error("Failed to load notes:", err));
   }
 
   function goToAnalytics() {
     setView("analytics");
+  }
+
+  function goToNotesList() {
+    setNotice(null);
+    setView("notesList");
+  }
+
+  function goToNotesDetail(questionId: number) {
+    setNotesDetailQuestionId(questionId);
+    setView("notesDetail");
   }
 
   // Tops the lookahead window back up to WINDOW_SIZE once it's run low,
@@ -541,6 +613,7 @@ export function useQuizSession(meta: QuestionMeta[] | null) {
       .then((hydrated) => {
         if (ticketRef.current === ticket) {
           setUpcoming((prev) => [...prev, ...hydrated]);
+          hydrateNotes(hydrated.map((q) => q.id)).catch((err) => console.error("Failed to load notes:", err));
         }
       })
       .finally(() => {
@@ -603,6 +676,7 @@ export function useQuizSession(meta: QuestionMeta[] | null) {
         hydrate([pick.id]).then(([hydrated]) => {
           if (ticketRef.current !== ticket) return;
           setCurrent(hydrated);
+          hydrateNotes([hydrated.id]).catch((err) => console.error("Failed to load notes:", err));
           maybeRefill([], hydrated.id, updatedAttempts);
         });
       }
@@ -644,6 +718,8 @@ export function useQuizSession(meta: QuestionMeta[] | null) {
     favoriteIds,
     favoritesDetailQuestion,
     favoritesQuestions,
+    notesDetailQuestionId,
+    notesByQuestionId,
     toggleFavorite,
     startPlay,
     startFavorites,
@@ -660,6 +736,8 @@ export function useQuizSession(meta: QuestionMeta[] | null) {
     goToHistoryPick,
     goToFavoritesList,
     goToAnalytics,
+    goToNotesList,
+    goToNotesDetail,
     handleNext,
   };
 }

@@ -4,6 +4,7 @@ import QuestionCard from "@/components/session/QuestionCard";
 import HeaderActions from "@/components/ui/HeaderActions";
 import { Question } from "@/services/questions";
 import { QuestionStats } from "@/services/attempts";
+import { Note } from "@/services/notes";
 import { SessionMode, QuestionResponse } from "@/lib/quizLogic";
 
 export default function SessionScreen({
@@ -14,6 +15,8 @@ export default function SessionScreen({
   stats,
   isFavorited,
   onToggleFavorite,
+  note,
+  onOpenNote,
   onNext,
 }: {
   mode: SessionMode;
@@ -23,6 +26,8 @@ export default function SessionScreen({
   stats?: QuestionStats;
   isFavorited: boolean;
   onToggleFavorite: () => void;
+  note?: Note;
+  onOpenNote: () => void;
   onNext: (selected: QuestionResponse) => void;
 }) {
   return (
@@ -36,6 +41,8 @@ export default function SessionScreen({
           stats={stats}
           isFavorited={isFavorited}
           onToggleFavorite={onToggleFavorite}
+          note={note}
+          onOpenNote={onOpenNote}
         />
       </div>
     </div>

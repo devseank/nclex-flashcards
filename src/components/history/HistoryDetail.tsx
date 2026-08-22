@@ -2,6 +2,7 @@
 
 import { Question } from "@/services/questions";
 import { QuestionStats } from "@/services/attempts";
+import { Note } from "@/services/notes";
 import { QuestionResponse } from "@/lib/quizLogic";
 import QuestionCard from "@/components/session/QuestionCard";
 import HeaderActions from "@/components/ui/HeaderActions";
@@ -12,12 +13,16 @@ export default function HistoryDetail({
   stats,
   isFavorited,
   onToggleFavorite,
+  note,
+  onOpenNote,
 }: {
   question: Question;
   response: QuestionResponse;
   stats?: QuestionStats;
   isFavorited: boolean;
   onToggleFavorite: () => void;
+  note?: Note;
+  onOpenNote: () => void;
 }) {
   // `stats` must come from the caller (computed once for the whole history
   // list) rather than being looked up here -- this question has clearly
@@ -35,6 +40,8 @@ export default function HistoryDetail({
         stats={stats}
         isFavorited={isFavorited}
         onToggleFavorite={onToggleFavorite}
+        note={note}
+        onOpenNote={onOpenNote}
       />
     </div>
   );

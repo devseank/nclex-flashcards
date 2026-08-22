@@ -1,6 +1,7 @@
 "use client";
 
 import { Question } from "@/services/questions";
+import { Note } from "@/services/notes";
 import QuestionCard from "@/components/session/QuestionCard";
 import HeaderActions from "@/components/ui/HeaderActions";
 
@@ -11,10 +12,14 @@ export default function FavoritesDetail({
   question,
   isFavorited,
   onToggleFavorite,
+  note,
+  onOpenNote,
 }: {
   question: Question;
   isFavorited: boolean;
   onToggleFavorite: () => void;
+  note?: Note;
+  onOpenNote: () => void;
 }) {
   return (
     <div className="w-full max-w-xl flex flex-col items-center">
@@ -25,6 +30,8 @@ export default function FavoritesDetail({
         mode="review"
         isFavorited={isFavorited}
         onToggleFavorite={onToggleFavorite}
+        note={note}
+        onOpenNote={onOpenNote}
       />
     </div>
   );

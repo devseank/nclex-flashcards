@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
 import type { Question } from "@/services/questions";
-import { isCorrect } from "@/lib/quizLogic";
+import type { Attempt } from "@/services/attempts";
+import { isCorrect, selectMostRelevantAttempt } from "@/lib/quizLogic";
+
+function mockAttempt(questionId: number, isCorrect: boolean, attemptedAt: string): Attempt {
+  return { id: Math.random(), questionId, selectedIndices: [0], isCorrect, attemptedAt };
+}
 
 function baseFields(id: number) {
   return {
@@ -170,5 +175,40 @@ describe("isCorrect", () => {
       expect(isCorrect(question(), { x: 0.1, y: 0.1 })).toBe(false);
       expect(isCorrect(question(), { x: 0.61, y: 0.35 })).toBe(false);
     });
+  });
+});
+
+describe("selectMostRelevantAttempt", () => {
+  it("returns null for a never-attempted question", () => {
+    expect(selectMostRelevantAttempt([], 1)).toBeNull();
+  });
+
+  it("returns the only attempt when there's just one", () => {
+    const attempt = mockAttempt(1, true, "2026-01-01T00:00:00.000Z");
+    expect(selectMostRelevantAttempt([attempt], 1)).toBe(attempt);
+  });
+
+  it("prefers the latest WRONG attempt over a more recent correct one", () => {
+    const wrong = mockAttempt(1, false, "2026-01-01T00:00:00.000Z");
+    const correct = mockAttempt(1, true, "2026-01-05T00:00:00.000Z");
+    expect(selectMostRelevantAttempt([wrong, correct], 1)).toBe(wrong);
+  });
+
+  it("picks the latest among multiple wrong attempts", () => {
+    const older = mockAttempt(1, false, "2026-01-01T00:00:00.000Z");
+    const newer = mockAttempt(1, false, "2026-01-05T00:00:00.000Z");
+    expect(selectMostRelevantAttempt([older, newer], 1)).toBe(newer);
+  });
+
+  it("falls back to the latest attempt overall when none are wrong", () => {
+    const older = mockAttempt(1, true, "2026-01-01T00:00:00.000Z");
+    const newer = mockAttempt(1, true, "2026-01-05T00:00:00.000Z");
+    expect(selectMostRelevantAttempt([older, newer], 1)).toBe(newer);
+  });
+
+  it("ignores attempts for other questions", () => {
+    const thisQuestion = mockAttempt(1, false, "2026-01-01T00:00:00.000Z");
+    const otherQuestion = mockAttempt(2, false, "2026-01-05T00:00:00.000Z");
+    expect(selectMostRelevantAttempt([thisQuestion, otherQuestion], 1)).toBe(thisQuestion);
   });
 });
