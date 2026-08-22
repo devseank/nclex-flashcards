@@ -116,3 +116,21 @@ body {
   background: var(--background);
   color: var(--foreground);
 }
+
+/* iOS Safari auto-zooms the whole page on focusing any text input/textarea/
+   select whose computed font-size is under 16px (its heuristic for "make
+   this legible"), and -- separately -- often fails to zoom back out on
+   blur, leaving the viewport stuck zoomed in until the user manually
+   pinches back out. TagCombobox's tag input (text-[10px], deliberately
+   tiny per its own comment) and the note textarea (text-sm = 14px) both
+   trip this. Forcing 16px only below the `sm` breakpoint -- where this
+   heuristic actually applies -- sidesteps the zoom entirely rather than
+   trying to fight the stuck-zoom side effect after the fact; desktop's
+   compact sizing (that never triggers zoom) is untouched. */
+@media (max-width: 640px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
