@@ -50,14 +50,13 @@ export default function NotesDetail({
       setQuestion(null);
       setRelevantAttempt(null);
       setLoading(true);
-      editor.setNote(null);
-      editor.setIsEditing(false);
+      editor.loadNote(null);
 
       try {
         const existing = await fetchNoteForQuestion(questionId);
         if (cancelled) return;
         if (existing) {
-          editor.setNote(existing);
+          editor.loadNote(existing);
         } else {
           // No note yet -- same "start editing" entry point NotePreview's
           // "+ NOTE" uses, which creates a blank row and flips into edit

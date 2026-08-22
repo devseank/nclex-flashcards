@@ -30,7 +30,7 @@ export default function NotePreview({
   // in-progress typing or a freshly-created draft.
   useEffect(() => {
     if (!editor.isEditing && note && !editor.note) {
-      editor.setNote(note);
+      editor.loadNote(note);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [note]);

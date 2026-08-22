@@ -121,6 +121,24 @@ export function useNoteEditor(initialNote: Note | null) {
     ensureVocabulary();
   }
 
+  // The one entry point for "display this note (or the absence of one),
+  // not currently editing it" -- callers that just fetched/adopted a Note
+  // to show read-only (NotesDetail's initial load, NotePreview's late
+  // batched-read adopt) MUST go through this rather than a bare `note`
+  // setter. `flush` always diffs `draftInputs` against `note.inputs` to
+  // decide whether anything actually changed (and deletes the note if the
+  // result is blank) -- if a caller updates `note` without also updating
+  // `draftInputs` to match, draftInputs is left at its stale/blank initial
+  // value, so leaving the page (unmount => flush(true)) sees "everything
+  // was cleared" and deletes a note the user never touched. This was a
+  // real bug: viewing an existing note on NotesDetail without ever
+  // pressing Edit, then navigating away, silently deleted it.
+  function loadNote(n: Note | null) {
+    setNote(n);
+    setDraftInputs(padNoteInputs(n?.inputs ?? []));
+    setIsEditing(false);
+  }
+
   async function save() {
     await flush(true);
     setIsEditing(false);
@@ -128,7 +146,7 @@ export function useNoteEditor(initialNote: Note | null) {
 
   return {
     note,
-    setNote,
+    loadNote,
     isEditing,
     setIsEditing,
     draftInputs,
